@@ -1,0 +1,16 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java:defs.bzl", "JUNIT5_VINTAGE_DEPS", "java_junit5_test")
+
+[
+    java_junit5_test(
+        name = test[:-5],
+        srcs = [test],
+        test_class = "com.github.bazel_contrib.rules_jvm_contrib.junit5.%s" % test[:-5],
+        deps = [
+            "//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
+            artifact("org.junit.jupiter:junit-jupiter-api"),
+            artifact("org.junit.platform:junit-platform-engine"),
+        ] + JUNIT5_VINTAGE_DEPS,
+    )
+    for test in glob(["*Test.java"])
+]
