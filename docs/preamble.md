@@ -42,9 +42,9 @@ The linters are configured using specific rules. The mappings are:
 
 | Well known name | Lint config rule |
 |-----------------|------------------|
-| java-checkstyle | checkstyle_config |
-| java-pmd | pmd_ruleset |
-| java-spotbugs | spotbugs_config |
+| java-checkstyle | [checkstyle_config](#checkstyle_config) |
+| java-pmd | [pmd_ruleset](#pmd_ruleset) |
+| java-spotbugs | [spotbugs_config](#spotbugs_config) |
 
 ## Requirements
 
