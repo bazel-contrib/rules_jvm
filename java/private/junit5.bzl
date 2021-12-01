@@ -1,4 +1,5 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java/private:package.bzl", "get_package_name")
 
 """Dependencies typically required by JUnit 5 tests.
 
@@ -13,22 +14,6 @@ JUNIT5_DEPS = [
 JUNIT5_VINTAGE_DEPS = [
     artifact("org.junit.vintage:junit-vintage-engine"),
 ] + JUNIT5_DEPS
-
-# Common package prefixes, in the order we want to check for them
-_PREFIXES = (".com.", ".org.", ".net.", ".io.")
-
-# By default bazel computes the name of test classes based on the
-# standard Maven directory structure, which we may not always use,
-# so try to compute the correct package name.
-def _get_package_name():
-    pkg = native.package_name().replace("/", ".")
-
-    for prefix in _PREFIXES:
-        idx = pkg.find(prefix)
-        if idx != -1:
-            return pkg[idx + 1:] + "."
-
-    return ""
 
 def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     """Run junit5 tests using Bazel.
@@ -51,7 +36,7 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     if test_class:
         clazz = test_class
     else:
-        clazz = _get_package_name() + name
+        clazz = get_package_name() + name
 
     native.java_test(
         name = name,

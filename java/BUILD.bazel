@@ -10,3 +10,9 @@ bzl_library(
     ],
     visibility = ["//:__pkg__"],
 )
+
+alias(
+    name = "junit5-runner",
+    actual = "//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
+    visibility = ["//visibility:public"],
+)
