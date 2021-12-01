@@ -16,7 +16,6 @@ lint_deps()
 load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 
 lint_setup({
-  # Note: this is an example config!
   "java-checkstyle": "//java:checkstyle-default-config",
   "java-pmd": "//:pmd-config",
   "java-spotbugs": "//java:spotbugs-default-config",

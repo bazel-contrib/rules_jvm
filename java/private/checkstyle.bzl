@@ -77,4 +77,5 @@ checkstyle_test = rule(
     },
     executable = True,
     test = True,
+    doc = """Use checkstyle to lint the `srcs`."""
 )

@@ -75,4 +75,5 @@ pmd_test = rule(
     },
     executable = True,
     test = True,
+    doc = """Use PMD to lint the `srcs`."""
 )
