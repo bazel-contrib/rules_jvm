@@ -12,6 +12,10 @@ def rules_jvm_contrib_deps():
         sha256 = RULES_JVM_EXTERNAL_SHA,
         strip_prefix = "rules_jvm_external-%s" % RULES_JVM_EXTERNAL_TAG,
         url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip" % RULES_JVM_EXTERNAL_TAG,
+        patches = [
+            "@rules_jvm_contrib//java/private:make-docs-visible.patch",
+        ],
+        patch_args = ["-p1"],
     )
 
     maybe(
@@ -19,3 +23,5 @@ def rules_jvm_contrib_deps():
         name = "rules_jvm_contrib_deps",
         path = "@rules_jvm_contrib//java/private:rules_jvm_contrib_deps.zip",
     )
+
+

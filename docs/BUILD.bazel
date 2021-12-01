@@ -1,0 +1,19 @@
+load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
+
+stardoc(
+    name = "java-docs",
+    input = "stardoc-input.bzl",
+    out = "java-docs.md",
+    deps = ["//:doc-files"],
+)
+
+genrule(
+    name = "readme",
+    srcs = [
+        "postfix.md",
+        "preamble.md",
+        ":java-docs",
+    ],
+    outs = ["README.md"],
+    cmd = """cat $(location preamble.md) $(location :java-docs) $(location postfix.md) >$@""",
+)

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -eu
+
+bazel build //docs:readme
+cp -f bazel-bin/docs/README.md README.md
