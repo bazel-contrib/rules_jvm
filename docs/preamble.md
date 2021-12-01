@@ -16,6 +16,8 @@ load("@rules_jvm_contrib//:setup.bzl", "rules_jvm_contrib_setup")
 rules_jvm_contrib_setup()
 ```
 
+If you're looking to get started quickly, then take a look at [java_test_suite](#java_test_suite) (a macro for generating a test suite from a `glob` of java test sources) and [java_junit5_test](#java_junit5_test) (a drop-in replacement for `java_test` that can run [JUnit5][junit5] tests)
+
 ## Linting
 
 Many of the features in this repo are designed to be exposed via [apple_rules_lint][arl], which provides a framework for integrating linting checks into your builds. To take advantage of this perform the following steps:
@@ -53,4 +55,4 @@ These rules require Java 11 or above.
 ## Java Rules
 
 [arl]: https://github.com/apple/apple_rules_lint
-
+[junit5]: https://junit.org/junit5/
