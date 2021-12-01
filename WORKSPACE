@@ -2,21 +2,21 @@ workspace(name = "rules_jvm_contrib")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-RULES_JVM_EXTERNAL_TAG = "4.2"
+load("//:repositories.bzl", "rules_jvm_contrib_deps")
 
-RULES_JVM_EXTERNAL_SHA = "cd1a77b7b02e8e008439ca76fd34f5b07aecb8c752961f9640dea15e9e5ba1ca"
+rules_jvm_contrib_deps()
 
-http_archive(
-    name = "rules_jvm_external",
-    sha256 = RULES_JVM_EXTERNAL_SHA,
-    strip_prefix = "rules_jvm_external-%s" % RULES_JVM_EXTERNAL_TAG,
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip" % RULES_JVM_EXTERNAL_TAG,
-)
+load("//:setup.bzl", "rules_jvm_contrib_setup")
+
+rules_jvm_contrib_setup()
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 
+# This only exists to give us a target to use with `//bin:freeze-deps.py` If
+# you update this, then please re-run that script and commit the changes to
+# repo
 maven_install(
-    name = "rules_jvm_contrib_deps",
+    name = "frozen_deps",
     artifacts = [
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
@@ -27,11 +27,18 @@ maven_install(
         "org.junit.vintage:junit-vintage-engine:5.8.1",
     ],
     fetch_sources = True,
+    fail_if_repin_required = True,
+    maven_install_json = "@rules_jvm_contrib//:frozen_deps_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )
 
+load("@frozen_deps//:defs.bzl", "pinned_maven_install")
+
+pinned_maven_install()
+
+# These are used for our own tests.
 maven_install(
     artifacts = [
         # These can be versioned independently of the versions in `repositories.bzl`
@@ -43,7 +50,13 @@ maven_install(
         "org.junit.vintage:junit-vintage-engine:5.8.2",
     ],
     fetch_sources = True,
+    fail_if_repin_required = True,
+    maven_install_json = "@//:maven_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )
+
+load("@maven//:defs.bzl", "pinned_maven_install")
+pinned_maven_install()
+
