@@ -1,6 +1,7 @@
 load("@apple_rules_lint//lint:defs.bzl", "get_lint_config")
 load("@rules_jvm_external//:defs.bzl", _java_export = "java_export")
 load("//java/private:checkstyle.bzl", "checkstyle_test")
+load("//java/private:pmd.bzl", "pmd_test")
 load("//java/private:spotbugs.bzl", "spotbugs_test")
 
 def _create_lint_tests(name, **kwargs):
@@ -21,6 +22,18 @@ def _create_lint_tests(name, **kwargs):
             # regardless of the library or test tags (e.g. even if we exclude
             # sidecar tests, we want to lint them).
             tags = ["lint", "checkstyle", "java-checkstyle"],
+            size = "small",
+            timeout = "moderate",
+        )
+
+    pmd = get_lint_config("java-pmd", tags)
+    if pmd != None:
+        pmd_test(
+            name = "%s-pmd" % name,
+            srcs = srcs,
+            target = ":%s" % name,
+            ruleset = pmd,
+            tags = ["lint", "pmd", "java-pmd"],
             size = "small",
             timeout = "moderate",
         )

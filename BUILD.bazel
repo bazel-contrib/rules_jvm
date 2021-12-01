@@ -1,9 +1,20 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
 
 bzl_library(
     name = "doc-files",
     srcs = [
         "//java:doc-files",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+pmd_ruleset(
+    name = "pmd-config",
+    rulesets = [
+        "pmd-ruleset.xml",
     ],
     visibility = [
         "//visibility:public",

@@ -8,6 +8,10 @@ load(
     _java_library = "java_library",
     _java_test = "java_test",
     _java_test_suite = "java_test_suite",
+    _pmd_ruleset = "pmd_ruleset",
+    _pmd_test = "pmd_test",
+    _spotbugs_config = "spotbugs_config",
+    _spotbugs_test = "spotbugs_test",
 )
 
 checkstyle_config = _checkstyle_config
@@ -18,3 +22,7 @@ java_library = _java_library
 java_junit5_test = _java_junit5_test
 java_test = _java_test
 java_test_suite = _java_test_suite
+pmd_ruleset = _pmd_ruleset
+pmd_test = _pmd_test
+spotbugs_config = _spotbugs_config
+spotbugs_test = _spotbugs_test

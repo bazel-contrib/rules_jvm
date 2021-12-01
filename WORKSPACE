@@ -18,6 +18,7 @@ load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 lint_setup({
   # Note: this is an example config!
   "java-checkstyle": "//java:checkstyle-default-config",
+  "java-pmd": "//:pmd-config",
   "java-spotbugs": "//java:spotbugs-default-config",
 })
 
@@ -47,6 +48,9 @@ maven_install(
 
         # Checkstyle deps
         "com.puppycrawl.tools:checkstyle:9.2",
+
+        # PMD deps
+        "net.sourceforge.pmd:pmd-dist:6.41.0",
 
         # Spotbugs deps
         # We don't want to force people to use 1.8-beta

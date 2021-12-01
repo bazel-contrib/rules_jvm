@@ -66,6 +66,92 @@ checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_t
 | <a id="checkstyle_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
 
 
+<a id="#pmd_ruleset"></a>
+
+## pmd_ruleset
+
+<pre>
+pmd_ruleset(<a href="#pmd_ruleset-name">name</a>, <a href="#pmd_ruleset-format">format</a>, <a href="#pmd_ruleset-rulesets">rulesets</a>, <a href="#pmd_ruleset-shallow">shallow</a>)
+</pre>
+
+Select a rule set for PMD tests.
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | "xml" |
+| <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
+| <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | True |
+
+
+<a id="#pmd_test"></a>
+
+## pmd_test
+
+<pre>
+pmd_test(<a href="#pmd_test-name">name</a>, <a href="#pmd_test-ruleset">ruleset</a>, <a href="#pmd_test-srcs">srcs</a>, <a href="#pmd_test-target">target</a>)
+</pre>
+
+
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="pmd_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="pmd_test-ruleset"></a>ruleset |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
+| <a id="pmd_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
+| <a id="pmd_test-target"></a>target |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+
+
+<a id="#spotbugs_config"></a>
+
+## spotbugs_config
+
+<pre>
+spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>)
+</pre>
+
+Configuration used for spotbugs, typically by the `//lint` rules.
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
+| <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | True |
+
+
+<a id="#spotbugs_test"></a>
+
+## spotbugs_test
+
+<pre>
+spotbugs_test(<a href="#spotbugs_test-name">name</a>, <a href="#spotbugs_test-config">config</a>, <a href="#spotbugs_test-deps">deps</a>, <a href="#spotbugs_test-effort">effort</a>, <a href="#spotbugs_test-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_test-only_output_jars">only_output_jars</a>)
+</pre>
+
+
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
+| <a id="spotbugs_test-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
+| <a id="spotbugs_test-fail_on_warning"></a>fail_on_warning |  If set to true the test will fail on a warning, otherwise it will succeed but create a report. Defaults to True   | Boolean | optional | True |
+| <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | True |
+
+
 <a id="#java_binary"></a>
 
 ## java_binary

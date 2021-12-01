@@ -45,6 +45,14 @@ java_binary(
     ],
 )
 
+java_binary(
+    name = "pmd",
+    main_class = "net.sourceforge.pmd.PMD",
+    runtime_deps = [
+        artifact("net.sourceforge.pmd:pmd-dist"),
+    ],
+)
+
 spotbugs_config(
     name = "spotbugs-default-config",
     effort = "default",

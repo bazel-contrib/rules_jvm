@@ -14,6 +14,8 @@ load(
     _java_library = "java_library",
     _java_test = "java_test",
 )
+load("//java/private:pmd.bzl", _pmd_test = "pmd_test")
+load("//java/private:pmd_ruleset.bzl", _pmd_ruleset = "pmd_ruleset")
 load("//java/private:spotbugs.bzl", _spotbugs_test = "spotbugs_test")
 load("//java/private:spotbugs_config.bzl", _spotbugs_config = "spotbugs_config")
 
@@ -27,5 +29,7 @@ java_test = _java_test
 java_test_suite = _java_test_suite
 JUNIT5_DEPS = _JUNIT5_DEPS
 JUNIT5_VINTAGE_DEPS = _JUNIT5_VINTAGE_DEPS
+pmd_ruleset = _pmd_ruleset
+pmd_test = _pmd_test
 spotbugs_config = _spotbugs_config
 spotbugs_test = _spotbugs_test
