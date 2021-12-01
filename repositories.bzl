@@ -24,4 +24,10 @@ def rules_jvm_contrib_deps():
         path = "@rules_jvm_contrib//java/private:rules_jvm_contrib_deps.zip",
     )
 
-
+    maybe(
+        http_archive,
+        name = "apple_rules_lint",
+        sha256 = "8feab4b08a958b10cb2abb7f516652cd770b582b36af6477884b3bba1f2f0726",
+        strip_prefix = "apple_rules_lint-0.1.1",
+        url = "https://github.com/apple/apple_rules_lint/archive/0.1.1.zip",
+    )

@@ -5,10 +5,10 @@ stardoc(
     input = "stardoc-input.bzl",
     out = "java-docs.md",
     deps = ["//:doc-files"],
-    symbol_names = [
-        "java_junit5_test",
-        "java_test_suite",
-    ],
+#    symbol_names = [
+#        "java_junit5_test",
+#        "java_test_suite",
+#    ],
 )
 
 genrule(

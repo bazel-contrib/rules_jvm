@@ -1,4 +1,5 @@
 load("//java/private:create_jvm_test_suite.bzl", "create_jvm_test_suite")
+load("//java/private:library.bzl", "java_library", "java_test")
 
 # Lifted from the Selenium project's work on migrating to Bazel.
 # The key thing that this file adds is the ability to specify a
@@ -12,13 +13,13 @@ _LIBRARY_ATTRS = [
 ]
 
 def _define_library(name, **kwargs):
-    native.java_library(
+    java_library(
         name = name,
         **kwargs
     )
 
 def _define_test(name, **kwargs):
-    native.java_test(
+    java_test(
         name = name,
         **kwargs
     )

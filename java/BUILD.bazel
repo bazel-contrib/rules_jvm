@@ -1,4 +1,8 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//java/private:artifact.bzl", "artifact")
+load("//java/private:checkstyle_config.bzl", "checkstyle_config")
+
+package(default_visibility = ["//visibility:public"])
 
 bzl_library(
     name = "doc-files",
@@ -14,5 +18,28 @@ bzl_library(
 alias(
     name = "junit5-runner",
     actual = "//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
-    visibility = ["//visibility:public"],
+)
+
+exports_files([
+    "checkstyle-strict.xml",
+    "google-checks.xml",
+])
+
+checkstyle_config(
+    name = "checkstyle-default-config",
+    config_file = "google-checks.xml",
+)
+
+checkstyle_config(
+    name = "checkstyle-strict-config",
+    config_file = "checkstyle-strict.xml",
+)
+
+java_binary(
+    name = "checkstyle_cli",
+    testonly = True,
+    main_class = "com.puppycrawl.tools.checkstyle.Main",
+    runtime_deps = [
+        artifact("com.puppycrawl.tools:checkstyle"),
+    ],
 )

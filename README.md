@@ -22,6 +22,92 @@ rules_jvm_contrib_setup()
 
 
 
+<a id="#checkstyle_config"></a>
+
+## checkstyle_config
+
+<pre>
+checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checkstyle_config-config_file">config_file</a>, <a href="#checkstyle_config-output_format">output_format</a>)
+</pre>
+
+ Rule allowing checkstyle to be configured. This is typically
+     used with the linting rules from `@apple_rules_lint` to configure how
+     checkstyle should run. 
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
+| <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | "plain" |
+
+
+<a id="#checkstyle_test"></a>
+
+## checkstyle_test
+
+<pre>
+checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-config">config</a>, <a href="#checkstyle_test-configuration_file">configuration_file</a>, <a href="#checkstyle_test-output_format">output_format</a>, <a href="#checkstyle_test-srcs">srcs</a>)
+</pre>
+
+
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="checkstyle_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="checkstyle_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="checkstyle_test-configuration_file"></a>configuration_file |  Configuration file. If not specified a default file is used   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="checkstyle_test-output_format"></a>output_format |  Output Format can be plain or xml. Defaults to plain   | String | optional | "plain" |
+| <a id="checkstyle_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
+
+
+<a id="#java_binary"></a>
+
+## java_binary
+
+<pre>
+java_binary(<a href="#java_binary-name">name</a>, <a href="#java_binary-kwargs">kwargs</a>)
+</pre>
+
+Adds linting tests to Bazel's own `java_binary`
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="java_binary-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="java_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="#java_export"></a>
+
+## java_export
+
+<pre>
+java_export(<a href="#java_export-name">name</a>, <a href="#java_export-maven_coordinates">maven_coordinates</a>, <a href="#java_export-pom_template">pom_template</a>, <a href="#java_export-deploy_env">deploy_env</a>, <a href="#java_export-visibility">visibility</a>, <a href="#java_export-kwargs">kwargs</a>)
+</pre>
+
+Adds linting tests to `rules_jvm_external`'s `java_export`
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="java_export-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="java_export-maven_coordinates"></a>maven_coordinates |  <p align="center"> - </p>   |  none |
+| <a id="java_export-pom_template"></a>pom_template |  <p align="center"> - </p>   |  <code>None</code> |
+| <a id="java_export-deploy_env"></a>deploy_env |  <p align="center"> - </p>   |  <code>None</code> |
+| <a id="java_export-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>None</code> |
+| <a id="java_export-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
 <a id="#java_junit5_test"></a>
 
 ## java_junit5_test
@@ -51,6 +137,44 @@ or `JUNIT5_VINTAGE_DEPS` loaded from `//java:defs.bzl`
 | <a id="java_junit5_test-test_class"></a>test_class |  The Java class to be loaded by the test runner. If not specified, the class name will be inferred from a combination of the current bazel package and the <code>name</code> attribute.   |  <code>None</code> |
 | <a id="java_junit5_test-runtime_deps"></a>runtime_deps |  <p align="center"> - </p>   |  <code>[]</code> |
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="#java_library"></a>
+
+## java_library
+
+<pre>
+java_library(<a href="#java_library-name">name</a>, <a href="#java_library-kwargs">kwargs</a>)
+</pre>
+
+Adds linting tests to Bazel's own `java_library`
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="java_library-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="java_library-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="#java_test"></a>
+
+## java_test
+
+<pre>
+java_test(<a href="#java_test-name">name</a>, <a href="#java_test-kwargs">kwargs</a>)
+</pre>
+
+Adds linting tests to Bazel's own `java_test`
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="java_test-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="java_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
 <a id="#java_test_suite"></a>

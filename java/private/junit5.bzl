@@ -1,4 +1,5 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java/private:library.bzl", "java_test")
 load("//java/private:package.bzl", "get_package_name")
 
 """Dependencies typically required by JUnit 5 tests.
@@ -38,7 +39,7 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     else:
         clazz = get_package_name() + name
 
-    native.java_test(
+    java_test(
         name = name,
         main_class = "com.github.bazel_contrib.rules_jvm_contrib.junit5.JUnit5Runner",
         test_class = clazz,
