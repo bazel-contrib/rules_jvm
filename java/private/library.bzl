@@ -1,6 +1,7 @@
 load("@apple_rules_lint//lint:defs.bzl", "get_lint_config")
 load("@rules_jvm_external//:defs.bzl", _java_export = "java_export")
 load("//java/private:checkstyle.bzl", "checkstyle_test")
+load("//java/private:spotbugs.bzl", "spotbugs_test")
 
 def _create_lint_tests(name, **kwargs):
     srcs = kwargs.get("srcs", [])
@@ -20,6 +21,20 @@ def _create_lint_tests(name, **kwargs):
             # regardless of the library or test tags (e.g. even if we exclude
             # sidecar tests, we want to lint them).
             tags = ["lint", "checkstyle", "java-checkstyle"],
+            size = "small",
+            timeout = "moderate",
+        )
+
+    spotbugs = get_lint_config("java-spotbugs", tags)
+    if spotbugs != None:
+        spotbugs_test(
+            name = "%s-spotbugs" % name,
+            config = spotbugs,
+            only_output_jars = True,
+            deps = [
+                ":%s" % name,
+            ],
+            tags = ["lint", "spotbugs", "java-spotbugs"],
             size = "small",
             timeout = "moderate",
         )

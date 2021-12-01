@@ -18,6 +18,7 @@ load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 lint_setup({
   # Note: this is an example config!
   "java-checkstyle": "//java:checkstyle-default-config",
+  "java-spotbugs": "//java:spotbugs-default-config",
 })
 
 load("//:repositories.bzl", "rules_jvm_contrib_deps")
@@ -46,6 +47,25 @@ maven_install(
 
         # Checkstyle deps
         "com.puppycrawl.tools:checkstyle:9.2",
+
+        # Spotbugs deps
+        # We don't want to force people to use 1.8-beta
+        # but we can't use the `maven` macros because
+        # we've not loaded rules yet. Fortunately, the
+        # expansion is easy :)
+        {
+            "group": "com.github.spotbugs",
+            "artifact": "spotbugs",
+            "version": "4.5.0",
+            "exclusions": [
+                {
+                    "group": "org.slf4j",
+                    "artifact": "slf4j-api",
+                },
+            ],
+        },
+        "org.slf4j:slf4j-api:1.7.32",
+        "org.slf4j:slf4j-jdk14:1.7.32",
     ],
     fetch_sources = True,
     fail_if_repin_required = True,

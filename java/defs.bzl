@@ -14,6 +14,8 @@ load(
     _java_library = "java_library",
     _java_test = "java_test",
 )
+load("//java/private:spotbugs.bzl", _spotbugs_test = "spotbugs_test")
+load("//java/private:spotbugs_config.bzl", _spotbugs_config = "spotbugs_config")
 
 checkstyle_config = _checkstyle_config
 checkstyle_test = _checkstyle_test
@@ -25,3 +27,5 @@ java_test = _java_test
 java_test_suite = _java_test_suite
 JUNIT5_DEPS = _JUNIT5_DEPS
 JUNIT5_VINTAGE_DEPS = _JUNIT5_VINTAGE_DEPS
+spotbugs_config = _spotbugs_config
+spotbugs_test = _spotbugs_test

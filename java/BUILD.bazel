@@ -1,6 +1,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//java/private:artifact.bzl", "artifact")
 load("//java/private:checkstyle_config.bzl", "checkstyle_config")
+load("//java/private:spotbugs_config.bzl", "spotbugs_config")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -41,5 +42,21 @@ java_binary(
     main_class = "com.puppycrawl.tools.checkstyle.Main",
     runtime_deps = [
         artifact("com.puppycrawl.tools:checkstyle"),
+    ],
+)
+
+spotbugs_config(
+    name = "spotbugs-default-config",
+    effort = "default",
+    fail_on_warning = True,
+)
+
+java_binary(
+    name = "spotbugs_cli",
+    testonly = True,
+    main_class = "edu.umd.cs.findbugs.LaunchAppropriateUI",
+    runtime_deps = [
+        artifact("com.github.spotbugs:spotbugs"),
+        artifact("org.slf4j:slf4j-jdk14"),
     ],
 )
