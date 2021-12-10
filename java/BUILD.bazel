@@ -18,7 +18,7 @@ bzl_library(
 
 alias(
     name = "junit5-runner",
-    actual = "//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
+    actual = "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
 )
 
 exports_files([

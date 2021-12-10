@@ -7,7 +7,7 @@ java_test_suite(
     runner = "junit5",
     srcs = glob(["*.java"]),
     deps = [
-        "//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.platform:junit-platform-engine"),
     ] + JUNIT5_VINTAGE_DEPS,

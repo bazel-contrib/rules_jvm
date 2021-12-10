@@ -20,7 +20,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--zip",
-    default="java/private/rules_jvm_contrib_deps.zip",
+    default="java/private/contrib_rules_jvm_deps.zip",
     help="Name of zip file to create containing frozen deps"
 )
 

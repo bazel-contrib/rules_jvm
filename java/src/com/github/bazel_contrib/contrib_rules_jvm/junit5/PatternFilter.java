@@ -1,4 +1,4 @@
-package com.github.bazel_contrib.rules_jvm_contrib.junit5;
+package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import org.junit.platform.engine.FilterResult;
 import org.junit.platform.engine.TestDescriptor;

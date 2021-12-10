@@ -1,4 +1,4 @@
-package com.github.bazel_contrib.rules_jvm_contrib.junit5;
+package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 /**
  * Test bootstrapper. This class only depends on the JRE (java 11+) and will
@@ -12,7 +12,7 @@ package com.github.bazel_contrib.rules_jvm_contrib.junit5;
  */
 public class JUnit5Runner {
 
-  private static final String JUNIT5_RUNNER_CLASS = "com.github.bazel_contrib.rules_jvm_contrib.junit5.ActualRunner";
+  private static final String JUNIT5_RUNNER_CLASS = "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
 
   public static void main(String[] args) {
     var testSuite = System.getProperty("bazel.test_suite");

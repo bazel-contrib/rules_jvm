@@ -41,10 +41,10 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
 
     java_test(
         name = name,
-        main_class = "com.github.bazel_contrib.rules_jvm_contrib.junit5.JUnit5Runner",
+        main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         test_class = clazz,
         runtime_deps = runtime_deps + [
-            "@rules_jvm_contrib//java/src/com/github/bazel_contrib/rules_jvm_contrib/junit5",
+            "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         ],
         **kwargs
     )

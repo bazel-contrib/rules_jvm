@@ -6,8 +6,8 @@ _RUNNERS = {
         "runtime_deps": [],
     },
     "junit5": {
-        "main_class": "com.github.bazel_contrib.rules_jvm_contrib.junit5.JUnit5Runner",
-        "runtime_deps": ["@rules_jvm_contrib//java:junit5-runner"],
+        "main_class": "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
+        "runtime_deps": ["@contrib_rules_jvm//java:junit5-runner"],
     },
 }
 

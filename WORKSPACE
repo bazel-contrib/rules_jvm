@@ -1,4 +1,4 @@
-workspace(name = "rules_jvm_contrib")
+workspace(name = "contrib_rules_jvm")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
@@ -21,13 +21,13 @@ lint_setup({
   "java-spotbugs": "//java:spotbugs-default-config",
 })
 
-load("//:repositories.bzl", "rules_jvm_contrib_deps")
+load("//:repositories.bzl", "contrib_rules_jvm_deps")
 
-rules_jvm_contrib_deps()
+contrib_rules_jvm_deps()
 
-load("//:setup.bzl", "rules_jvm_contrib_setup")
+load("//:setup.bzl", "contrib_rules_jvm_setup")
 
-rules_jvm_contrib_setup()
+contrib_rules_jvm_setup()
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 
@@ -72,7 +72,7 @@ maven_install(
     ],
     fetch_sources = True,
     fail_if_repin_required = True,
-    maven_install_json = "@rules_jvm_contrib//:frozen_deps_install.json",
+    maven_install_json = "@contrib_rules_jvm//:frozen_deps_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],

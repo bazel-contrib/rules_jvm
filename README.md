@@ -1,4 +1,4 @@
-# rules_jvm_contrib
+# contrib_rules_jvm
 
 Handy rules for working with JVM-based projects in Bazel.
 
@@ -7,13 +7,13 @@ you've used an `http_archive`, you can load all the necessary
 dependencies by:
 
 ```starlark
-load("@rules_jvm_contrib//:repositories.bzl", "rules_jvm_contrib_deps")
+load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps")
 
-rules_jvm_contrib_deps()
+contrib_rules_jvm_deps()
 
-load("@rules_jvm_contrib//:setup.bzl", "rules_jvm_contrib_setup")
+load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
 
-rules_jvm_contrib_setup()
+contrib_rules_jvm_setup()
 ```
 
 If you're looking to get started quickly, then take a look at [java_test_suite](#java_test_suite) (a macro for generating a test suite from a `glob` of java test sources) and [java_junit5_test](#java_junit5_test) (a drop-in replacement for `java_test` that can run [JUnit5][junit5] tests)
@@ -29,9 +29,9 @@ load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 
 lint_setup({
   # Note: this is an example config!
-  "java-checkstyle": "@rules_jvm_contrib//java:checkstyle-default-config",
+  "java-checkstyle": "@contrib_rules_jvm//java:checkstyle-default-config",
   "java-pmd": "//:pmd-config",
-  "java-spotbugs": "@rules_jvm_contrib//java:spotbugs-default-config",
+  "java-spotbugs": "@contrib_rules_jvm//java:spotbugs-default-config",
 })
 ```
 
@@ -348,7 +348,7 @@ attribute to allow all the tests to be run in one go.
 
 At runtime, a handful of dependencies are required by helper classes
 in this project. Rather than pollute the default `@maven` workspace,
-these are loaded into a `@rules_jvm_contrib_deps` workspace. These
+these are loaded into a `@contrib_rules_jvm_deps` workspace. These
 dependencies are loaded using a call to `maven_install`, but we don't
 want to force users to remember to load our own dependencies for
 us. Instead, to add a new dependency to the project:
