@@ -16,9 +16,9 @@ lint_deps()
 load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 
 lint_setup({
-  "java-checkstyle": "//java:checkstyle-default-config",
-  "java-pmd": "//:pmd-config",
-  "java-spotbugs": "//java:spotbugs-default-config",
+    "java-checkstyle": "//java:checkstyle-default-config",
+    "java-pmd": "//:pmd-config",
+    "java-spotbugs": "//java:spotbugs-default-config",
 })
 
 load("//:repositories.bzl", "contrib_rules_jvm_deps")
@@ -70,8 +70,8 @@ maven_install(
         "org.slf4j:slf4j-api:1.7.32",
         "org.slf4j:slf4j-jdk14:1.7.32",
     ],
-    fetch_sources = True,
     fail_if_repin_required = True,
+    fetch_sources = True,
     maven_install_json = "@contrib_rules_jvm//:frozen_deps_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
@@ -93,8 +93,8 @@ maven_install(
         "org.junit.platform:junit-platform-reporting:1.8.2",
         "org.junit.vintage:junit-vintage-engine:5.8.2",
     ],
-    fetch_sources = True,
     fail_if_repin_required = True,
+    fetch_sources = True,
     maven_install_json = "@//:maven_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
@@ -104,6 +104,25 @@ maven_install(
 load("@maven//:defs.bzl", "pinned_maven_install")
 
 pinned_maven_install()
+
+# Dependencies for generating `bzl_library` targets using Gazelle
+http_archive(
+    name = "io_bazel_rules_go",
+    sha256 = "2b1641428dff9018f9e85c0384f03ec6c10660d935b750e3fa1492a281a53b0f",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
+    ],
+)
+
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "de69a09dc70417580aabf20a28619bb3ef60d038470c7cf8442fafcf627c21cb",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
+    ],
+)
 
 http_archive(
     name = "io_bazel_stardoc",
@@ -117,3 +136,14 @@ http_archive(
 load("@io_bazel_stardoc//:setup.bzl", "stardoc_repositories")
 
 stardoc_repositories()
+
+############################################
+# Gazelle, for generating bzl_library targets
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains(version = "1.17.2")
+
+gazelle_dependencies()

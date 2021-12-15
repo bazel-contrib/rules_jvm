@@ -5,17 +5,6 @@ load("//java/private:spotbugs_config.bzl", "spotbugs_config")
 
 package(default_visibility = ["//visibility:public"])
 
-bzl_library(
-    name = "doc-files",
-    srcs = [
-        "defs.bzl",
-    ],
-    deps = [
-        "//java/private:doc-files",
-    ],
-    visibility = ["//:__pkg__"],
-)
-
 alias(
     name = "junit5-runner",
     actual = "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
@@ -66,5 +55,21 @@ java_binary(
     runtime_deps = [
         artifact("com.github.spotbugs:spotbugs"),
         artifact("org.slf4j:slf4j-jdk14"),
+    ],
+)
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    deps = [
+        "//java/private:checkstyle",
+        "//java/private:checkstyle_config",
+        "//java/private:java_test_suite",
+        "//java/private:junit5",
+        "//java/private:library",
+        "//java/private:pmd",
+        "//java/private:pmd_ruleset",
+        "//java/private:spotbugs",
+        "//java/private:spotbugs_config",
     ],
 )

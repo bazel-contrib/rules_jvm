@@ -109,5 +109,5 @@ spotbugs_test = rule(
     },
     executable = True,
     test = True,
-    doc = """Use spotbugs to lint the `srcs`."""
+    doc = """Use spotbugs to lint the `srcs`.""",
 )

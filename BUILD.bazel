@@ -1,15 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
-
-bzl_library(
-    name = "doc-files",
-    srcs = [
-        "//java:doc-files",
-    ],
-    visibility = [
-        "//visibility:public",
-    ],
-)
 
 pmd_ruleset(
     name = "pmd-config",
@@ -18,5 +9,36 @@ pmd_ruleset(
     ],
     visibility = [
         "//visibility:public",
+    ],
+)
+
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = ["@bazel_skylib//gazelle/bzl"],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_bin",
+)
+
+bzl_library(
+    name = "repositories",
+    srcs = ["repositories.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//java/private:zip_repository",
+        "@bazel_tools//tools/build_defs/repo:http.bzl",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "setup",
+    srcs = ["setup.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@apple_rules_lint//lint:implementation",
+        "@contrib_rules_jvm_deps//:defs",
     ],
 )
