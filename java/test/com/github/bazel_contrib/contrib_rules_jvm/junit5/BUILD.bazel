@@ -4,8 +4,8 @@ load("//java:defs.bzl", "JUNIT5_VINTAGE_DEPS", "java_test_suite")
 java_test_suite(
     name = "small-tests",
     size = "small",
-    runner = "junit5",
     srcs = glob(["*.java"]),
+    runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api"),

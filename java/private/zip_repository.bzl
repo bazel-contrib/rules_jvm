@@ -17,10 +17,17 @@ zip_repository = repository_rule(
     doc = """Create a repository from a saved zip file.""",
     attrs = {
         "path": attr.label(
+            doc = "Path to the zip file to use.",
             mandatory = True,
         ),
-        "strip_prefix": attr.string(),
-        "patches": attr.label_list(),
-        "patch_args": attr.string_list(),
+        "strip_prefix": attr.string(
+            doc = "Prefix to remove from zip.",
+        ),
+        "patches": attr.label_list(
+            doc = "A list of patches to be applied to the unpacked zip contents.",
+        ),
+        "patch_args": attr.string_list(
+            doc = "Arguments to pass to the `patch` command.",
+        ),
     },
 )

@@ -5,8 +5,11 @@ import os
 import re
 import subprocess
 import sys
+import textwrap
 import zipfile
 from os import path
+
+UNCHANGED_FILES = ["outdated.sh", "outdated.artifacts", "outdated.repositories"]
 
 parser = argparse.ArgumentParser(
     description="""Convert rules_jvm_external lock files to frozen zip files that can be 
@@ -41,8 +44,7 @@ base = output_base.decode(encoding=sys.stdin.encoding)
 # Generate a stable-ish zip file
 output = zipfile.ZipFile(args.zip, "w", zipfile.ZIP_DEFLATED)
 
-unchanged_files = ["BUILD", "outdated.sh", "outdated.artifacts", "outdated.repositories"]
-for f in unchanged_files:
+for f in UNCHANGED_FILES:
     p = path.join(base, "external", args.repo, f)
     zinfo = zipfile.ZipInfo(filename=f, date_time=(1980, 1, 1, 0, 0, 0))
     with open(p) as input:
@@ -58,5 +60,25 @@ with open(defs_bzl) as f:
         if len(line):
             defs.append(line)
     output.writestr(zinfo, "\n".join(defs))
+
+build_file = path.join(base, "external", args.repo, "BUILD")
+zinfo = zipfile.ZipInfo(filename='BUILD.bazel', date_time=(1980, 1, 1, 0, 0, 0))
+with open(build_file) as f:
+    build_file_contents = textwrap.dedent(
+        """\
+        load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+        
+        {original_contents}
+        
+        bzl_library(
+           name = "defs",
+           srcs = ["defs.bzl"],
+           deps = [
+               "@rules_jvm_external//:implementation",
+           ],
+        )
+        """.format(original_contents = textwrap.indent(f.read(), "        "))
+    )
+    output.writestr(zinfo, build_file_contents)
 
 output.close()
