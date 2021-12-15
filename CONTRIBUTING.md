@@ -1,12 +1,34 @@
-Want to contribute? Great! First, read this page (including the small print at the end).
+# How to Contribute
 
-### Before you contribute
+## Formatting
 
-Before you start working on a larger contribution, you should get in touch
-with us first. Use the issue tracker to explain your idea so we can help and
-possibly guide you.
+Starlark files should be formatted by buildifier.
 
-### Code reviews and other contributions.
-**All submissions, including submissions by project members, require review.**
-Please follow the instructions in [the contributors documentation](https://bazel.build/contributing.html).
+`buildifier --mode fix -lint fix -r .`
+
+## Using this as a development dependency of other rules
+
+You'll commonly find that you develop in another WORKSPACE, such as
+some other ruleset that depends on `contrib_rules_jvm`, or in a nested
+WORKSPACE in the integration_tests folder.
+
+To always tell Bazel to use this directory rather than some release
+artifact or a version fetched from the internet, run this from this
+directory:
+
+```sh
+OVERRIDE="--override_repository=contrib_rules_jvm=$(pwd)/rules_jvm"
+echo "build $OVERRIDE" >> ~/.bazelrc.user
+echo "fetch $OVERRIDE" >> ~/.bazelrc.user
+echo "query $OVERRIDE" >> ~/.bazelrc.user
+```
+
+This means that any usage of `@contrib_rules_jvm` on your system will
+point to the `rules_jvm` folder.
+
+## Releasing
+
+1. Determine the next release version, following semver if possible/
+2. Tag the repo and push it (or create a tag in GH UI).
+3. Watch the automation run on GitHub actions.
 
