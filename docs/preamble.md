@@ -30,7 +30,7 @@ load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 lint_setup({
   # Note: this is an example config!
   "java-checkstyle": "@contrib_rules_jvm//java:checkstyle-default-config",
-  "java-pmd": "//:pmd-config",
+  "java-pmd": "@contrib_rules_jvm//java:pmd-config",
   "java-spotbugs": "@contrib_rules_jvm//java:spotbugs-default-config",
 })
 ```

@@ -1,16 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
-load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
-
-pmd_ruleset(
-    name = "pmd-config",
-    rulesets = [
-        "pmd-ruleset.xml",
-    ],
-    visibility = [
-        "//visibility:public",
-    ],
-)
 
 gazelle_binary(
     name = "gazelle_bin",
