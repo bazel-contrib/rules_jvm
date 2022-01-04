@@ -28,6 +28,14 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     `maven_install` you can add these to your `deps` using `JUNIT5_DEPS`
     or `JUNIT5_VINTAGE_DEPS` loaded from `//java:defs.bzl`
 
+    **Note**: The junit5 runner prevents `System.exit` being called
+    using a `SecurityManager`, which means that one test can't
+    prematurely cause an entire test run to finish unexpectedly.
+
+    While the `SecurityManager` has been deprecated in recent Java
+    releases, there's no replacement yet. JEP 411 has this as one of
+    its goals, but this is not complete or available yet.
+
     Args:
       name: The name of the test.
       test_class: The Java class to be loaded by the test runner. If not
