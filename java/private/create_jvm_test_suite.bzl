@@ -21,6 +21,7 @@ def create_jvm_test_suite(
         name,
         srcs,
         test_suffixes,
+        package,
         library_attributes,
         define_library,
         define_test,
@@ -48,6 +49,8 @@ def create_jvm_test_suite(
       name: The name of the generated test suite.
       srcs: A list of source files.
       test_suffixes: A list of suffixes (eg. `["Test.kt"]`)
+      package: The package name to use. If `None`, a value will be
+        calculated from the bazel package.
       library_attributes: Attributes to pass to `define_library`.
       define_library: A function that creates a `*_library` target.
       define_test: A function that creates a `*_test` target.
@@ -88,7 +91,7 @@ def create_jvm_test_suite(
         suffix = src.rfind(".")
         test_name = src[:suffix]
         tests.append(test_name)
-        test_class = get_class_name(src)
+        test_class = get_class_name(package, src)
 
         define_test(
             name = test_name,

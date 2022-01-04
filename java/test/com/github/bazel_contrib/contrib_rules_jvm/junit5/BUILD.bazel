@@ -1,14 +1,32 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "JUNIT5_VINTAGE_DEPS", "java_test_suite")
+load("//java:defs.bzl", "JUNIT5_DEPS", "JUNIT5_VINTAGE_DEPS", "java_test_suite")
+
+PACKAGE_NAME_TEST = [
+    "WrongPackageNameTest.java",
+]
 
 java_test_suite(
     name = "small-tests",
     size = "small",
-    srcs = glob(["*.java"]),
+    srcs = glob(["*.java"], exclude = PACKAGE_NAME_TEST),
     runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.platform:junit-platform-engine"),
     ] + JUNIT5_VINTAGE_DEPS,
+)
+
+# Test that we can set the package name properly. We do this by
+# setting the `package` attribute deliberately rather than letting
+# the value be guessed at by the runner.
+java_test_suite(
+    name = "custom-tests",
+    size = "small",
+    package = "com.github.bazel_contrib.contrib_rules_jvm.custom",
+    srcs = PACKAGE_NAME_TEST,
+    runner = "junit5",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api"),
+    ] + JUNIT5_DEPS,
 )
