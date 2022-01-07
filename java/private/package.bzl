@@ -15,7 +15,7 @@ def get_package_name():
     return ""
 
 # Converts a file name into what is hopefully a valid class name.
-def get_class_name(src):
+def get_class_name(package, src):
     # Strip the suffix from the source
     idx = src.rindex(".")
     name = src[:idx].replace("/", ".")
@@ -25,7 +25,14 @@ def get_class_name(src):
         if idx != -1:
             return name[idx + 1:]
 
-    pkg = get_package_name()
+    # Make sure that the package has a trailing period so it's
+    # safe to add the class name. While `get_package_name` does
+    # the right thing, the parameter passed by a user may not
+    # so we shall check once we have `pkg` just to be safe.
+    pkg = package if package else get_package_name()
+    if len(pkg) and not pkg.endswith("."):
+        pkg = pkg + "."
+
     if pkg:
         return pkg + name
     return name

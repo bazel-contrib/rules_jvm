@@ -29,6 +29,7 @@ def java_test_suite(
         srcs,
         runner = "junit4",
         test_suffixes = ["Test.java"],
+        package = None,
         deps = None,
         runtime_deps = [],
         tags = [],
@@ -54,6 +55,8 @@ def java_test_suite(
       name: A unique name for this rule. Will be used to generate a `test_suite`
       srcs: Source files to create test rules for.
       runner: One of `junit4` or `junit5`.
+      package: The package name used by the tests. If not set, this is
+        inferred from the current bazel package name.
       deps: A list of `java_*` dependencies.
       runtime_deps: A list of `java_*` dependencies needed at runtime.
       size: The size of the test, passed to `java_test`
@@ -64,6 +67,7 @@ def java_test_suite(
         name,
         srcs = srcs,
         test_suffixes = test_suffixes,
+        package = package,
         library_attributes = _LIBRARY_ATTRS,
         define_library = _define_library,
         define_test = _define_test,

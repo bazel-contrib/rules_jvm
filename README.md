@@ -314,8 +314,8 @@ Adds linting tests to Bazel's own `java_test`
 ## java_test_suite
 
 <pre>
-java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-tags">tags</a>, <a href="#java_test_suite-visibility">visibility</a>, <a href="#java_test_suite-size">size</a>,
-                <a href="#java_test_suite-kwargs">kwargs</a>)
+java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-tags">tags</a>, <a href="#java_test_suite-visibility">visibility</a>,
+                <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -343,6 +343,7 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-srcs"></a>srcs |  Source files to create test rules for.   |  none |
 | <a id="java_test_suite-runner"></a>runner |  One of <code>junit4</code> or <code>junit5</code>.   |  <code>"junit4"</code> |
 | <a id="java_test_suite-test_suffixes"></a>test_suffixes |  The file name suffix used to identify if a file contains a test class.   |  <code>["Test.java"]</code> |
+| <a id="java_test_suite-package"></a>package |  The package name used by the tests. If not set, this is inferred from the current bazel package name.   |  <code>None</code> |
 | <a id="java_test_suite-deps"></a>deps |  A list of <code>java_*</code> dependencies.   |  <code>None</code> |
 | <a id="java_test_suite-runtime_deps"></a>runtime_deps |  A list of <code>java_*</code> dependencies needed at runtime.   |  <code>[]</code> |
 | <a id="java_test_suite-tags"></a>tags |  <p align="center"> - </p>   |  <code>[]</code> |
