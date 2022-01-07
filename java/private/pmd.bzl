@@ -5,6 +5,10 @@ def _pmd_test_impl(ctx):
         ctx.executable._pmd.short_path,
     ]
 
+    # We want to disable the suggestion to use the analysis cache
+    # https://pmd.github.io/latest/pmd_userdocs_incremental_analysis.html#disabling-incremental-analysis
+    cmd.extend(["-no-cache"])
+
     inputs = []
     transitive_inputs = depset()
 
