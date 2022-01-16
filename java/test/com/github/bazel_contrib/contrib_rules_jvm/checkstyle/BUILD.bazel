@@ -1,0 +1,32 @@
+load("//java:defs.bzl", "checkstyle_config", "checkstyle_test")
+
+checkstyle_config(
+    name = "checkstyle_missing_suppressions",
+    config_file = "checkstyle_with_suppressions.xml",
+)
+
+checkstyle_config(
+    name = "checkstyle_with_suppressions",
+    config_file = "checkstyle_with_suppressions.xml",
+    data = ["suppressions.xml"],
+)
+
+checkstyle_test(
+    name = "this_should_fail_missing_file",
+    srcs = ["Sample.java"],
+    config = ":checkstyle_missing_suppressions",
+    tags = ["manual"],
+)
+
+checkstyle_test(
+    name = "this_should_fail_bad_style",
+    srcs = ["Sample.java"],
+    config = "//java:checkstyle-strict-config",
+    tags = ["manual"],
+)
+
+checkstyle_test(
+    name = "this_should_pass",
+    srcs = ["Sample.java"],
+    config = ":checkstyle_with_suppressions",
+)
