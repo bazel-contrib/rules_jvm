@@ -7,6 +7,9 @@ CheckStyleInfo = provider(
 
 def _checkstyle_config_impl(ctx):
     return [
+        DefaultInfo(
+            runfiles = ctx.runfiles(ctx.files.data + [ctx.file.config_file]),
+        ),
         CheckStyleInfo(
             config_file = ctx.file.config_file,
             output_format = ctx.attr.output_format,
@@ -28,6 +31,10 @@ checkstyle_config = rule(
                 "xml",
             ],
             default = "plain",
+        ),
+        "data": attr.label_list(
+            doc = "Additional files to make available to Checkstyle such as any included XML files",
+            allow_files = True,
         ),
     },
     provides = [

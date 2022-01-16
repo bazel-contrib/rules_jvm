@@ -4,7 +4,7 @@ load(":checkstyle_config.bzl", "CheckStyleInfo")
 Checkstyle rule implementation
 """
 
-def _checkstye_impl(ctx):
+def _checkstyle_impl(ctx):
     # Preferred options: 1/ config on rule or 2/ config via attributes
     if ctx.attr.config != None:
         info = ctx.attr.config[CheckStyleInfo]
@@ -19,16 +19,16 @@ def _checkstye_impl(ctx):
 
     script = "\n".join([
         "#!/usr/bin/env bash",
-        "RESULTS=`{lib} -f {output_format} -c {config} {srcs}|sed s:$PWD::g`".format(
+        "set -o pipefail",
+        "set -e",
+        "OLDPWD=$PWD",
+        "cd {config_dir}".format(config_dir = config.dirname),
+        "$OLDPWD/{lib} -f {output_format} -c {config} {srcs} |sed s:$OLDPWD/::g".format(
             lib = ctx.executable._checkstyle_lib.short_path,
             output_format = output_format,
-            config = config.short_path,
-            srcs = " ".join([f.short_path for f in ctx.files.srcs]),
+            config = config.basename,
+            srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
-        "if echo \"$RESULTS\" | grep -q \"ERROR\"; then",
-        "   echo \"$RESULTS\"",
-        "   exit 1",
-        "fi",
     ])
     out = ctx.actions.declare_file(ctx.label.name + "exec")
 
@@ -38,18 +38,20 @@ def _checkstye_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = ctx.files.srcs + [ctx.executable._checkstyle_lib, config],
-    )
+        files = ctx.files.srcs + [ctx.executable._checkstyle_lib],
+    ).merge(ctx.attr.config[DefaultInfo].default_runfiles)
 
     return [
         DefaultInfo(
             executable = out,
-            runfiles = runfiles.merge(ctx.attr._checkstyle_lib[DefaultInfo].default_runfiles),
+            runfiles = runfiles.merge(
+                ctx.attr._checkstyle_lib[DefaultInfo].default_runfiles,
+            ),
         ),
     ]
 
 checkstyle_test = rule(
-    _checkstye_impl,
+    _checkstyle_impl,
     attrs = {
         "srcs": attr.label_list(
             mandatory = True,
