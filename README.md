@@ -191,6 +191,48 @@ Use spotbugs to lint the `srcs`.
 | <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | True |
 
 
+<a id="#checkstyle_binary"></a>
+
+## checkstyle_binary
+
+<pre>
+checkstyle_binary(<a href="#checkstyle_binary-name">name</a>, <a href="#checkstyle_binary-main_class">main_class</a>, <a href="#checkstyle_binary-deps">deps</a>, <a href="#checkstyle_binary-runtime_deps">runtime_deps</a>, <a href="#checkstyle_binary-srcs">srcs</a>, <a href="#checkstyle_binary-visibility">visibility</a>, <a href="#checkstyle_binary-kwargs">kwargs</a>)
+</pre>
+
+Macro for quickly generating a `java_binary` target for use with `checkstyle_config`.
+
+By default, this will set the `main_class` to point to the default one used by checkstyle
+but it's ultimately a drop-replacement for straight `java_binary` target.
+
+At least one of `runtime_deps`, `deps`, and `srcs` must be specified so that the
+`java_binary` target will be valid.
+
+An example would be:
+
+```starlark
+checkstyle_binary(
+    name = "checkstyle_cli",
+    runtime_deps = [
+        artifact("com.puppycrawl.tools:checkstyle"),
+    ]
+)
+```
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="checkstyle_binary-name"></a>name |  The name of the target   |  none |
+| <a id="checkstyle_binary-main_class"></a>main_class |  The main class to use for checkstyle.   |  <code>"com.puppycrawl.tools.checkstyle.Main"</code> |
+| <a id="checkstyle_binary-deps"></a>deps |  The deps required for compiling this binary. May be omitted.   |  <code>None</code> |
+| <a id="checkstyle_binary-runtime_deps"></a>runtime_deps |  The deps required by checkstyle at runtime. May be omitted.   |  <code>None</code> |
+| <a id="checkstyle_binary-srcs"></a>srcs |  If you're compiling your own <code>checkstyle</code> binary, the sources to use.   |  <code>None</code> |
+| <a id="checkstyle_binary-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>["//visibility:public"]</code> |
+| <a id="checkstyle_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
 <a id="#java_binary"></a>
 
 ## java_binary

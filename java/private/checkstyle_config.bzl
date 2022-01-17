@@ -1,3 +1,50 @@
+
+def checkstyle_binary(
+        name,
+        main_class = "com.puppycrawl.tools.checkstyle.Main",
+        deps = None,
+        runtime_deps = None,
+        srcs = None,
+        visibility = ["//visibility:public"],
+        **kwargs):
+    """Macro for quickly generating a `java_binary` target for use with `checkstyle_config`.
+
+    By default, this will set the `main_class` to point to the default one used by checkstyle
+    but it's ultimately a drop-replacement for straight `java_binary` target.
+
+    At least one of `runtime_deps`, `deps`, and `srcs` must be specified so that the
+    `java_binary` target will be valid.
+
+    An example would be:
+
+    ```starlark
+    checkstyle_binary(
+        name = "checkstyle_cli",
+        runtime_deps = [
+            artifact("com.puppycrawl.tools:checkstyle"),
+        ]
+    )
+    ```
+
+    Args:
+      name: The name of the target
+      main_class: The main class to use for checkstyle.
+      deps: The deps required for compiling this binary. May be omitted.
+      runtime_deps: The deps required by checkstyle at runtime. May be omitted.
+      srcs: If you're compiling your own `checkstyle` binary, the sources to use.
+    """
+
+    native.java_binary(
+        name = name,
+        main_class = main_class,
+        srcs = srcs,
+        deps = deps,
+        runtime_deps = runtime_deps,
+        visibility = visibility,
+        **kwargs
+    )
+
+
 CheckStyleInfo = provider(
     fields = {
         "checkstyle": "The checkstyle binary to use.",
