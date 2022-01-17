@@ -28,7 +28,6 @@ checkstyle_config(
 
 java_binary(
     name = "checkstyle_cli",
-    testonly = True,
     main_class = "com.puppycrawl.tools.checkstyle.Main",
     runtime_deps = [
         artifact("com.puppycrawl.tools:checkstyle"),

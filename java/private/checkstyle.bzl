@@ -5,17 +5,9 @@ Checkstyle rule implementation
 """
 
 def _checkstyle_impl(ctx):
-    # Preferred options: 1/ config on rule or 2/ config via attributes
-    if ctx.attr.config != None:
-        info = ctx.attr.config[CheckStyleInfo]
-        config = info.config_file
-        output_format = info.output_format
-    elif ctx.attr.configuration_file != None:
-        print("Please define a configuration using `checkstyle_config`")
-        config = ctx.attr.configuration_file
-        output_format = ctx.attr.output_format
-    else:
-        fail("Please define a configuration using `checkstyle_config` and use `@apple_rules_lint`")
+    info = ctx.attr.config[CheckStyleInfo]
+    config = info.config_file
+    output_format = info.output_format
 
     script = "\n".join([
         "#!/usr/bin/env bash",
@@ -24,7 +16,7 @@ def _checkstyle_impl(ctx):
         "OLDPWD=$PWD",
         "cd {config_dir}".format(config_dir = config.dirname),
         "$OLDPWD/{lib} -f {output_format} -c {config} {srcs} |sed s:$OLDPWD/::g".format(
-            lib = ctx.executable._checkstyle_lib.short_path,
+            lib = info.checkstyle.short_path,
             output_format = output_format,
             config = config.basename,
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
@@ -38,14 +30,14 @@ def _checkstyle_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = ctx.files.srcs + [ctx.executable._checkstyle_lib],
-    ).merge(ctx.attr.config[DefaultInfo].default_runfiles)
+        files = ctx.files.srcs + [info.checkstyle],
+    )
 
     return [
         DefaultInfo(
             executable = out,
             runfiles = runfiles.merge(
-                ctx.attr._checkstyle_lib[DefaultInfo].default_runfiles,
+                ctx.attr.config[DefaultInfo].default_runfiles,
             ),
         ),
     ]
@@ -58,6 +50,7 @@ checkstyle_test = rule(
             allow_files = True,
         ),
         "config": attr.label(
+            default = "@contrib_rules_jvm//java:checkstyle-default-config",
             providers = [
                 [CheckStyleInfo],
             ],
@@ -66,15 +59,6 @@ checkstyle_test = rule(
             doc = "Output Format can be plain or xml. Defaults to plain",
             values = ["plain", "xml"],
             default = "plain",
-        ),
-        "configuration_file": attr.label(
-            doc = "Configuration file. If not specified a default file is used",
-            allow_single_file = True,
-        ),
-        "_checkstyle_lib": attr.label(
-            cfg = "host",
-            executable = True,
-            default = "//java:checkstyle_cli",
         ),
     },
     executable = True,
