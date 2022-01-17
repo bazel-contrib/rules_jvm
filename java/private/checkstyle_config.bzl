@@ -1,5 +1,6 @@
 CheckStyleInfo = provider(
     fields = {
+        "checkstyle": "The checkstyle binary to use.",
         "config_file": "The config file to use.",
         "output_format": "Output Format can be plain or xml.",
     },
@@ -8,9 +9,11 @@ CheckStyleInfo = provider(
 def _checkstyle_config_impl(ctx):
     return [
         DefaultInfo(
-            runfiles = ctx.runfiles(ctx.files.data + [ctx.file.config_file]),
+            runfiles = ctx.runfiles(ctx.files.data + [ctx.file.config_file]).merge(
+                ctx.attr.checkstyle_binary[DefaultInfo].default_runfiles),
         ),
         CheckStyleInfo(
+            checkstyle = ctx.executable.checkstyle_binary,
             config_file = ctx.file.config_file,
             output_format = ctx.attr.output_format,
         ),
@@ -35,6 +38,15 @@ checkstyle_config = rule(
         "data": attr.label_list(
             doc = "Additional files to make available to Checkstyle such as any included XML files",
             allow_files = True,
+        ),
+        "checkstyle_binary": attr.label(
+            doc = "Checkstyle binary to use.",
+            default = "@contrib_rules_jvm//java:checkstyle_cli",
+            executable = True,
+            cfg = "exec",
+            providers = [
+                JavaInfo,
+            ],
         ),
     },
     provides = [

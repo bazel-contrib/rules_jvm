@@ -65,7 +65,7 @@ These rules require Java 11 or above.
 ## checkstyle_config
 
 <pre>
-checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checkstyle_config-config_file">config_file</a>, <a href="#checkstyle_config-output_format">output_format</a>)
+checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checkstyle_config-checkstyle_binary">checkstyle_binary</a>, <a href="#checkstyle_config-config_file">config_file</a>, <a href="#checkstyle_config-data">data</a>, <a href="#checkstyle_config-output_format">output_format</a>)
 </pre>
 
  Rule allowing checkstyle to be configured. This is typically
@@ -78,7 +78,9 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
+| <a id="checkstyle_config-checkstyle_binary"></a>checkstyle_binary |  Checkstyle binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle_cli |
 | <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
+| <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
 | <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | "plain" |
 
 
@@ -87,7 +89,7 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 ## checkstyle_test
 
 <pre>
-checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-config">config</a>, <a href="#checkstyle_test-configuration_file">configuration_file</a>, <a href="#checkstyle_test-output_format">output_format</a>, <a href="#checkstyle_test-srcs">srcs</a>)
+checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-config">config</a>, <a href="#checkstyle_test-output_format">output_format</a>, <a href="#checkstyle_test-srcs">srcs</a>)
 </pre>
 
 Use checkstyle to lint the `srcs`.
@@ -98,8 +100,7 @@ Use checkstyle to lint the `srcs`.
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="checkstyle_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="checkstyle_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
-| <a id="checkstyle_test-configuration_file"></a>configuration_file |  Configuration file. If not specified a default file is used   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="checkstyle_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle-default-config |
 | <a id="checkstyle_test-output_format"></a>output_format |  Output Format can be plain or xml. Defaults to plain   | String | optional | "plain" |
 | <a id="checkstyle_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
 
