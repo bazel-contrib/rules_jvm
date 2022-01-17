@@ -1,6 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//java/private:artifact.bzl", "artifact")
-load("//java/private:checkstyle_config.bzl", "checkstyle_config")
+load("//java/private:checkstyle_config.bzl", "checkstyle_binary", "checkstyle_config")
 load("//java/private:spotbugs_config.bzl", "spotbugs_config")
 load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
 
@@ -26,12 +26,11 @@ checkstyle_config(
     config_file = "checkstyle-strict.xml",
 )
 
-java_binary(
+checkstyle_binary(
     name = "checkstyle_cli",
-    main_class = "com.puppycrawl.tools.checkstyle.Main",
     runtime_deps = [
         artifact("com.puppycrawl.tools:checkstyle"),
-    ],
+    ]
 )
 
 java_binary(

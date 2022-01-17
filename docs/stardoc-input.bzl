@@ -1,5 +1,6 @@
 load(
     "//java:defs.bzl",
+    _checkstyle_binary = "checkstyle_binary",
     _checkstyle_config = "checkstyle_config",
     _checkstyle_test = "checkstyle_test",
     _java_binary = "java_binary",
@@ -14,6 +15,7 @@ load(
     _spotbugs_test = "spotbugs_test",
 )
 
+checkstyle_binary = _checkstyle_binary
 checkstyle_config = _checkstyle_config
 checkstyle_test = _checkstyle_test
 java_binary = _java_binary
