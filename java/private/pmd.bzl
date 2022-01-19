@@ -1,8 +1,10 @@
 load(":pmd_ruleset.bzl", "PmdInfo")
 
 def _pmd_test_impl(ctx):
+    pmd_info = ctx.attr.ruleset[PmdInfo]
+
     cmd = [
-        ctx.executable._pmd.short_path,
+        pmd_info.binary.short_path,
     ]
 
     # We want to disable the suggestion to use the analysis cache
@@ -11,8 +13,6 @@ def _pmd_test_impl(ctx):
 
     inputs = []
     transitive_inputs = depset()
-
-    pmd_info = ctx.attr.ruleset[PmdInfo]
 
     file_list = ctx.actions.declare_file("%s-pmd-srcs" % ctx.label.name)
     ctx.actions.write(
@@ -50,7 +50,7 @@ def _pmd_test_impl(ctx):
 
     return DefaultInfo(
         executable = out,
-        runfiles = runfiles.merge(ctx.attr._pmd[DefaultInfo].default_runfiles),
+        runfiles = runfiles.merge(ctx.attr.ruleset[DefaultInfo].default_runfiles),
     )
 
 pmd_test = rule(
@@ -70,11 +70,6 @@ pmd_test = rule(
             providers = [
                 [PmdInfo],
             ],
-        ),
-        "_pmd": attr.label(
-            cfg = "exec",
-            executable = True,
-            default = "//java:pmd",
         ),
     },
     executable = True,

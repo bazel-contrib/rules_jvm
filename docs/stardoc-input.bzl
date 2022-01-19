@@ -9,6 +9,7 @@ load(
     _java_library = "java_library",
     _java_test = "java_test",
     _java_test_suite = "java_test_suite",
+    _pmd_binary = "pmd_binary",
     _pmd_ruleset = "pmd_ruleset",
     _pmd_test = "pmd_test",
     _spotbugs_binary = "spotbugs_binary",
@@ -25,6 +26,7 @@ java_library = _java_library
 java_junit5_test = _java_junit5_test
 java_test = _java_test
 java_test_suite = _java_test_suite
+pmd_binary = _pmd_binary
 pmd_ruleset = _pmd_ruleset
 pmd_test = _pmd_test
 spotbugs_binary = _spotbugs_binary
