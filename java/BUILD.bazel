@@ -1,7 +1,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//java/private:artifact.bzl", "artifact")
 load("//java/private:checkstyle_config.bzl", "checkstyle_binary", "checkstyle_config")
-load("//java/private:spotbugs_config.bzl", "spotbugs_config")
+load("//java/private:spotbugs_config.bzl", "spotbugs_binary", "spotbugs_config")
 load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
 
 package(default_visibility = ["//visibility:public"])
@@ -45,12 +45,11 @@ spotbugs_config(
     name = "spotbugs-default-config",
     effort = "default",
     fail_on_warning = True,
+    spotbugs_binary = ":spotbugs_cli",
 )
 
-java_binary(
+spotbugs_binary(
     name = "spotbugs_cli",
-    testonly = True,
-    main_class = "edu.umd.cs.findbugs.LaunchAppropriateUI",
     runtime_deps = [
         artifact("com.github.spotbugs:spotbugs"),
         artifact("org.slf4j:slf4j-jdk14"),

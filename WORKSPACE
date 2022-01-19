@@ -59,7 +59,7 @@ maven_install(
         {
             "group": "com.github.spotbugs",
             "artifact": "spotbugs",
-            "version": "4.5.0",
+            "version": "4.5.3",
             "exclusions": [
                 {
                     "group": "org.slf4j",

@@ -152,7 +152,7 @@ Use PMD to lint the `srcs`.
 ## spotbugs_config
 
 <pre>
-spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>)
+spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
 </pre>
 
 Configuration used for spotbugs, typically by the `//lint` rules.
@@ -166,6 +166,7 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 | <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
 | <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
 | <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | True |
+| <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:spotbugs_cli |
 
 
 <a id="#spotbugs_test"></a>
@@ -173,7 +174,7 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 ## spotbugs_test
 
 <pre>
-spotbugs_test(<a href="#spotbugs_test-name">name</a>, <a href="#spotbugs_test-config">config</a>, <a href="#spotbugs_test-deps">deps</a>, <a href="#spotbugs_test-effort">effort</a>, <a href="#spotbugs_test-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_test-only_output_jars">only_output_jars</a>)
+spotbugs_test(<a href="#spotbugs_test-name">name</a>, <a href="#spotbugs_test-config">config</a>, <a href="#spotbugs_test-deps">deps</a>, <a href="#spotbugs_test-only_output_jars">only_output_jars</a>)
 </pre>
 
 Use spotbugs to lint the `srcs`.
@@ -184,10 +185,8 @@ Use spotbugs to lint the `srcs`.
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:spotbugs-default-config |
 | <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
-| <a id="spotbugs_test-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
-| <a id="spotbugs_test-fail_on_warning"></a>fail_on_warning |  If set to true the test will fail on a warning, otherwise it will succeed but create a report. Defaults to True   | Boolean | optional | True |
 | <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | True |
 
 
@@ -393,6 +392,49 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>None</code> |
 | <a id="java_test_suite-size"></a>size |  The size of the test, passed to <code>java_test</code>   |  <code>None</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="#spotbugs_binary"></a>
+
+## spotbugs_binary
+
+<pre>
+spotbugs_binary(<a href="#spotbugs_binary-name">name</a>, <a href="#spotbugs_binary-main_class">main_class</a>, <a href="#spotbugs_binary-deps">deps</a>, <a href="#spotbugs_binary-runtime_deps">runtime_deps</a>, <a href="#spotbugs_binary-srcs">srcs</a>, <a href="#spotbugs_binary-visibility">visibility</a>, <a href="#spotbugs_binary-kwargs">kwargs</a>)
+</pre>
+
+Macro for quickly generating a `java_binary` target for use with `spotbugs_config`.
+
+By default, this will set the `main_class` to point to the default one used by spotbugs
+but it's ultimately a drop-replacement for a regular `java_binary` target.
+
+At least one of `runtime_deps`, `deps`, and `srcs` must be specified so that the
+`java_binary` target will be valid.
+
+An example would be:
+
+```starlark
+spotbugs_binary(
+    name = "spotbugs_cli",
+    runtime_deps = [
+        artifact("com.github.spotbugs:spotbugs"),
+        artifact("org.slf4j:slf4j-jdk14"),
+    ],
+)
+```
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="spotbugs_binary-name"></a>name |  The name of the target   |  none |
+| <a id="spotbugs_binary-main_class"></a>main_class |  The main class to use for spotbugs.   |  <code>"edu.umd.cs.findbugs.LaunchAppropriateUI"</code> |
+| <a id="spotbugs_binary-deps"></a>deps |  The deps required for compiling this binary. May be omitted.   |  <code>None</code> |
+| <a id="spotbugs_binary-runtime_deps"></a>runtime_deps |  The deps required by spotbugs at runtime. May be omitted.   |  <code>None</code> |
+| <a id="spotbugs_binary-srcs"></a>srcs |  If you're compiling your own <code>spotbugs</code> binary, the sources to use.   |  <code>None</code> |
+| <a id="spotbugs_binary-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>["//visibility:public"]</code> |
+| <a id="spotbugs_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
 
