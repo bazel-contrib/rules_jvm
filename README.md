@@ -110,7 +110,7 @@ Use checkstyle to lint the `srcs`.
 ## pmd_ruleset
 
 <pre>
-pmd_ruleset(<a href="#pmd_ruleset-name">name</a>, <a href="#pmd_ruleset-format">format</a>, <a href="#pmd_ruleset-rulesets">rulesets</a>, <a href="#pmd_ruleset-shallow">shallow</a>)
+pmd_ruleset(<a href="#pmd_ruleset-name">name</a>, <a href="#pmd_ruleset-format">format</a>, <a href="#pmd_ruleset-pmd_binary">pmd_binary</a>, <a href="#pmd_ruleset-rulesets">rulesets</a>, <a href="#pmd_ruleset-shallow">shallow</a>)
 </pre>
 
 Select a rule set for PMD tests.
@@ -122,6 +122,7 @@ Select a rule set for PMD tests.
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
 | <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | "xml" |
+| <a id="pmd_ruleset-pmd_binary"></a>pmd_binary |  PMD binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:pmd |
 | <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
 | <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | True |
 
@@ -392,6 +393,48 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>None</code> |
 | <a id="java_test_suite-size"></a>size |  The size of the test, passed to <code>java_test</code>   |  <code>None</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="#pmd_binary"></a>
+
+## pmd_binary
+
+<pre>
+pmd_binary(<a href="#pmd_binary-name">name</a>, <a href="#pmd_binary-main_class">main_class</a>, <a href="#pmd_binary-deps">deps</a>, <a href="#pmd_binary-runtime_deps">runtime_deps</a>, <a href="#pmd_binary-srcs">srcs</a>, <a href="#pmd_binary-visibility">visibility</a>, <a href="#pmd_binary-kwargs">kwargs</a>)
+</pre>
+
+Macro for quickly generating a `java_binary` target for use with `pmd_ruleset`.
+
+By default, this will set the `main_class` to point to the default one used by PMD
+but it's ultimately a drop-replacement for a regular `java_binary` target.
+
+At least one of `runtime_deps`, `deps`, and `srcs` must be specified so that the
+`java_binary` target will be valid.
+
+An example would be:
+
+```starlark
+pmd_binary(
+    name = "pmd",
+    runtime_deps = [
+        artifact("net.sourceforge.pmd:pmd-dist"),
+    ],
+)
+```
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="pmd_binary-name"></a>name |  The name of the target   |  none |
+| <a id="pmd_binary-main_class"></a>main_class |  The main class to use for PMD.   |  <code>"net.sourceforge.pmd.PMD"</code> |
+| <a id="pmd_binary-deps"></a>deps |  The deps required for compiling this binary. May be omitted.   |  <code>None</code> |
+| <a id="pmd_binary-runtime_deps"></a>runtime_deps |  The deps required by PMD at runtime. May be omitted.   |  <code>None</code> |
+| <a id="pmd_binary-srcs"></a>srcs |  If you're compiling your own PMD binary, the sources to use.   |  <code>None</code> |
+| <a id="pmd_binary-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>["//visibility:public"]</code> |
+| <a id="pmd_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
 <a id="#spotbugs_binary"></a>

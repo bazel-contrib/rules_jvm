@@ -1,8 +1,8 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//java/private:artifact.bzl", "artifact")
 load("//java/private:checkstyle_config.bzl", "checkstyle_binary", "checkstyle_config")
+load("//java/private:pmd_ruleset.bzl", "pmd_binary", "pmd_ruleset")
 load("//java/private:spotbugs_config.bzl", "spotbugs_binary", "spotbugs_config")
-load("//java/private:pmd_ruleset.bzl", "pmd_ruleset")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,9 +33,8 @@ checkstyle_binary(
     ]
 )
 
-java_binary(
+pmd_binary(
     name = "pmd",
-    main_class = "net.sourceforge.pmd.PMD",
     runtime_deps = [
         artifact("net.sourceforge.pmd:pmd-dist"),
     ],
