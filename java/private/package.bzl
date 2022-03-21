@@ -1,5 +1,5 @@
 # Common package prefixes, in the order we want to check for them
-_PREFIXES = (".com.", ".org.", ".net.", ".io.")
+_PREFIXES = (".com.", ".org.", ".net.", ".io.", ".ai.")
 
 # By default bazel computes the name of test classes based on the
 # standard Maven directory structure, which we may not always use,
