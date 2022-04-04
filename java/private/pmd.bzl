@@ -19,7 +19,7 @@ def _pmd_test_impl(ctx):
         file_list,
         ",".join([src.path for src in ctx.files.srcs]),
     )
-    cmd.extend(["-filelist", file_list.short_path])
+    cmd.extend(["--file-list", file_list.short_path])
     inputs.extend(ctx.files.srcs)
     inputs.append(file_list)
 
