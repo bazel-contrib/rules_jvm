@@ -9,7 +9,7 @@ def _pmd_test_impl(ctx):
 
     # We want to disable the suggestion to use the analysis cache
     # https://pmd.github.io/latest/pmd_userdocs_incremental_analysis.html#disabling-incremental-analysis
-    cmd.extend(["-no-cache"])
+    cmd.extend(["--no-cache"])
 
     inputs = []
     transitive_inputs = depset()
@@ -32,7 +32,7 @@ def _pmd_test_impl(ctx):
         jars = ctx.attr.target[JavaInfo].transitive_runtime_jars.to_list()
         if len(jars) > 0:
             aux_class_path = ctx.host_configuration.host_path_separator.join([jar.short_path for jar in jars])
-            cmd.extend(["-auxclasspath", aux_class_path])
+            cmd.extend(["--aux-classpath", aux_class_path])
 
             # runfiles requires the depset to be in `default` order
             transitive_inputs = depset(
