@@ -495,7 +495,7 @@ us. Instead, to add a new dependency to the project:
 
 ### Freezing your dependencies
 
-As noted above, if you are building Bazel rules which require Java parts, and hence Java dependencice, it 
+As noted above, if you are building Bazel rules which require Java parts, and hence Java dependencies, it 
 can be useful to freeze these dependencies. This process captures the list of dependencies into a zip file. 
 This zip file is distributed with your Bazel rulee. This makes your rule more hermetic, your rule no longer 
 relies on the user to supply the correct dependencies, and your dependencies no longer conflict with the 
