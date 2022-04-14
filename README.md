@@ -498,7 +498,7 @@ us. Instead, to add a new dependency to the project:
 As noted above, if you are building Bazel rules which require Java parts, and hence Java dependencies, it 
 can be useful to freeze these dependencies. This process captures the list of dependencies into a zip file. 
 This zip file is distributed with your Bazel rules. This makes your rule more hermetic, your rule no longer 
-relies on the user to supply the correct dependencies, and your dependencies no longer conflict with the 
+relies on the user to supply the correct dependencies, because they get resolved under their own repository namespace rather than being intermingled with the user's, and your dependencies no longer conflict with the 
 users selections. If you would like to create your dependencies as a frozen file you need to do the following:
 
 1. Create a maven install rule with your dependencies and with a unique name, this should be in or referenced by your WORKSPACE file.
