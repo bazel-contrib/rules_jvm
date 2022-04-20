@@ -9,7 +9,7 @@ import textwrap
 import zipfile
 from os import path
 
-UNCHANGED_FILES = ["outdated.sh", "outdated.artifacts", "outdated.repositories"]
+UNCHANGED_FILES = ["outdated.sh", "outdated.artifacts", "outdated.repositories", "compat_repository.bzl"]
 
 parser = argparse.ArgumentParser(
     description="""Convert rules_jvm_external lock files to frozen zip files that can be 
@@ -25,6 +25,11 @@ parser.add_argument(
     "--zip",
     default="java/private/contrib_rules_jvm_deps.zip",
     help="Name of zip file to create containing frozen deps"
+)
+
+parser.add_argument(
+    "--zip-repo",
+    help="Name of the zip repository used to import the zip file. Used only if compat_repositories are enabled"
 )
 
 args = parser.parse_args()
@@ -47,8 +52,9 @@ output = zipfile.ZipFile(args.zip, "w", zipfile.ZIP_DEFLATED)
 for f in UNCHANGED_FILES:
     p = path.join(base, "external", args.repo, f)
     zinfo = zipfile.ZipInfo(filename=f, date_time=(1980, 1, 1, 0, 0, 0))
-    with open(p) as input:
-        output.writestr(zinfo, input.read())
+    if path.exists(p):
+        with open(p) as input:
+            output.writestr(zinfo, input.read())
 
 defs_bzl = path.join(base, "external", args.repo, "defs.bzl")
 zinfo = zipfile.ZipInfo(filename='defs.bzl', date_time=(1980, 1, 1, 0, 0, 0))
@@ -60,6 +66,17 @@ with open(defs_bzl) as f:
         if len(line):
             defs.append(line)
     output.writestr(zinfo, "\n".join(defs))
+
+# Copy the compat.bzl if it was added to the maven install via generate_compat_repositories = True attribute
+# need to update the repo name in the file.
+compat_bzl = path.join(base, "external", args.repo, "compat.bzl")
+if path.exists(compat_bzl):
+    zinfo = zipfile.ZipInfo(filename="compat.bzl", date_time=(1980, 1, 1, 0, 0, 0))
+    libname = args.zip_repo if args.zip_repo else path.basename(path.splitext(args.zip)[0])
+    with open(compat_bzl) as f:
+        lines = [re.sub(args.repo, libname, line) for line in f.read().split('\n')]
+    output.writestr(zinfo, "\n".join(lines))
+
 
 build_file = path.join(base, "external", args.repo, "BUILD")
 zinfo = zipfile.ZipInfo(filename='BUILD.bazel', date_time=(1980, 1, 1, 0, 0, 0))
