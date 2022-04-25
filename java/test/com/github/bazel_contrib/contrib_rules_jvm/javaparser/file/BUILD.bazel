@@ -1,0 +1,21 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+java_test_suite(
+    name = "file",
+    size = "small",
+    srcs = ["BuildFileTest.java"],
+    resource_strip_prefix = "java/test",
+    resources = [
+        "build.source.txt",
+    ],
+    runner = "junit5",
+    runtime_deps = [
+        "@frozen_deps//:org_junit_jupiter_junit_jupiter_engine",
+        "@frozen_deps//:org_junit_platform_junit_platform_launcher",
+        "@frozen_deps//:org_junit_platform_junit_platform_reporting",
+    ],
+    deps = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/file",
+        "@frozen_deps//:org_junit_jupiter_junit_jupiter_api",
+    ],
+)

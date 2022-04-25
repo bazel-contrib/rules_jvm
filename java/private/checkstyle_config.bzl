@@ -1,4 +1,3 @@
-
 def checkstyle_binary(
         name,
         main_class = "com.puppycrawl.tools.checkstyle.Main",
@@ -44,7 +43,6 @@ def checkstyle_binary(
         **kwargs
     )
 
-
 CheckStyleInfo = provider(
     fields = {
         "checkstyle": "The checkstyle binary to use.",
@@ -57,7 +55,8 @@ def _checkstyle_config_impl(ctx):
     return [
         DefaultInfo(
             runfiles = ctx.runfiles(ctx.files.data + [ctx.file.config_file]).merge(
-                ctx.attr.checkstyle_binary[DefaultInfo].default_runfiles),
+                ctx.attr.checkstyle_binary[DefaultInfo].default_runfiles,
+            ),
         ),
         CheckStyleInfo(
             checkstyle = ctx.executable.checkstyle_binary,

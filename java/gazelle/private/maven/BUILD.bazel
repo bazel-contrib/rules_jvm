@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "maven",
+    srcs = [
+        "config.go",
+        "resolver.go",
+        "test.go",
+    ],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven",
+    visibility = ["//java/gazelle:__subpackages__"],
+    deps = [
+        "//java/gazelle/cmd/parsejars/manifest",
+        "//java/gazelle/private/bazel",
+        "//java/gazelle/private/java",
+        "//java/gazelle/private/maven/multiset",
+        "@bazel_gazelle//label:go_default_library",
+        "@com_github_bazelbuild_tools_jvm_autodeps//listclassesinjar:go_default_library",
+        "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "maven_test",
+    size = "small",
+    srcs = ["test_test.go"],
+    embed = [":maven"],
+)

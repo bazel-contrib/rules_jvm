@@ -1,4 +1,3 @@
-
 def spotbugs_binary(
         name,
         main_class = "edu.umd.cs.findbugs.LaunchAppropriateUI",
@@ -44,7 +43,6 @@ def spotbugs_binary(
         visibility = visibility,
         **kwargs
     )
-
 
 SpotBugsInfo = provider(
     fields = {
@@ -93,7 +91,7 @@ spotbugs_config = rule(
             providers = [
                 JavaInfo,
             ],
-        )
+        ),
     },
     provides = [
         SpotBugsInfo,

@@ -6,6 +6,9 @@ load("//java/private:spotbugs_config.bzl", "spotbugs_binary", "spotbugs_config")
 
 package(default_visibility = ["//visibility:public"])
 
+# The Gazelle Java extension does not support our usage of @frozen_deps yet.
+# gazelle:exclude test
+
 alias(
     name = "junit5-runner",
     actual = "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",

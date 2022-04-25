@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+# gazelle:exclude testdata
+
+go_library(
+    name = "java",
+    srcs = [
+        "import.go",
+        "java.go",
+        "package.go",
+    ],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/java",
+    visibility = ["//java/gazelle:__subpackages__"],
+)
+
+go_test(
+    name = "java_test",
+    size = "small",
+    srcs = [
+        "import_test.go",
+        "java_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":java"],
+    deps = ["@com_github_google_go_cmp//cmp"],
+)

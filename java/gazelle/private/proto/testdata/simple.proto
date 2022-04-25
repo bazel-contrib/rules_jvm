@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.example.book;
+
+option go_package = "example.com/books;books";
+option java_multiple_files = true;
+option java_package = "com.example.book";
+
+service Books {
+  rpc ReadBook(ReadBookRequest) returns (ReadBookResponse) {}
+}
+
+enum BookType {
+  UNKNOWN_BOOK_TYPE = 0;
+  NOVEL = 1;
+}
+
+message ReadBookRequest {
+  // not parsed
+}
+
+message ReadBookResponse {
+  // not parsed
+}

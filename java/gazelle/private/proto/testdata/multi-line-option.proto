@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.example.book;
+
+import "protoc-gen-swagger/options/annotations.proto";
+
+option go_package = "example.com/books;books";
+option java_multiple_files = true;
+option java_package = "com.example.book";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  info : {title : "Book" version : "1.0"}
+  schemes : HTTPS,
+  host : "books.example.com"
+};

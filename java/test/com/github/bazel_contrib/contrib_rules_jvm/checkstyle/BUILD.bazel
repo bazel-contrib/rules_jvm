@@ -1,3 +1,4 @@
+load("@rules_java//java:defs.bzl", "java_library")
 load("//java:defs.bzl", "checkstyle_config", "checkstyle_test")
 
 checkstyle_config(
@@ -29,4 +30,10 @@ checkstyle_test(
     name = "this_should_pass",
     srcs = ["Sample.java"],
     config = ":checkstyle_with_suppressions",
+)
+
+java_library(
+    name = "checkstyle",
+    testonly = True,
+    srcs = ["Sample.java"],
 )

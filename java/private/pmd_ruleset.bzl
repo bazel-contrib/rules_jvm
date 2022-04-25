@@ -1,4 +1,3 @@
-
 def pmd_binary(
         name,
         main_class = "net.sourceforge.pmd.PMD",
@@ -43,7 +42,6 @@ def pmd_binary(
         visibility = visibility,
         **kwargs
     )
-
 
 PmdInfo = provider(
     fields = {

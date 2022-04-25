@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package gazelle.java.build.v0;
+
+option java_outer_classname = "JavaParserProto";
+option java_multiple_files = true;
+option java_package = "com.gazelle.java.javaparser.v0";
+
+// JavaParser service is the RPCs between the gazelle java extension and the
+// java parser.
+service JavaParser {
+  // Parse a java package.
+  rpc ParsePackage(ParsePackageRequest) returns (Package) {}
+}
+
+// GL request to BFG to get imports during the Generate phase.
+message ParsePackageRequest {
+  // Workspace relative directory to consider.
+  string rel = 2;
+
+  // List of Java files in the relative directory.
+  repeated string files = 3;
+}
+
+// A Java package metadata.
+message Package {
+  // Java package name.
+  //
+  // Example: "com.a.b"
+  string name = 1;
+
+  // The list of imported class/functions in the requests files.
+  //
+  // Deduplicated on the import string.
+  // Java standard library imports are filtered out.
+  //
+  // Example: ["org.junit.Assert.assertEquals", "org.junit.Test"]
+  repeated string imports = 2;
+
+  // Class names in the package with a main function.
+  //
+  // Example: ["Foo"]
+  repeated string mains = 3;
+}
