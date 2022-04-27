@@ -1,18 +1,17 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 /**
- * Test bootstrapper. This class only depends on the JRE (java 11+) and will
- * ensure that the required dependencies for a junit5 test are on the
- * classpath before creating the actual runner. In this way we can offer a
- * useful error message to people, which is always nice, right?
- * <p>
- * Most of the configuration information can be found on this page in the
- * <a href="https://docs.bazel.build/versions/master/test-encyclopedia.html">
- * Test Encyclopedia</a>.
+ * Test bootstrapper. This class only depends on the JRE (java 11+) and will ensure that the
+ * required dependencies for a junit5 test are on the classpath before creating the actual runner.
+ * In this way we can offer a useful error message to people, which is always nice, right?
+ *
+ * <p>Most of the configuration information can be found on this page in the <a
+ * href="https://docs.bazel.build/versions/master/test-encyclopedia.html">Test Encyclopedia</a>.
  */
 public class JUnit5Runner {
 
-  private static final String JUNIT5_RUNNER_CLASS = "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
+  private static final String JUNIT5_RUNNER_CLASS =
+      "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
 
   public static void main(String[] args) {
     var testSuite = System.getProperty("bazel.test_suite");
@@ -25,9 +24,8 @@ public class JUnit5Runner {
     detectJUnit5Classes();
 
     try {
-      var constructor = Class.forName(JUNIT5_RUNNER_CLASS)
-        .asSubclass(RunsTest.class)
-        .getConstructor();
+      var constructor =
+          Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       var runsTest = constructor.newInstance();
       if (!runsTest.run(testSuite)) {
         System.exit(2);
@@ -45,20 +43,16 @@ public class JUnit5Runner {
 
   private static void detectJUnit5Classes() {
     checkClass(
-      "org.junit.jupiter.engine.JupiterTestEngine",
-      "org.junit.jupiter:junit-jupiter-engine");
+        "org.junit.jupiter.engine.JupiterTestEngine", "org.junit.jupiter:junit-jupiter-engine");
     checkClass(
-      "org.junit.platform.commons.JUnitException",
-      "org.junit.platform:junit-platform-commons");
+        "org.junit.platform.commons.JUnitException", "org.junit.platform:junit-platform-commons");
     checkClass(
-      "org.junit.platform.engine.ExecutionRequest",
-      "org.junit.platform:junit-platform-engine");
+        "org.junit.platform.engine.ExecutionRequest", "org.junit.platform:junit-platform-engine");
     checkClass(
-      "org.junit.platform.launcher.TestPlan",
-      "org.junit.platform:junit-platform-launcher");
+        "org.junit.platform.launcher.TestPlan", "org.junit.platform:junit-platform-launcher");
     checkClass(
-      "org.junit.platform.reporting.legacy.LegacyReportingUtils",
-      "org.junit.platform:junit-platform-reporting");
+        "org.junit.platform.reporting.legacy.LegacyReportingUtils",
+        "org.junit.platform:junit-platform-reporting");
   }
 
   private static void checkClass(String className, String containedInDependency) {
@@ -66,8 +60,9 @@ public class JUnit5Runner {
       Class.forName(className);
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(
-        String.format("JUnit 5 test runner is missing a dependency on `artifact(\"%s\")`%n", containedInDependency));
+          String.format(
+              "JUnit 5 test runner is missing a dependency on `artifact(\"%s\")`%n",
+              containedInDependency));
     }
   }
-
 }

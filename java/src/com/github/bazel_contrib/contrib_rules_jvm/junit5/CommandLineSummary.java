@@ -1,22 +1,22 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import org.junit.platform.engine.TestExecutionResult;
-import org.junit.platform.launcher.TestExecutionListener;
-import org.junit.platform.launcher.TestIdentifier;
-import org.junit.platform.launcher.TestPlan;
-import org.junit.platform.reporting.legacy.LegacyReportingUtils;
+import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
 
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
+import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.launcher.TestExecutionListener;
+import org.junit.platform.launcher.TestIdentifier;
+import org.junit.platform.launcher.TestPlan;
+import org.junit.platform.reporting.legacy.LegacyReportingUtils;
 
 public class CommandLineSummary implements TestExecutionListener {
 
-  private final Map<TestIdentifier, Failure> failures = Collections.synchronizedMap(new LinkedHashMap<>());
+  private final Map<TestIdentifier, Failure> failures =
+      Collections.synchronizedMap(new LinkedHashMap<>());
   private TestPlan testPlan;
 
   @Override
@@ -43,11 +43,7 @@ public class CommandLineSummary implements TestExecutionListener {
 
       String className = LegacyReportingUtils.getClassName(testPlan, entry.getKey());
 
-      writer.printf(
-        "%d) %s (%s)%n",
-        count,
-        entry.getKey().getDisplayName(),
-        className);
+      writer.printf("%d) %s (%s)%n", count, entry.getKey().getDisplayName(), className);
 
       Throwable cause = failure.getCause();
       StackTraceElement[] stackTrace = cause.getStackTrace();
@@ -76,8 +72,7 @@ public class CommandLineSummary implements TestExecutionListener {
   private static class Failure {
     private TestExecutionResult result;
 
-    public Failure() {
-    }
+    public Failure() {}
 
     public void setResult(TestExecutionResult result) {
       this.result = result;

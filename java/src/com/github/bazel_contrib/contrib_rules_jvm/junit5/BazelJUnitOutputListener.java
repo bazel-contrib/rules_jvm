@@ -1,14 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import org.junit.platform.engine.TestExecutionResult;
-import org.junit.platform.engine.reporting.ReportEntry;
-import org.junit.platform.launcher.TestExecutionListener;
-import org.junit.platform.launcher.TestIdentifier;
-import org.junit.platform.launcher.TestPlan;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
@@ -19,8 +12,14 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.launcher.TestExecutionListener;
+import org.junit.platform.launcher.TestIdentifier;
+import org.junit.platform.launcher.TestPlan;
 
 public class BazelJUnitOutputListener implements TestExecutionListener, Closeable {
 
@@ -48,9 +47,10 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       throw new IllegalStateException("Test plan is currently executing");
     }
 
-    roots = testPlan.getRoots().stream()
-      .map(root -> new RootContainer(root, testPlan))
-      .collect(Collectors.toCollection(LinkedHashSet::new));
+    roots =
+        testPlan.getRoots().stream()
+            .map(root -> new RootContainer(root, testPlan))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   @Override
@@ -81,7 +81,8 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   }
 
   @Override
-  public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
+  public void executionFinished(
+      TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
     roots.forEach(root -> root.markFinished(testIdentifier, testExecutionResult));
   }
 

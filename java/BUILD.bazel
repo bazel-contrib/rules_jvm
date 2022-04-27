@@ -30,7 +30,7 @@ checkstyle_binary(
     name = "checkstyle_cli",
     runtime_deps = [
         artifact("com.puppycrawl.tools:checkstyle"),
-    ]
+    ],
 )
 
 pmd_binary(

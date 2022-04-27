@@ -1,11 +1,9 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import org.junit.jupiter.api.Test;
-
-import java.security.Permission;
-
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.security.Permission;
+import org.junit.jupiter.api.Test;
 
 public class TestRunningSecurityManagerTest {
 
@@ -19,15 +17,16 @@ public class TestRunningSecurityManagerTest {
   void shouldDelegateToExistingSecurityManagerIfPresent() {
     SecurityManager permissive = new TestRunningSecurityManager(null);
     Permission permission = new RuntimePermission("example.permission");
-    SecurityManager restrictive = new TestRunningSecurityManager(
-      new SecurityManager() {
-        @Override
-        public void checkPermission(Permission perm) {
-          if (permission == perm) {
-              throw new SecurityException("Oh noes!");
-          }
-        }
-      });
+    SecurityManager restrictive =
+        new TestRunningSecurityManager(
+            new SecurityManager() {
+              @Override
+              public void checkPermission(Permission perm) {
+                if (permission == perm) {
+                  throw new SecurityException("Oh noes!");
+                }
+              }
+            });
 
     // This should do nothing, but if an exception is thrown, our test fails.
     permissive.checkPermission(permission);

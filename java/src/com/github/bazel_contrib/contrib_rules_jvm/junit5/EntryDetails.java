@@ -1,11 +1,10 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import org.junit.platform.engine.reporting.ReportEntry;
-
-import java.util.Map;
-
 import static org.junit.platform.launcher.LauncherConstants.STDERR_REPORT_ENTRY_KEY;
 import static org.junit.platform.launcher.LauncherConstants.STDOUT_REPORT_ENTRY_KEY;
+
+import java.util.Map;
+import org.junit.platform.engine.reporting.ReportEntry;
 
 class EntryDetails {
 
@@ -23,10 +22,9 @@ class EntryDetails {
 
   private static String getReportEntryValue(ReportEntry entry, String key) {
     return entry.getKeyValuePairs().entrySet().stream()
-      .filter(e -> key.equals(e.getKey()))
-      .map(Map.Entry::getValue)
-      .findFirst()
-      .orElse(null);
+        .filter(e -> key.equals(e.getKey()))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
   }
-
 }
