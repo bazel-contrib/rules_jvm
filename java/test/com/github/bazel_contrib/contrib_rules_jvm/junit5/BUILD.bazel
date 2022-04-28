@@ -8,7 +8,10 @@ PACKAGE_NAME_TEST = [
 java_test_suite(
     name = "small-tests",
     size = "small",
-    srcs = glob(["*.java"], exclude = PACKAGE_NAME_TEST),
+    srcs = glob(
+        ["*.java"],
+        exclude = PACKAGE_NAME_TEST,
+    ),
     runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
@@ -23,8 +26,8 @@ java_test_suite(
 java_test_suite(
     name = "custom-tests",
     size = "small",
-    package = "com.github.bazel_contrib.contrib_rules_jvm.custom",
     srcs = PACKAGE_NAME_TEST,
+    package = "com.github.bazel_contrib.contrib_rules_jvm.custom",
     runner = "junit5",
     deps = [
         artifact("org.junit.jupiter:junit-jupiter-api"),

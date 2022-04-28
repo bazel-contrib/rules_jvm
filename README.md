@@ -490,7 +490,7 @@ want to force users to remember to load our own dependencies for
 us. Instead, to add a new dependency to the project:
 
 1. Update `frozen_deps` in the `WORKSPACE` file
-2. Run `./bin/freeze-deps.py`
+2. Run `./tools/update-dependencies.sh`
 3. Commit the updated files.
 
 ### Freezing your dependencies
@@ -522,7 +522,7 @@ file you need to do the following:
    
    pinned_maven_install()
    ```
-2. Run `./bin/frozen-deps.py --repo <repo name> --zip
+2. Run `./tools/frozen-deps.py --repo <repo name> --zip
    <path/to/dependency.zip>`. The `<repo name>` matches the name used
    for the `maven_install()` rule above. This will pin the
    dependencies then collect them into the zip file.

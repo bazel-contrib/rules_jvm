@@ -1,11 +1,5 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import org.junit.platform.engine.TestExecutionResult;
-import org.junit.platform.engine.reporting.ReportEntry;
-import org.junit.platform.launcher.TestIdentifier;
-
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedList;
@@ -13,6 +7,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.launcher.TestIdentifier;
 
 abstract class BaseResult {
   private final TestIdentifier testId;

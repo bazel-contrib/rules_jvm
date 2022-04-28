@@ -1,14 +1,13 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
-
-import javax.xml.stream.XMLStreamWriter;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
 
 public class RootContainer extends BaseResult {
 
@@ -43,10 +42,10 @@ public class RootContainer extends BaseResult {
     }
 
     return suites.stream()
-      .map(suite -> suite.get(testIdentifier))
-      .filter(Optional::isPresent)
-      .map(Optional::get)
-      .findFirst();
+        .map(suite -> suite.get(testIdentifier))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .findFirst();
   }
 
   public void toXml(XMLStreamWriter xml) {

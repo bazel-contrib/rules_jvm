@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import org.junit.platform.engine.FilterResult;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
@@ -7,13 +9,10 @@ import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.PostDiscoveryFilter;
 
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
-
 /**
  * Attempts to mirror the logic from Bazel's own
- * com.google.testing.junit.junit4.runner.RegExTestCaseFilter, which forms
- * a string of the test class name and the method name.
+ * com.google.testing.junit.junit4.runner.RegExTestCaseFilter, which forms a string of the test
+ * class name and the method name.
  */
 public class PatternFilter implements PostDiscoveryFilter {
 

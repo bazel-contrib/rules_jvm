@@ -85,6 +85,8 @@ pinned_maven_install()
 # These are used for our own tests.
 maven_install(
     artifacts = [
+        "com.google.googlejavaformat:google-java-format:1.15.0",
+
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
         "org.junit.jupiter:junit-jupiter-engine:5.8.2",

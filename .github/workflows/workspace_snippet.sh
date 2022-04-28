@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-set -o errexit -o nounset -o pipefail
+set -eufo pipefail
 
 # Set by GH actions, see
 # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables

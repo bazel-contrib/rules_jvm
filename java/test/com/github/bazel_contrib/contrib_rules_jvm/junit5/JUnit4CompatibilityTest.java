@@ -1,5 +1,8 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.platform.launcher.EngineFilter.includeEngines;
+
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
@@ -9,28 +12,22 @@ import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.platform.launcher.EngineFilter.includeEngines;
-
 public class JUnit4CompatibilityTest {
 
   @Test
   public void shouldDetectJUnit4Tests() {
     CommandLineSummary summary = new CommandLineSummary();
 
-    LauncherConfig config = LauncherConfig.builder()
-      .addTestExecutionListeners(summary)
-      .build();
+    LauncherConfig config = LauncherConfig.builder().addTestExecutionListeners(summary).build();
 
     ClassSelector classSelector = DiscoverySelectors.selectClass(Junit4StyleTest.class);
 
-    LauncherDiscoveryRequestBuilder request = LauncherDiscoveryRequestBuilder.request()
-      .selectors(classSelector)
-      .filters(includeEngines(
-        "junit-jupiter",
-        "junit-vintage"))
-      .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
-      .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
+    LauncherDiscoveryRequestBuilder request =
+        LauncherDiscoveryRequestBuilder.request()
+            .selectors(classSelector)
+            .filters(includeEngines("junit-jupiter", "junit-vintage"))
+            .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
+            .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
     Launcher launcher = LauncherFactory.create(config);
     launcher.execute(request.build());
@@ -41,8 +38,7 @@ public class JUnit4CompatibilityTest {
   public static class Junit4StyleTest {
 
     @org.junit.Test
-    public void shouldPass() {
-    }
+    public void shouldPass() {}
 
     @org.junit.Test
     public void shouldFail() {

@@ -1,5 +1,10 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.reflect.Method;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.engine.config.DefaultJupiterConfiguration;
@@ -10,12 +15,6 @@ import org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.FilterResult;
 import org.junit.platform.engine.UniqueId;
-
-import java.lang.reflect.Method;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FilteringTest {
 
@@ -32,7 +31,9 @@ public class FilteringTest {
     UniqueId classId = engine.append("class", "foo");
     classTestDescriptor = new ClassTestDescriptor(classId, JUnit5StyleTest.class, config);
     Method method = JUnit5StyleTest.class.getMethod("alwaysPasses");
-    testMethodTestDescriptor = new TestMethodTestDescriptor(classId.append("method", "bar"), JUnit5StyleTest.class, method, config);
+    testMethodTestDescriptor =
+        new TestMethodTestDescriptor(
+            classId.append("method", "bar"), JUnit5StyleTest.class, method, config);
   }
 
   @Test
@@ -79,7 +80,8 @@ public class FilteringTest {
 
   @Test
   public void shouldIncludeATestMethodIfTheFilterIsJustTheClassName() {
-    PatternFilter filter = new PatternFilter(JUnit5StyleTest.class.getName().replace("$", "\\$") + "#");
+    PatternFilter filter =
+        new PatternFilter(JUnit5StyleTest.class.getName().replace("$", "\\$") + "#");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
@@ -120,7 +122,6 @@ public class FilteringTest {
 
   private static class JUnit5StyleTest {
     @Test
-    public void alwaysPasses() {
-    }
+    public void alwaysPasses() {}
   }
 }
