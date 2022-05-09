@@ -1,3 +1,4 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 load("//java/private:artifact.bzl", "artifact")
 
 # We want to be able to compile the test runner, but we don't want to
@@ -39,4 +40,11 @@ java_library(
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
     ],
+)
+
+java_binary(
+    name = "JUnit5Runner",
+    main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":junit5"],
 )

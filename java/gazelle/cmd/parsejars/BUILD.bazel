@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "parsejars_lib",
+    srcs = ["parsejars.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/cmd/parsejars",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//java/gazelle/cmd/parsejars/manifest",
+        "//java/gazelle/private/bazel",
+        "//java/gazelle/private/logconfig",
+        "//java/gazelle/private/maven",
+        "@com_github_rs_zerolog//:zerolog",
+    ],
+)
+
+go_binary(
+    name = "parsejars",
+    embed = [":parsejars_lib"],
+    visibility = ["//visibility:public"],
+)

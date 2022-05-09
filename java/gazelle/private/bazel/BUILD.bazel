@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "bazel",
+    srcs = ["bazel.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel",
+    visibility = ["//java/gazelle:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go/tools/bazel:go_default_library"],
+)
+
+# Test needs to be tagged "no-remote" as the test invokes "bazel info" (see java/internal/bazel/bazel.go)
+# In the production use this recursive call to "bazel info" derives the directory where the external files are
+# loaded, allowing for the dependency verification.
+go_test(
+    name = "bazel_test",
+    size = "small",
+    srcs = ["bazel_test.go"],
+    embed = [":bazel"],
+    tags = ["no-remote"],
+    deps = ["@io_bazel_rules_go//go/tools/bazel:go_default_library"],
+)

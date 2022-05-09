@@ -1,0 +1,24 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+java_library(
+    name = "example",
+    srcs = [
+        "Example.java",
+        "hello/Hello.java",
+        "hello/world/World.java",
+    ],
+    _gazelle_imports = ["java.lang.String"],
+    _java_packages = [
+        "com.example",
+        "com.example.hello",
+        "com.example.hello.world",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+java_binary(
+    name = "Hello",
+    _gazelle_imports = [],
+    main_class = "com.example.hello.Hello",
+    runtime_deps = [":example"],
+)

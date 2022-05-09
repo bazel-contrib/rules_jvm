@@ -1,0 +1,21 @@
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "rules_jvm_external",
+    sha256 = "2a547d8d5e99703de8de54b6188ff0ed470b3bfc88e346972d1c8865e2688391",
+    strip_prefix = "rules_jvm_external-3.3",
+    urls = ["https://github.com/bazelbuild/rules_jvm_external/archive/3.3.tar.gz"],
+)
+
+load("@rules_jvm_external//:defs.bzl", "maven_install")
+
+maven_install(
+    artifacts = [
+        "junit:junit:4.13.1",
+        "com.google.guava:guava:30.0-jre",
+    ],
+    fetch_sources = True,
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+)

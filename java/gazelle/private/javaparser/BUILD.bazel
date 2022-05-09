@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "javaparser",
+    srcs = ["javaparser.go"],
+    data = ["//java/gazelle/private/javaparser/cmd/javaparser-wrapper"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//java/gazelle/private/bazel",
+        "//java/gazelle/private/java",
+        "//java/gazelle/private/javaparser/netutil",
+        "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
+        "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)

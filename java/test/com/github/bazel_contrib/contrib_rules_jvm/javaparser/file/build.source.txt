@@ -1,0 +1,22 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+load("@rules_jvm_external//:defs.bzl", "artifact")
+
+generators_deps = [
+        "//src/main/com/gazelle/java/javaparser/file",
+        artifact("org.junit.jupiter:junit-jupiter-api"),
+]
+
+
+java_test_suite(
+    name = "file",
+    size = "small",
+    srcs = glob(["*.java"]),
+    resources = [
+        "//src/test/resources:test-deps"
+    ],
+    runner = "junit5",
+    runtime_deps = [
+        artifact("org.junit.jupiter:junit-jupiter-engine"),
+    ],
+    deps = generators_deps,
+)

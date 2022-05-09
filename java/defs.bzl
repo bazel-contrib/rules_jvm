@@ -2,7 +2,8 @@ load("//java/private:checkstyle.bzl", _checkstyle_test = "checkstyle_test")
 load(
     "//java/private:checkstyle_config.bzl",
     _checkstyle_binary = "checkstyle_binary",
-    _checkstyle_config = "checkstyle_config")
+    _checkstyle_config = "checkstyle_config",
+)
 load("//java/private:java_test_suite.bzl", _java_test_suite = "java_test_suite")
 load(
     "//java/private:junit5.bzl",
@@ -23,7 +24,8 @@ load("//java/private:spotbugs.bzl", _spotbugs_test = "spotbugs_test")
 load(
     "//java/private:spotbugs_config.bzl",
     _spotbugs_binary = "spotbugs_binary",
-    _spotbugs_config = "spotbugs_config")
+    _spotbugs_config = "spotbugs_config",
+)
 
 checkstyle_binary = _checkstyle_binary
 checkstyle_config = _checkstyle_config

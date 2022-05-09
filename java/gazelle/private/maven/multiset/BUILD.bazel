@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "multiset",
+    srcs = ["multiset.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset",
+    visibility = ["//java/gazelle:__subpackages__"],
+    deps = ["//java/gazelle/cmd/parsejars/manifest"],
+)
+
+go_test(
+    name = "multiset_test",
+    size = "small",
+    srcs = ["multiset_test.go"],
+    embed = [":multiset"],
+    deps = ["@com_github_google_go_cmp//cmp"],
+)

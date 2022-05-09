@@ -1,0 +1,15 @@
+load("@rules_java//java:defs.bzl", "java_test")
+
+java_test(
+    name = "AppTest",
+    srcs = ["AppTest.java"],
+    _gazelle_imports = [
+        "java.lang.Exception",
+        "org.junit.Assert",
+        "org.junit.Test",
+        "com.example.myproject",
+    ],
+    _java_packages = ["com.example.myproject"],
+    test_class = "com.example.myproject.AppTest",
+    deps = ["AppTest.java"],
+)

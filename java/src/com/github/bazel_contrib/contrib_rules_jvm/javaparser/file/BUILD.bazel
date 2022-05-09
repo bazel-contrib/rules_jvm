@@ -1,0 +1,14 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "file",
+    srcs = ["BuildFile.java"],
+    visibility = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__",
+        "//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__",
+    ],
+    deps = [
+        "@contrib_rules_jvm_deps//:com_google_code_findbugs_jsr305",
+        "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
+    ],
+)
