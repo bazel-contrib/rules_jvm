@@ -522,7 +522,7 @@ file you need to do the following:
    
    pinned_maven_install()
    ```
-2. Run `./tools/frozen-deps.py --repo <repo name> --zip
+2. Run `./tools/freeze-deps.py --repo <repo name> --zip
    <path/to/dependency.zip>`. The `<repo name>` matches the name used
    for the `maven_install()` rule above. This will pin the
    dependencies then collect them into the zip file.
