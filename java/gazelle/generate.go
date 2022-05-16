@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -234,7 +235,14 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 	filteredImports := filterImports(allImports, func(i string) bool {
 		for _, n := range allPackageNames {
 			if strings.HasPrefix(i, n) {
-				return false
+				// Assume the standard java convention of class names starting with upper case
+				// and package components starting with lower case.
+				// Without this check, one module with dependencies on a subpackage which _isn't_
+				// in the module won't be detected.
+				suffixRunes := []rune(i[len(n):])
+				if len(suffixRunes) >= 2 && suffixRunes[0] == '.' && unicode.IsUpper(suffixRunes[1]) {
+					return false
+				}
 			}
 		}
 		return true
