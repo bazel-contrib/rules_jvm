@@ -1,5 +1,5 @@
 {
-    "integrity": "c9f3cd91f32c231be7d3c896e0b0aa3d411da7e6c49c7546162703056b1cfaa3",
+    "integrity": "d516ba3196fc6c8ee371624265a3b63796c54dd63cf166ca66e67c5091697cbd",
     "manifest": {
         "artifacts_mapping": {
             "android.annotation": [
@@ -413,6 +413,9 @@
             "com.google.protobuf.compiler": [
                 "@maven//:com_google_protobuf_protobuf_java"
             ],
+            "com.google.protobuf.util": [
+                "@maven//:com_google_protobuf_protobuf_java_util"
+            ],
             "com.google.rpc": [
                 "@maven//:com_google_api_grpc_proto_google_common_protos"
             ],
@@ -777,6 +780,15 @@
                 "@maven//:io_grpc_grpc_api",
                 "@maven//:io_grpc_grpc_context"
             ],
+            "io.grpc.binarylog.v1": [
+                "@maven//:io_grpc_grpc_services"
+            ],
+            "io.grpc.channelz.v1": [
+                "@maven//:io_grpc_grpc_services"
+            ],
+            "io.grpc.health.v1": [
+                "@maven//:io_grpc_grpc_services"
+            ],
             "io.grpc.inprocess": [
                 "@maven//:io_grpc_grpc_core"
             ],
@@ -785,6 +797,24 @@
             ],
             "io.grpc.netty": [
                 "@maven//:io_grpc_grpc_netty"
+            ],
+            "io.grpc.protobuf": [
+                "@maven//:io_grpc_grpc_protobuf"
+            ],
+            "io.grpc.protobuf.lite": [
+                "@maven//:io_grpc_grpc_protobuf_lite"
+            ],
+            "io.grpc.protobuf.services": [
+                "@maven//:io_grpc_grpc_services"
+            ],
+            "io.grpc.protobuf.services.internal": [
+                "@maven//:io_grpc_grpc_services"
+            ],
+            "io.grpc.reflection.v1alpha": [
+                "@maven//:io_grpc_grpc_services"
+            ],
+            "io.grpc.services": [
+                "@maven//:io_grpc_grpc_services"
             ],
             "io.grpc.stub": [
                 "@maven//:io_grpc_grpc_stub"

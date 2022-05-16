@@ -8,6 +8,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -28,7 +29,11 @@ public class GrpcServer {
   public GrpcServer(int port, PackageParser project) {
     this.port = port;
     ServerBuilder serverBuilder = ServerBuilder.forPort(port);
-    this.server = serverBuilder.addService(new GrpcService(project)).build();
+    this.server =
+        serverBuilder
+            .addService(new GrpcService(project))
+            .addService(ProtoReflectionService.newInstance())
+            .build();
   }
 
   /** Start serving requests. */
