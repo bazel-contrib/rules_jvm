@@ -172,9 +172,15 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 	}
 
 	if len(matches) > 1 {
+		labels := make([]string, 0, len(matches))
+		for _, match := range matches {
+			labels = append(labels, match.Label.String())
+		}
+		sort.Strings(labels)
+
 		jr.lang.logger.Error().
 			Str("pkg", parsedImport.Pkg).
-			Str("label", fmt.Sprintf("%#v", matches)).
+			Strs("targets", labels).
 			Msg("convertImport found MULTIPLE results in rule index")
 	}
 
@@ -198,9 +204,15 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 		return simplifyLabel(c.RepoName, l, from), nil
 	}
 
+	labels := make([]string, 0, len(matches))
+	for _, match := range matches {
+		labels = append(labels, match.Label.String())
+	}
+	sort.Strings(labels)
+
 	jr.lang.logger.Warn().
 		Str("pkg", parsedImport.Pkg).
-		Str("label", fmt.Sprintf("%#v", matches)).
+		Strs("targets", labels).
 		Msgf("missing import %s", imp)
 
 	return label.NoLabel, nil
