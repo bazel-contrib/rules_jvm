@@ -26,8 +26,8 @@ func CleanupLabel(in string) string {
 // https://github.com/bazelbuild/rules_go/blob/b6f1c12b45f0aa85a4221c4f200f83de21e2ac4d/go/tools/bazel_testing/bazel_testing.go#L162-L180
 func bazelCmd(args ...string) *exec.Cmd {
 	cmd := exec.Command("bazel")
-	if bazel.TestTmpDir() != "" {
-		cmd.Args = append(cmd.Args, "--output_user_root="+bazel.TestTmpDir())
+	if testTempDir, ok := os.LookupEnv(bazel.TEST_TMPDIR); ok {
+		cmd.Args = append(cmd.Args, "--output_user_root="+testTempDir)
 	}
 	cmd.Args = append(cmd.Args, args...)
 	for _, e := range os.Environ() {
