@@ -79,6 +79,7 @@ maven_install(
         "io.grpc:grpc-api:1.40.0",
         "io.grpc:grpc-core:1.40.0",
         "io.grpc:grpc-netty:1.40.0",
+        "io.grpc:grpc-services:1.40.0",
         "io.grpc:grpc-stub:1.40.0",
         "org.slf4j:slf4j-simple:1.7.32",
 
