@@ -10,6 +10,12 @@ def contrib_rules_jvm_deps():
         strip_prefix = "apple_rules_lint-0.1.1",
         url = "https://github.com/apple/apple_rules_lint/archive/0.1.1.zip",
     )
+    maybe(
+        http_archive,
+        name = "io_bazel_stardoc",
+        sha256 = "c9794dcc8026a30ff67cf7cf91ebe245ca294b20b071845d12c192afe243ad72",
+        url = "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
+    )
 
     maybe(
         http_archive,
@@ -51,4 +57,32 @@ def contrib_rules_jvm_deps():
             "@contrib_rules_jvm//java/private:make-docs-visible.patch",
         ],
         patch_args = ["-p1"],
+    )
+
+def contrib_rules_jvm_gazelle_deps():
+    maybe(
+        http_archive,
+        name = "bazel_gazelle",
+        sha256 = "dae13a7c6adb742174aafd340ebcb36016de231bd4f926f79c140c7d9b599fb0",
+        strip_prefix = "bazel-gazelle-757e291d1befe9174fb1fcf0d9ade733cbb6b904",
+        urls = [
+            "https://github.com/bazelbuild/bazel-gazelle/archive/757e291d1befe9174fb1fcf0d9ade733cbb6b904.zip",
+        ],
+    )
+
+    maybe(
+        http_archive,
+        name = "io_bazel_rules_go",
+        sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+        urls = [
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+        ],
+    )
+
+    maybe(
+        http_archive,
+        name = "rules_proto",
+        sha256 = "66bfdf8782796239d3875d37e7de19b1d94301e8972b3cbd2446b332429b4df1",
+        strip_prefix = "rules_proto-4.0.0",
+        url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0.tar.gz",
     )
