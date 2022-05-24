@@ -72,11 +72,27 @@ def contrib_rules_jvm_gazelle_deps():
 
     maybe(
         http_archive,
+        name = "com_github_bazelbuild_buildtools",
+        sha256 = "d368c47bbfc055010f118efb2962987475418737e901f7782d2a966d1dc80296",
+        strip_prefix = "buildtools-4.2.5",
+        url = "https://github.com/bazelbuild/buildtools/archive/4.2.5.tar.gz",
+    )
+
+    maybe(
+        http_archive,
         name = "io_bazel_rules_go",
         sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
         urls = [
             "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
         ],
+    )
+
+    maybe(
+        http_archive,
+        name = "io_grpc_grpc_java",
+        sha256 = "e3781bcab2a410a7cd138f13b2e6a643e111575f6811b154c570f4d020e87507",
+        strip_prefix = "grpc-java-1.44.0",
+        urls = ["https://github.com/grpc/grpc-java/archive/v1.44.0.tar.gz"],
     )
 
     maybe(
