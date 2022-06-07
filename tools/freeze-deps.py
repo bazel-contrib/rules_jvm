@@ -32,6 +32,11 @@ parser.add_argument(
     help="Name of the zip repository used to import the zip file. Used only if compat_repositories are enabled"
 )
 
+# When run under `bazel run` this directory will be set. If not,
+# then we should assume our current directory is the right one
+# to use.
+cwd = os.environ.get("BUILD_WORKSPACE_DIRECTORY", None)
+
 args = parser.parse_args()
 
 pin_env = {"REPIN": "1"}
@@ -39,15 +44,16 @@ pin_env.update(os.environ)
 
 # Repin our dependencies
 cmd = ["bazel", "run", "@unpinned_%s//:pin" % args.repo]
-subprocess.check_call(cmd, env=pin_env)
+subprocess.check_call(cmd, env=pin_env, cwd = cwd)
 
 # Now grab the files we need from their output locations
 cmd = ["bazel", "info", "output_base"]
-output_base = subprocess.check_output(cmd).rstrip()
+output_base = subprocess.check_output(cmd, cwd = cwd).rstrip()
 base = output_base.decode(encoding=sys.stdin.encoding)
 
 # Generate a stable-ish zip file
-output = zipfile.ZipFile(args.zip, "w", zipfile.ZIP_DEFLATED)
+zip_path = path.join(cwd, args.zip) if cwd else args.zip
+output = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
 
 for f in UNCHANGED_FILES:
     p = path.join(base, "external", args.repo, f)
