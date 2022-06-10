@@ -54,11 +54,25 @@ bazel fetch @maven//...
 
 # Update the Maven mapping
 bazel run @contrib_rules_jvm//java/gazelle/cmd/parsejars -- --repo-root "$PWD"
-# this generates a maven_manifest.json file that should be versionned along the maven_install.json file
+# this generates a maven_manifest.json file that should be versioned along the maven_install.json file
 
 # Run Gazelle with the java extension
 bazel run //:gazelle
 ```
+
+## Configuration options
+
+This Gazelle extension supports some configuration options, which are enabled by
+adding comments to your root `BUILD.bazel` file. For example, to set
+`java_maven_install_file`, you would add the following to your root
+`BUILD.bazel` file:
+
+```starlark
+# gazelle:java_maven_install_file project/main_maven_install.json
+```
+
+See [javaconfig/config.go](javaconfig/config.go) for a list of configuration
+options and their documentation.
 
 ## Troubleshooting
 
