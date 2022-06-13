@@ -127,12 +127,12 @@ public class ClasspathParser {
                         .asReferenceType()
                         .getTypeDeclaration()
                         .get();
-                typeName = type.getPackageName() + "." + type.getClassName();
+                typeName = type.getQualifiedName();
               } else {
                 try {
                   ResolvedReferenceType ref = coit.resolve();
                   type = ref.getTypeDeclaration().get();
-                  typeName = type.getPackageName() + "." + type.getClassName();
+                  typeName = type.getQualifiedName();
                 } catch (UnsolvedSymbolException exception) {
                   logger.trace(
                       "Working on class {} And unable to find: {} -" + " Continuing",
