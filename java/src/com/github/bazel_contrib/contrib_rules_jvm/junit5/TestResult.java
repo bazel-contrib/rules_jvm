@@ -6,6 +6,8 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Optional;
 import javax.xml.stream.XMLStreamWriter;
+
+import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -39,7 +41,8 @@ class TestResult extends BaseResult {
   }
 
   public boolean isSkipped() {
-    return getResult().getThrowable().map(thr -> (thr instanceof TestAbortedException)).orElse(false);
+    return getResult().getThrowable().map(thr -> (thr instanceof TestAbortedException
+            || thr instanceof AssumptionViolatedException)).orElse(false);
   }
 
   @Override
