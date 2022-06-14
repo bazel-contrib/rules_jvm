@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestExecutionListener;
@@ -29,9 +28,15 @@ public class CommandLineSummary implements TestExecutionListener {
 
   @Override
   public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult result) {
-    if (result.getStatus().equals(SUCCESSFUL) || result.getThrowable().isEmpty() ||
-            result.getThrowable().map(thr -> (thr instanceof TestAbortedException
-                    || thr instanceof AssumptionViolatedException)).orElse(false)) {
+    if (result.getStatus().equals(SUCCESSFUL)
+        || result.getThrowable().isEmpty()
+        || result
+            .getThrowable()
+            .map(
+                thr ->
+                    (thr instanceof TestAbortedException
+                        || thr instanceof AssumptionViolatedException))
+            .orElse(false)) {
       failures.remove(testIdentifier);
       return;
     }

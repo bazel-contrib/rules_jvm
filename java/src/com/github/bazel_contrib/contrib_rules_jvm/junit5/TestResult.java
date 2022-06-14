@@ -6,7 +6,6 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Optional;
 import javax.xml.stream.XMLStreamWriter;
-
 import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
@@ -41,8 +40,12 @@ class TestResult extends BaseResult {
   }
 
   public boolean isSkipped() {
-    return getResult().getThrowable().map(thr -> (thr instanceof TestAbortedException
-            || thr instanceof AssumptionViolatedException)).orElse(false);
+    return getResult()
+        .getThrowable()
+        .map(
+            thr ->
+                (thr instanceof TestAbortedException || thr instanceof AssumptionViolatedException))
+        .orElse(false);
   }
 
   @Override
@@ -65,7 +68,7 @@ class TestResult extends BaseResult {
           xml.writeAttribute("time", decimalFormat.format(getDuration().toMillis() / 1000f));
 
           if (isSkipped()) {
-              xml.writeStartElement("skipped");
+            xml.writeStartElement("skipped");
           }
           if (isFailure() || isError()) {
             Throwable throwable = getResult().getThrowable().orElse(null);
