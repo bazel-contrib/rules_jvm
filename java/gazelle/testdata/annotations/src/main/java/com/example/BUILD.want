@@ -1,0 +1,9 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "example",
+    srcs = ["Main.java"],
+    _gazelle_imports = ["java.beans.Transient"],
+    _java_packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)

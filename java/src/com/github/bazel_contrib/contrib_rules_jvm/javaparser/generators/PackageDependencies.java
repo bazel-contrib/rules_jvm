@@ -160,7 +160,7 @@ public class PackageDependencies {
                         .asReferenceType()
                         .getTypeDeclaration()
                         .get();
-                typeName = type.getPackageName() + "." + type.getClassName();
+                typeName = type.getQualifiedName();
               } else {
                 try {
                   ref = coit.resolve();
@@ -194,7 +194,7 @@ public class PackageDependencies {
               }
               if (ref != null) {
                 type = ref.getTypeDeclaration().get();
-                typeName = type.getPackageName() + "." + type.getClassName();
+                typeName = type.getQualifiedName();
               }
               if (typeName != null) {
                 JavaIdentifier source = typeSolver.resolveSourceForType(typeName);
