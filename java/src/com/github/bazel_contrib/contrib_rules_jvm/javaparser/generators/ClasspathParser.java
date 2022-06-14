@@ -18,6 +18,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -108,10 +109,15 @@ public class ClasspathParser {
   }
 
   private void parseClasses(CompilationUnit cu) {
+    Set<ClassOrInterfaceType> visited = new HashSet<>();
+
     // CLASSES : Checking the fully qualified class or interface names
     cu.findAll(ClassOrInterfaceType.class)
         .forEach(
             coit -> {
+              if (visited.contains(coit)) {
+                return;
+              }
               ResolvedReferenceTypeDeclaration type;
               String typeName = null;
               if (!Character.isUpperCase(coit.getName().asString().charAt(0))) {
@@ -165,6 +171,7 @@ public class ClasspathParser {
               if (typeName != null) {
                 usedTypes.add(typeName);
               }
+              visited.add(coit);
             });
   }
 
