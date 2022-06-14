@@ -5,14 +5,14 @@ import org.junit.Test;
 
 public class AssumptionsJUnit4Test {
 
-    @Test
-    public void shouldBeSkipped() {
-        Assume.assumeTrue(false);
-        System.out.println("<<<< shouldBeSkipped");
-    }
+  @Test
+  public void shouldBeSkipped() {
+    Assume.assumeTrue(false);
+    System.out.println("<<<< shouldBeSkipped");
+  }
 
-    @Test
-    public void shouldBeExecuted() {
-        System.out.println(">>>> shouldBeExecuted");
-    }
+  @Test
+  public void shouldBeExecuted() {
+    System.out.println(">>>> shouldBeExecuted");
+  }
 }
