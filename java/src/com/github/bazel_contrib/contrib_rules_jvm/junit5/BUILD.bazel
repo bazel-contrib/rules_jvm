@@ -39,6 +39,8 @@ java_library(
         artifact("org.junit.platform:junit-platform-engine"),
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
+        artifact("org.opentest4j:opentest4j"),
+        artifact("junit:junit"),
     ],
 )
 
