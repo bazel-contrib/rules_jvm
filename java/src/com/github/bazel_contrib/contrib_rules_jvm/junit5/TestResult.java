@@ -10,6 +10,7 @@ import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.reporting.legacy.LegacyReportingUtils;
+import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
   private final TestPlan testPlan;
@@ -37,6 +38,10 @@ class TestResult extends BaseResult {
     return result.getThrowable().map(thr -> (!(thr instanceof AssertionError))).orElse(false);
   }
 
+  public boolean isSkipped() {
+    return getResult().getThrowable().map(thr -> (thr instanceof TestAbortedException)).orElse(false);
+  }
+
   @Override
   public void toXml(XMLStreamWriter xml) {
     DecimalFormat decimalFormat = new DecimalFormat("#.##");
@@ -56,6 +61,9 @@ class TestResult extends BaseResult {
           xml.writeAttribute("classname", LegacyReportingUtils.getClassName(testPlan, getTestId()));
           xml.writeAttribute("time", decimalFormat.format(getDuration().toMillis() / 1000f));
 
+          if (isSkipped()) {
+              xml.writeStartElement("skipped");
+          }
           if (isFailure() || isError()) {
             Throwable throwable = getResult().getThrowable().orElse(null);
 

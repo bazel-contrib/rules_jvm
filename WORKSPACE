@@ -64,6 +64,9 @@ maven_install(
         "org.junit.platform:junit-platform-reporting:1.8.1",
         "org.junit.vintage:junit-vintage-engine:5.8.1",
 
+        # Open Test Alliance for the JVM dep
+        "org.opentest4j:opentest4j:1.2.0",
+
         # Checkstyle deps
         "com.puppycrawl.tools:checkstyle:9.2",
 
