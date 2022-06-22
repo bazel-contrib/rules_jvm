@@ -31,6 +31,7 @@ buildifier(
 # gazelle:resolve java com.google.common.collect @contrib_rules_jvm_deps//:com_google_guava_guava
 # gazelle:resolve java com.google.gson @contrib_rules_jvm_deps//:com_google_code_gson_gson
 # gazelle:resolve java io.grpc @contrib_rules_jvm_deps//:io_grpc_grpc_api
+# gazelle:resolve java io.grpc.protobuf.services @contrib_rules_jvm_deps//:io_grpc_grpc_services
 # gazelle:resolve java io.grpc.stub @contrib_rules_jvm_deps//:io_grpc_grpc_stub
 # gazelle:resolve java javax.annotation @contrib_rules_jvm_deps//:com_google_code_findbugs_jsr305
 # gazelle:resolve java org.apache.commons.cli @contrib_rules_jvm_deps//:commons_cli_commons_cli
