@@ -40,6 +40,7 @@ var stdlibPrefixes = []string{
 	"javax.naming.",
 	"javax.net.",
 	"javax.security.",
+	"javax.xml.",
 	"jdk.",
 	"sun.",
 }
