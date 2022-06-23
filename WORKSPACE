@@ -68,10 +68,10 @@ maven_install(
         "org.opentest4j:opentest4j:1.2.0",
 
         # Checkstyle deps
-        "com.puppycrawl.tools:checkstyle:9.2",
+        "com.puppycrawl.tools:checkstyle:10.2",
 
         # PMD deps
-        "net.sourceforge.pmd:pmd-dist:6.41.0",
+        "net.sourceforge.pmd:pmd-dist:6.46.0",
 
         # Spotbugs deps
         # We don't want to force people to use 1.8-beta
@@ -81,7 +81,7 @@ maven_install(
         {
             "group": "com.github.spotbugs",
             "artifact": "spotbugs",
-            "version": "4.5.3",
+            "version": "4.7.0",
             "exclusions": [
                 {
                     "group": "org.slf4j",
