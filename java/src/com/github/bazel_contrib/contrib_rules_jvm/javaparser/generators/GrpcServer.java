@@ -83,7 +83,7 @@ public class GrpcServer {
       try {
         responseObserver.onNext(getImports(request));
       } catch (Exception ex) {
-        logger.error("Got Exception:{}", ex.getMessage());
+        logger.error("Got Exception parsing package {}: {}", request.getRel(), ex.getMessage());
         responseObserver.onError(ex);
       }
       responseObserver.onCompleted();
