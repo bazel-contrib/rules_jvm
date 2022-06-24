@@ -18,8 +18,9 @@ java_test_suite(
     runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
-        artifact("org.junit.jupiter:junit-jupiter-api"),
-        artifact("org.junit.platform:junit-platform-engine"),
+        artifact("com.github.spotbugs:spotbugs-annotations", "frozen_deps"),
+        artifact("org.junit.jupiter:junit-jupiter-api", "frozen_deps"),
+        artifact("org.junit.platform:junit-platform-engine", "frozen_deps"),
     ] + JUNIT5_VINTAGE_DEPS,
 )
 
@@ -33,6 +34,6 @@ java_test_suite(
     package = "com.github.bazel_contrib.contrib_rules_jvm.custom",
     runner = "junit5",
     deps = [
-        artifact("org.junit.jupiter:junit-jupiter-api"),
+        artifact("org.junit.jupiter:junit-jupiter-api", "frozen_deps"),
     ] + JUNIT5_DEPS,
 )
