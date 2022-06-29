@@ -81,6 +81,7 @@ def create_jvm_test_suite(
             deps = deps,
             srcs = nontest_srcs,
             testonly = True,
+            visibility = visibility,
             **library_attrs
         )
         deps.append(":%s-test-lib" % name)
