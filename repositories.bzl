@@ -90,9 +90,9 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "io_grpc_grpc_java",
-        sha256 = "e3781bcab2a410a7cd138f13b2e6a643e111575f6811b154c570f4d020e87507",
-        strip_prefix = "grpc-java-1.44.0",
-        urls = ["https://github.com/grpc/grpc-java/archive/v1.44.0.tar.gz"],
+        sha256 = "0f6cf8c1e97757333e08975c8637093b40540a54a201cfd3ce284c8d1d073fae",
+        strip_prefix = "grpc-java-1.47.0",
+        urls = ["https://github.com/grpc/grpc-java/archive/v1.47.0.tar.gz"],
     )
 
     maybe(
