@@ -43,6 +43,7 @@ go_test(
     size = "medium",
     srcs = [
         "generate_integration_test.go",
+        "generate_test.go",
         "resolve_test.go",
     ],
     data = glob(["testdata/**"]),
@@ -62,6 +63,7 @@ go_test(
         "@bazel_gazelle//walk:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_sergi_go_diff//diffmatchpatch",
+        "@com_github_stretchr_testify//require",
         "@org_golang_x_tools//go/vcs",
     ],
 )
