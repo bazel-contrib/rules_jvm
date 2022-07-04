@@ -42,7 +42,7 @@ go_test(
     name = "gazelle_test",
     size = "medium",
     srcs = [
-        "generate_test.go",
+        "generate_integration_test.go",
         "resolve_test.go",
     ],
     data = glob(["testdata/**"]),
