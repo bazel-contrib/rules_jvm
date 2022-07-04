@@ -305,17 +305,7 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				if !maven.IsTestFile(filepath.Base(f.path)) {
 					continue
 				}
-				testName := strings.TrimSuffix(f.path, ".java")
-				r := rule.NewRule("java_test", testName)
-				r.SetAttr("srcs", []string{f.path})
-				r.SetAttr("test_class", f.pkg+"."+testName)
-				r.SetPrivateAttr(packagesKey, []string{f.pkg})
-				if len(testHelperFiles) > 0 {
-					r.SetAttr("deps", testHelperFiles)
-				}
-
-				res.Gen = append(res.Gen, r)
-				res.Imports = append(res.Imports, append(imports, f.pkg))
+				makeSingleJavaTest(f, testHelperFiles, imports, res)
 			}
 		}
 
@@ -383,6 +373,20 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 			}
 		}
 	}
+}
+
+func makeSingleJavaTest(f javaFile, testHelperFiles []string, imports []string, res *language.GenerateResult) {
+	testName := strings.TrimSuffix(f.path, ".java")
+	r := rule.NewRule("java_test", testName)
+	r.SetAttr("srcs", []string{f.path})
+	r.SetAttr("test_class", f.pkg+"."+testName)
+	r.SetPrivateAttr(packagesKey, []string{f.pkg})
+	if len(testHelperFiles) > 0 {
+		r.SetAttr("deps", testHelperFiles)
+	}
+
+	res.Gen = append(res.Gen, r)
+	res.Imports = append(res.Imports, append(imports, f.pkg))
 }
 
 var junit5RuntimeDeps = []string{
