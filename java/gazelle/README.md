@@ -43,19 +43,9 @@ gazelle_binary(
 Make sure you have everything setup properly by building the gazelle binary:
 `bazel build //:gazelle_bin`
 
-When you update your Maven dependencies, you must rebuild the package index:
+To generate BUILD files:
 
 ```bash
-# Pin Maven deps
-bazel run @unpinned_maven//:pin
-
-# Download Maven deps so the Maven resolver can do its work
-bazel fetch @maven//...
-
-# Update the Maven mapping
-bazel run @contrib_rules_jvm//java/gazelle/cmd/parsejars -- --repo-root "$PWD"
-# this generates a maven_manifest.json file that should be versioned along the maven_install.json file
-
 # Run Gazelle with the java extension
 bazel run //:gazelle
 ```
@@ -94,11 +84,7 @@ The following are the targets of interest:
 - `//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main`
   is the java parser side process
 
-The maven integration relies on:
-
-- `//java/gazelle/cmd/parsejars` CLI to create the packages database (see usage
-  in tools/update-dependencies.sh)
-- `github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven#NewResolverFromManifest`
-  loads the packages DB and resolve Maven dependencies
+The maven integration relies on using `rules_jvm_external` at least as new as
+https://github.com/bazelbuild/rules_jvm_external/pull/716
 
 [gazelle]: https://github.com/bazelbuild/bazel-gazelle

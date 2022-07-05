@@ -8,11 +8,9 @@ buildifier(
 )
 
 # gazelle:java_maven_install_file frozen_deps_install.json
-# gazelle:java_maven_manifest_file frozen_deps_manifest.json
 # gazelle:prefix github.com/bazel-contrib/rules_jvm
 
 # gazelle:resolve go github.com/bazelbuild/buildtools/build @com_github_bazelbuild_buildtools//build:go_default_library
-# gazelle:resolve go github.com/bazelbuild/tools_jvm_autodeps/listclassesinjar @com_github_bazelbuild_tools_jvm_autodeps//listclassesinjar:go_default_library
 # gazelle:resolve java com.beust.jcommander @contrib_rules_jvm_deps//:com_beust_jcommander
 # gazelle:resolve java com.beust.jcommander.converters @contrib_rules_jvm_deps//:com_beust_jcommander
 # gazelle:resolve java com.gazelle.java.javaparser.v0 //java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_java_library
