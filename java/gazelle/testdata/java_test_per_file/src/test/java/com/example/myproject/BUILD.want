@@ -5,11 +5,35 @@ java_test(
     srcs = ["AppTest.java"],
     _gazelle_imports = [
         "java.lang.Exception",
+        "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Assert",
         "org.junit.Test",
         "com.example.myproject",
     ],
     _java_packages = ["com.example.myproject"],
     test_class = "com.example.myproject.AppTest",
-    deps = ["AppTest.java"],
+    deps = [
+        "AppTest.java",
+        "OtherAppTest.java", # TODO: per-file tests should not have deps on other files (or maybe even themselves?)
+    ],
+)
+
+java_test(
+    name = "OtherAppTest",
+    srcs = ["OtherAppTest.java"],
+    _gazelle_imports = [
+        "java.lang.Exception",
+        "org.hamcrest.MatcherAssert",
+        "org.hamcrest.Matchers",
+        "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Test",
+        "com.example.myproject",
+    ],
+    _java_packages = ["com.example.myproject"],
+    test_class = "com.example.myproject.OtherAppTest",
+    deps = [
+        "AppTest.java", # TODO: per-file tests should not have deps on other files (or maybe even themselves?)
+        "OtherAppTest.java",
+    ],
 )

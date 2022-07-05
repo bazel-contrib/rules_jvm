@@ -196,6 +196,7 @@ func TestGenerateRules(t *testing.T) {
 					}
 					want := string(wantBytes)
 					want = strings.ReplaceAll(want, "\r\n", "\n")
+					want = stripTODOs(want)
 
 					if got != want {
 						dmp := diffmatchpatch.New()
@@ -219,6 +220,23 @@ func TestGenerateRules(t *testing.T) {
 			})
 		})
 	}
+}
+
+func stripTODOs(s string) string {
+	inputLines := strings.Split(s, "\n")
+	outputLines := make([]string, 0, len(inputLines))
+	for _, line := range inputLines {
+		split := strings.SplitN(line, "# TODO", 2)
+		if len(split) == 1 {
+			outputLines = append(outputLines, line)
+		} else if len(split) == 2 {
+			before := strings.TrimRight(split[0], " ")
+			if len(before) > 0 {
+				outputLines = append(outputLines, before)
+			}
+		}
+	}
+	return strings.Join(outputLines, "\n")
 }
 
 // convertImportsAttrs copies private attributes to regular attributes, which
