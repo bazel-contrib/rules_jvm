@@ -3,7 +3,6 @@ package gazelle
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -142,7 +141,7 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 
 		var exprs []build.Expr
 		for _, l := range labels {
-			exprs = append(exprs, &build.LiteralExpr{Token: strconv.Quote(l.String())})
+			exprs = append(exprs, &build.StringExpr{Value: l.String()})
 		}
 		r.SetAttr("deps", exprs)
 	}
