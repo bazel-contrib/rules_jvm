@@ -16,9 +16,9 @@ load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
 
 contrib_rules_jvm_setup()
 
-load("@contrib_rules_jvm//:gazelle_setup.bzl", "contib_rules_jvm_gazelle_setup")
+load("@contrib_rules_jvm//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
 
-contib_rules_jvm_gazelle_setup()
+contrib_rules_jvm_gazelle_setup()
 ```
 
 In the top level `BUILD.bazel` file, setup Gazelle to use gazelle-languages binary:

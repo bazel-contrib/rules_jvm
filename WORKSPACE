@@ -32,9 +32,9 @@ load("//:setup.bzl", "contrib_rules_jvm_setup")
 # gazelle:repository_macro third_party/go/repositories.bzl%go_deps
 contrib_rules_jvm_setup()
 
-load("//:gazelle_setup.bzl", "contib_rules_jvm_gazelle_setup")
+load("//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
 
-contib_rules_jvm_gazelle_setup()
+contrib_rules_jvm_gazelle_setup()
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS")
