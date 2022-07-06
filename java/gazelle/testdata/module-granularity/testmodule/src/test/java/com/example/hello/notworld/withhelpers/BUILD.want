@@ -1,0 +1,45 @@
+load("@rules_java//java:defs.bzl", "java_library") # TODO: This load shouldn't get generated, because there shouldn't be a java_library here
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+# TODO: This library _shouldn't_ get generated in suite mode
+java_library(
+    name = "withhelpers",
+    srcs = [],
+    _gazelle_imports = [],
+    _java_packages = [
+        "com.example.hello.notworld.withhelpers",
+        "com.example.hello.notworld.withhelpers.withdirectory",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+java_test_suite(
+    name = "withhelpers-tests",
+    srcs = [
+        "Helper.java",
+        "NotWorldWithHelpersTest.java",
+        "withdirectory/AnotherTest.java",
+        "withdirectory/Helper.java",
+    ],
+    _gazelle_imports = [
+        "com.example.hello.notworld.withhelpers",
+        "com.example.hello.notworld.withhelpers.withdirectory",
+        "java.lang.String",
+        "java.lang.String", # TODO: Why is there a duplicate?
+        "org.hamcrest.MatcherAssert",
+        "org.hamcrest.Matchers",
+        "org.junit.Assert",
+        "org.junit.Test",
+        "org.junit.jupiter.api.Test",
+    ],
+    _java_packages = [
+        "com.example.hello.notworld.withhelpers",
+        "com.example.hello.notworld.withhelpers.withdirectory",
+    ],
+    runner = "junit5",
+    runtime_deps = [
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven//:org_junit_platform_junit_platform_launcher",
+        "@maven//:org_junit_platform_junit_platform_reporting",
+    ],
+)
