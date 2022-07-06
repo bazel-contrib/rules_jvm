@@ -1,0 +1,52 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+java_library(
+    name = "modulewithhelpers",
+    srcs = [], # TODO: There should definitely be some srcs in here.
+    _gazelle_imports = [],
+    _java_packages = [
+        "com.example.modulewithhelpers",
+        "com.example.modulewithhelpers.withdirectory",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+java_test(
+    name = "com_example_modulewithhelpers_AppTest",
+    srcs = ["AppTest.java"],
+    _gazelle_imports = [
+        "com.example.modulewithhelpers",
+        "com.example.modulewithhelpers.withdirectory",
+        "com.example.myproject.App",
+        "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
+        "com.google.common.math.IntMath", # TODO: Why is this duplicate here? Unclear.
+        "java.lang.Exception",
+        "java.lang.Exception", # TODO: Why is this duplicate here? Unclear.
+        "org.hamcrest.MatcherAssert",
+        "org.hamcrest.Matchers",
+        "org.junit.Assert",
+        "org.junit.Test",
+    ],
+    _java_packages = ["com.example.modulewithhelpers"],
+    test_class = "com.example.modulewithhelpers.AppTest",
+)
+
+java_test(
+    name = "com_example_modulewithhelpers_withdirectory_AnotherTest",
+    srcs = ["withdirectory/AnotherTest.java"],
+    _gazelle_imports = [
+        "com.example.modulewithhelpers",
+        "com.example.modulewithhelpers.withdirectory",
+        "com.example.myproject.App",
+        "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
+        "com.google.common.math.IntMath", # TODO: Why is this duplicate here? Unclear.
+        "java.lang.Exception",
+        "java.lang.Exception", # TODO: Why is this duplicate here? Unclear.
+        "org.hamcrest.MatcherAssert",
+        "org.hamcrest.Matchers",
+        "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Test",
+    ],
+    _java_packages = ["com.example.modulewithhelpers.withdirectory"],
+    test_class = "com.example.modulewithhelpers.withdirectory.AnotherTest",
+)
