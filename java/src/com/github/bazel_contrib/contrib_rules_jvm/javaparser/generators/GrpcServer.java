@@ -102,7 +102,10 @@ public class GrpcServer {
         ClasspathParser parser = project.getImports(Paths.get(request.getRel()), files);
         Set<String> packages = parser.getPackages();
         if (packages.size() > 1) {
-          logger.error("Set of classes should have only one package, instead is: {}", packages);
+          logger.error(
+              "Set of classes in {} should have only one package, instead is: {}",
+              request.getRel(),
+              packages);
           throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
         } else if (packages.isEmpty()) {
           logger.info("Set of classes has no package");
