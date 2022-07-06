@@ -5,7 +5,6 @@ go_library(
     srcs = ["multiset.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset",
     visibility = ["//java/gazelle:__subpackages__"],
-    deps = ["//java/gazelle/cmd/parsejars/manifest"],
 )
 
 go_test(

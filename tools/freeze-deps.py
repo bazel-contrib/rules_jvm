@@ -99,6 +99,7 @@ with open(build_file) as f:
            deps = [
                "@rules_jvm_external//:implementation",
            ],
+           visibility = ["//visibility:public"],
         )
         """.format(original_contents = textwrap.indent(f.read(), "        "))
     )

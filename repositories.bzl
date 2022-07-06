@@ -50,13 +50,9 @@ def contrib_rules_jvm_deps():
     maybe(
         http_archive,
         name = "rules_jvm_external",
-        sha256 = "cd1a77b7b02e8e008439ca76fd34f5b07aecb8c752961f9640dea15e9e5ba1ca",
-        strip_prefix = "rules_jvm_external-4.2",
-        url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.2.zip",
-        patches = [
-            "@contrib_rules_jvm//java/private:make-docs-visible.patch",
-        ],
-        patch_args = ["-p1"],
+        sha256 = "7b50b26399ee13e7f9297ca7c7956a1acbbfa7cfddb9e31385767566aba189ee",
+        strip_prefix = "rules_jvm_external-dfb0e6902794ee5b56f7706796307139de46a8b3",
+        url = "https://github.com/bazelbuild/rules_jvm_external/archive/dfb0e6902794ee5b56f7706796307139de46a8b3.zip",
     )
 
 def contrib_rules_jvm_gazelle_deps():
