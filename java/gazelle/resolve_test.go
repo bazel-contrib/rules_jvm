@@ -109,6 +109,14 @@ java_library(
 			ix.Finish()
 			for i, r := range f.Rules {
 				mrslv.Resolver(r, "").Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
+
+				if r.Attr("deps") != nil {
+					for _, dep := range r.Attr("deps").(*bzl.ListExpr).List {
+						if _, ok := dep.(*bzl.StringExpr); !ok {
+							t.Errorf("rule %s deps deps should have type []StringExpr", r.Name())
+						}
+					}
+				}
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
