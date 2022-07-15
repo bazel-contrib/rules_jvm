@@ -17,11 +17,6 @@ const (
 	// Defaults to "maven_install.json".
 	MavenInstallFile = "java_maven_install_file"
 
-	// MavenManifestFile represents the directive that controls where the
-	// maven_manifest.json file is located.
-	// Defaults to "maven_manifest.json".
-	MavenManifestFile = "java_maven_manifest_file"
-
 	// TestMode allows user to choose from per file test or per directory test suite.
 	TestMode = "java_test_mode"
 )
@@ -37,7 +32,6 @@ func (c *Config) NewChild() *Config {
 		parent:            c,
 		isModuleRoot:      false,
 		mavenInstallFile:  c.mavenInstallFile,
-		mavenManifestFile: c.mavenManifestFile,
 		moduleGranularity: c.moduleGranularity,
 		outputBase:        c.outputBase,
 		repoRoot:          c.repoRoot,
@@ -61,7 +55,6 @@ type Config struct {
 
 	isModuleRoot      bool
 	mavenInstallFile  string
-	mavenManifestFile string
 	moduleGranularity string
 	outputBase        string
 	repoRoot          string
@@ -73,7 +66,6 @@ func New(repoRoot, outputBase string) *Config {
 	return &Config{
 		isModuleRoot:      false,
 		mavenInstallFile:  "maven_install.json",
-		mavenManifestFile: "maven_manifest.json",
 		moduleGranularity: "package",
 		outputBase:        outputBase,
 		repoRoot:          repoRoot,
@@ -91,14 +83,6 @@ func (c Config) MavenInstallFile() string {
 
 func (c *Config) SetMavenInstallFile(filename string) {
 	c.mavenInstallFile = filename
-}
-
-func (c Config) MavenManifestFile() string {
-	return filepath.Join(c.repoRoot, c.mavenManifestFile)
-}
-
-func (c *Config) SetMavenManifestFile(filename string) {
-	c.mavenManifestFile = filename
 }
 
 func (c Config) ModuleGranularity() string {

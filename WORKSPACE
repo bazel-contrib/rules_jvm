@@ -32,9 +32,9 @@ load("//:setup.bzl", "contrib_rules_jvm_setup")
 # gazelle:repository_macro third_party/go/repositories.bzl%go_deps
 contrib_rules_jvm_setup()
 
-load("//:gazelle_setup.bzl", "contib_rules_jvm_gazelle_setup")
+load("//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
 
-contib_rules_jvm_gazelle_setup()
+contrib_rules_jvm_gazelle_setup()
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS")
@@ -68,10 +68,10 @@ maven_install(
         "org.opentest4j:opentest4j:1.2.0",
 
         # Checkstyle deps
-        "com.puppycrawl.tools:checkstyle:9.2",
+        "com.puppycrawl.tools:checkstyle:10.2",
 
         # PMD deps
-        "net.sourceforge.pmd:pmd-dist:6.41.0",
+        "net.sourceforge.pmd:pmd-dist:6.46.0",
 
         # Spotbugs deps
         # We don't want to force people to use 1.8-beta
@@ -81,7 +81,7 @@ maven_install(
         {
             "group": "com.github.spotbugs",
             "artifact": "spotbugs",
-            "version": "4.5.3",
+            "version": "4.7.0",
             "exclusions": [
                 {
                     "group": "org.slf4j",

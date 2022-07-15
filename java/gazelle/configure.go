@@ -32,7 +32,6 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (jc *Configurer) KnownDirectives() []string {
 	return []string{
 		javaconfig.MavenInstallFile,
-		javaconfig.MavenManifestFile,
 		javaconfig.ModuleGranularityDirective,
 		javaconfig.TestMode,
 	}
@@ -63,9 +62,6 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			case javaconfig.MavenInstallFile:
 				cfg.SetMavenInstallFile(d.Value)
 
-			case javaconfig.MavenManifestFile:
-				cfg.SetMavenManifestFile(d.Value)
-
 			case javaconfig.ModuleGranularityDirective:
 				if err := cfg.SetModuleGranularity(d.Value); err != nil {
 					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.ModuleGranularityDirective)
@@ -82,8 +78,7 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	if jc.lang.mavenResolver == nil {
-		resolver, err := maven.NewResolverFromManifest(
-			cfg.MavenManifestFile(),
+		resolver, err := maven.NewResolver(
 			cfg.MavenInstallFile(),
 			jc.lang.logger,
 		)

@@ -36,6 +36,7 @@ type Dep struct {
 	DirectDependencies []string `json:"directDependencies"`
 	File               string   `json:"file"`
 	MirrorUrls         []string `json:"mirror_urls,omitempty"`
+	Packages           []string `json:"packages"`
 	Sha256             string   `json:"sha256,omitempty"`
 	URL                string   `json:"url,omitempty"`
 	Exclusions         []string `json:"exclusions,omitempty"`

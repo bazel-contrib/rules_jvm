@@ -56,12 +56,6 @@ def go_deps():
         version = "v0.31.0",
     )
     go_repository(
-        name = "com_github_bazelbuild_tools_jvm_autodeps",
-        importpath = "github.com/bazelbuild/tools_jvm_autodeps",
-        sum = "h1:wcw0i+MQc/Yo8RgkS09xSujJnOMCzZXD6LUxhKxGhMg=",
-        version = "v0.0.0-20180917073602-62694dd50b91",
-    )
-    go_repository(
         name = "com_github_beorn7_perks",
         importpath = "github.com/beorn7/perks",
         sum = "h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=",
