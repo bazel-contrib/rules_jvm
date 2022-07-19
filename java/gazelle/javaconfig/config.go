@@ -6,6 +6,11 @@ import (
 )
 
 const (
+	// JavaExtensionDirective represents the directive that controls whether
+	// this Java extension is enabled or not. Sub-packages inherit this value.
+	// Can be either "enabled" or "disabled". Defaults to "enabled".
+	JavaExtensionDirective = "java_extension"
+
 	// ModuleGranularityDirective represents the directive that controls whether
 	// this Java module has a module granularity (Gradle) or a package
 	// granularity (bazel).
@@ -30,6 +35,7 @@ type Configs map[string]*Config
 func (c *Config) NewChild() *Config {
 	return &Config{
 		parent:            c,
+		extensionEnabled:  c.extensionEnabled,
 		isModuleRoot:      false,
 		mavenInstallFile:  c.mavenInstallFile,
 		moduleGranularity: c.moduleGranularity,
@@ -53,6 +59,7 @@ func (c *Configs) ParentForPackage(pkg string) *Config {
 type Config struct {
 	parent *Config
 
+	extensionEnabled  bool
 	isModuleRoot      bool
 	mavenInstallFile  string
 	moduleGranularity string
@@ -64,6 +71,7 @@ type Config struct {
 // New creates a new Config.
 func New(repoRoot, outputBase string) *Config {
 	return &Config{
+		extensionEnabled:  true,
 		isModuleRoot:      false,
 		mavenInstallFile:  "maven_install.json",
 		moduleGranularity: "package",
@@ -71,6 +79,16 @@ func New(repoRoot, outputBase string) *Config {
 		repoRoot:          repoRoot,
 		testMode:          "suite",
 	}
+}
+
+// ExtensionEnabled returns whether the extension is enabled or not.
+func (c *Config) ExtensionEnabled() bool {
+	return c.extensionEnabled
+}
+
+// SetExtensionEnabled sets whether the extension is enabled or not.
+func (c *Config) SetExtensionEnabled(enabled bool) {
+	c.extensionEnabled = enabled
 }
 
 func (c Config) IsModuleRoot() bool {

@@ -43,6 +43,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	cfgs := args.Config.Exts[languageName].(javaconfig.Configs)
 	cfg := cfgs[args.Rel]
 
+	var res language.GenerateResult
+	if !cfg.ExtensionEnabled() {
+		return res
+	}
+
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
@@ -59,7 +64,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 	sort.Strings(protoRuleNames)
 
-	var res language.GenerateResult
 	isModule := cfg.ModuleGranularity() == "module"
 
 	for _, protoRuleName := range protoRuleNames {

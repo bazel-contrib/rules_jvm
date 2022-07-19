@@ -59,6 +59,17 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {
+			case javaconfig.JavaExtensionDirective:
+				switch d.Value {
+				case "enabled":
+					cfg.SetExtensionEnabled(true)
+				case "disabled":
+					cfg.SetExtensionEnabled(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are enabled/disabled",
+						javaconfig.JavaExtensionDirective, d.Value)
+				}
+
 			case javaconfig.MavenInstallFile:
 				cfg.SetMavenInstallFile(d.Value)
 
