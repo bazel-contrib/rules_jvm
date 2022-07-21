@@ -2,6 +2,8 @@ package com.example.modulewithhelpers;
 
 import static org.junit.Assert.assertEquals;
 
+import com.example.myproject.App;
+
 import org.junit.Test;
 
 public class AppTest {

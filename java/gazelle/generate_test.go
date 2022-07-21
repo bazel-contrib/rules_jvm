@@ -17,40 +17,34 @@ func TestSingleJavaTestFile(t *testing.T) {
 		imports     []string
 		wantImports []string
 
-		testHelperFiles []string
-		wantDeps        []string
+		wantDeps []string
 	}
 
 	for name, tc := range map[string]testCase{
 		"no imports no helpers": {
-			imports:         nil,
-			wantImports:     []string{"com.example"},
-			testHelperFiles: nil,
-			wantDeps:        nil,
+			imports:     nil,
+			wantImports: []string{"com.example"},
+			wantDeps:    nil,
 		},
 		"some imports no helpers": {
-			imports:         []string{"io.netty"},
-			wantImports:     []string{"io.netty", "com.example"},
-			testHelperFiles: nil,
-			wantDeps:        nil,
+			imports:     []string{"io.netty"},
+			wantImports: []string{"io.netty", "com.example"},
+			wantDeps:    nil,
 		},
 		"no imports some helpers": {
-			imports:         nil,
-			wantImports:     []string{"com.example"},
-			testHelperFiles: []string{"Helper.java"},
-			wantDeps:        []string{"Helper.java"},
+			imports:     nil,
+			wantImports: []string{"com.example"},
+			wantDeps:    []string{":helper"},
 		},
 		"some imports some helpers": {
-			imports:         []string{"io.netty"},
-			wantImports:     []string{"io.netty", "com.example"},
-			testHelperFiles: []string{"Helper.java"},
-			wantDeps:        []string{"Helper.java"},
+			imports:     []string{"io.netty"},
+			wantImports: []string{"io.netty", "com.example"},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			makeSingleJavaTest(f, tc.testHelperFiles, sorted_set.NewSortedSet(tc.imports), &res)
+			makeSingleJavaTest(f, sorted_set.NewSortedSet([]string{}), sorted_set.NewSortedSet(tc.imports), &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -59,12 +53,8 @@ func TestSingleJavaTestFile(t *testing.T) {
 			require.Equal(t, "FooTest", rule.AttrString("name"))
 			require.Equal(t, []string{"FooTest.java"}, rule.AttrStrings("srcs"))
 			require.Equal(t, "com.example.FooTest", rule.AttrString("test_class"))
-			require.Equal(t, tc.wantDeps, rule.AttrStrings("deps"))
 
 			wantAttrs := []string{"name", "srcs", "test_class"}
-			if len(tc.wantDeps) > 0 {
-				wantAttrs = append(wantAttrs, "deps")
-			}
 			require.ElementsMatch(t, wantAttrs, rule.AttrKeys())
 
 			require.Len(t, res.Imports, 1, "want 1 generated imports")
