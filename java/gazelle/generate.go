@@ -223,10 +223,15 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		} else {
 			allTestImports = append(allTestImports, javaPkg.Imports...)
 			for _, f := range javaPkg.Files {
-				allTestJavaFilenames = append(allTestJavaFilenames, javaFile{
-					path: filepath.Join(mRel, f),
-					pkg:  javaPkg.Name,
-				})
+				path := filepath.Join(mRel, f)
+				if maven.IsTestFile(filepath.Base(path)) || cfg.TestMode() == "suite" {
+					allTestJavaFilenames = append(allTestJavaFilenames, javaFile{
+						path: path,
+						pkg:  javaPkg.Name,
+					})
+				} else {
+					allJavaFilenames = append(allJavaFilenames, path)
+				}
 			}
 		}
 	}
@@ -257,13 +262,15 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		srcs = append(srcs, strings.TrimPrefix(f, args.Rel+"/"))
 	}
 
-	r := rule.NewRule("java_library", filepath.Base(args.Rel))
-	r.SetAttr("srcs", srcs)
-	r.SetAttr("visibility", []string{"//:__subpackages__"})
-	r.SetPrivateAttr(packagesKey, allPackageNames)
-	res.Gen = append(res.Gen, r)
-	sort.Strings(filteredImports)
-	res.Imports = append(res.Imports, filteredImports)
+	if len(srcs) > 0 {
+		r := rule.NewRule("java_library", filepath.Base(args.Rel))
+		r.SetAttr("srcs", srcs)
+		r.SetAttr("visibility", []string{"//:__subpackages__"})
+		r.SetPrivateAttr(packagesKey, allPackageNames)
+		res.Gen = append(res.Gen, r)
+		sort.Strings(filteredImports)
+		res.Imports = append(res.Imports, filteredImports)
+	}
 
 	for _, m := range allMains {
 		r := rule.NewRule("java_binary", m.className) // FIXME check collision on name

@@ -2,7 +2,10 @@ load("@rules_java//java:defs.bzl", "java_library", "java_test")
 
 java_library(
     name = "modulewithhelpers",
-    srcs = [], # TODO: There should definitely be some srcs in here.
+    srcs = [
+        "Helper.java",
+        "withdirectory/Helper.java",
+    ],
     _gazelle_imports = [],
     _java_packages = [
         "com.example.modulewithhelpers",

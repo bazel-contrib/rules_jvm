@@ -1,17 +1,4 @@
-load("@rules_java//java:defs.bzl", "java_library") # TODO: This load shouldn't get generated, because there shouldn't be a java_library here
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
-
-# TODO: This library _shouldn't_ get generated in suite mode
-java_library(
-    name = "withhelpers",
-    srcs = [],
-    _gazelle_imports = [],
-    _java_packages = [
-        "com.example.hello.notworld.withhelpers",
-        "com.example.hello.notworld.withhelpers.withdirectory",
-    ],
-    visibility = ["//:__subpackages__"],
-)
 
 java_test_suite(
     name = "withhelpers-tests",
