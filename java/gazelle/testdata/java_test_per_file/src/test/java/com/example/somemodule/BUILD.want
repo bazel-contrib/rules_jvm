@@ -1,13 +1,4 @@
-load("@rules_java//java:defs.bzl", "java_library", "java_test")
-
-# TODO: With no srcs, this probably shouldn't get output.
-java_library(
-    name = "somemodule",
-    srcs = [],
-    _gazelle_imports = [],
-    _java_packages = ["com.example.somemodule.withdirectory"],
-    visibility = ["//:__subpackages__"],
-)
+load("@rules_java//java:defs.bzl", "java_test")
 
 java_test(
     name = "com_example_somemodule_withdirectory_ATest",
