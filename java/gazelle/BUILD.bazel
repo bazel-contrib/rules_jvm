@@ -22,6 +22,7 @@ go_library(
         "//java/gazelle/private/javaparser",
         "//java/gazelle/private/logconfig",
         "//java/gazelle/private/maven",
+        "//java/gazelle/private/sorted_set",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",
@@ -50,6 +51,7 @@ go_test(
     embed = [":gazelle"],
     tags = ["no-remote"],
     deps = [
+        "//java/gazelle/private/sorted_set",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",

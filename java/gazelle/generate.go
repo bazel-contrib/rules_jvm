@@ -13,6 +13,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -152,12 +153,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		r.SetAttr("visibility", []string{"//:__subpackages__"})
 		r.SetPrivateAttr(packagesKey, []string{javaPkg.Name})
 		res.Gen = append(res.Gen, r)
-		imports := javaPkg.Imports
-		sort.Strings(imports)
-		res.Imports = append(res.Imports, imports)
+		res.Imports = append(res.Imports, javaPkg.Imports.SortedSlice())
 	}
 
-	for _, m := range javaPkg.Mains {
+	for _, m := range javaPkg.Mains.SortedSlice() {
 		r := rule.NewRule("java_binary", m)
 		r.SetAttr("main_class", javaPkg.Name+"."+m)
 		r.SetAttr("runtime_deps", []string{":" + filepath.Base(args.Rel)})
@@ -187,8 +186,8 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		Msg("GenerateRules")
 
 	var allPackageNames []string
-	allImports := make(map[string]bool)
-	var allTestImports []string
+	allImports := sorted_set.NewSortedSet([]string{})
+	allTestImports := sorted_set.NewSortedSet([]string{})
 	var allMains []main
 	var allJavaFilenames []string
 	var allTestJavaFilenames javaFiles
@@ -201,28 +200,26 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		log.Debug().
 			Str("rel", mRel).
 			Str("package", javaPkg.Name).
-			Strs("imports", javaPkg.Imports).
-			Strs("mains", javaPkg.Mains).
+			Strs("imports", javaPkg.Imports.SortedSlice()).
+			Strs("mains", javaPkg.Mains.SortedSlice()).
 			Msg("java package cache")
 
 		allPackageNames = append(allPackageNames, javaPkg.Name)
 
 		if !javaPkg.TestPackage {
-			for _, imp := range javaPkg.Imports {
-				allImports[imp] = true
-			}
-			for _, m := range javaPkg.Mains {
+			allImports.AddAll(javaPkg.Imports)
+			for _, m := range javaPkg.Mains.SortedSlice() {
 				allMains = append(allMains, main{
 					pkg:       javaPkg.Name,
 					className: m,
 				})
 			}
-			for _, f := range javaPkg.Files {
+			for _, f := range javaPkg.Files.SortedSlice() {
 				allJavaFilenames = append(allJavaFilenames, filepath.Join(mRel, f))
 			}
 		} else {
-			allTestImports = append(allTestImports, javaPkg.Imports...)
-			for _, f := range javaPkg.Files {
+			allTestImports.AddAll(javaPkg.Imports)
+			for _, f := range javaPkg.Files.SortedSlice() {
 				path := filepath.Join(mRel, f)
 				if maven.IsTestFile(filepath.Base(path)) || cfg.TestMode() == "suite" {
 					allTestJavaFilenames = append(allTestJavaFilenames, javaFile{
@@ -241,7 +238,7 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 	sort.Strings(allPackageNames)
 	sort.Sort(allTestJavaFilenames)
 
-	filteredImports := filterImports(allImports, func(i string) bool {
+	filteredImports := allImports.Filter(func(i string) bool {
 		for _, n := range allPackageNames {
 			if strings.HasPrefix(i, n) {
 				// Assume the standard java convention of class names starting with upper case
@@ -268,8 +265,7 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		r.SetAttr("visibility", []string{"//:__subpackages__"})
 		r.SetPrivateAttr(packagesKey, allPackageNames)
 		res.Gen = append(res.Gen, r)
-		sort.Strings(filteredImports)
-		res.Imports = append(res.Imports, filteredImports)
+		res.Imports = append(res.Imports, filteredImports.SortedSlice())
 	}
 
 	for _, m := range allMains {
@@ -283,7 +279,7 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 	generateTestRules(args, cfg, allTestJavaFilenames, allTestImports, true, res)
 }
 
-func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaFilenames javaFiles, imports []string, moduleRoot bool, res *language.GenerateResult) {
+func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaFilenames javaFiles, imports *sorted_set.SortedSet[string], moduleRoot bool, res *language.GenerateResult) {
 	switch cfg.TestMode() {
 	case "file":
 		if moduleRoot {
@@ -300,9 +296,9 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				r.SetPrivateAttr(packagesKey, []string{tf.pkg})
 
 				res.Gen = append(res.Gen, r)
-				imports := append(imports, tf.pkg)
-				sort.Strings(imports)
-				res.Imports = append(res.Imports, imports)
+				moduleImports := imports.Clone()
+				moduleImports.Add(tf.pkg)
+				res.Imports = append(res.Imports, moduleImports.SortedSlice())
 			}
 		} else {
 			var testHelperFiles []string
@@ -329,15 +325,10 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 			}
 		}
 
-		packageNames := make(map[string]bool)
+		packageNames := sorted_set.NewSortedSet([]string{})
 		for _, f := range javaFilenames {
-			packageNames[f.pkg] = true
+			packageNames.Add(f.pkg)
 		}
-		var packageNamesStrSlice []string
-		for pkg := range packageNames {
-			packageNamesStrSlice = append(packageNamesStrSlice, pkg)
-		}
-		sort.Strings(packageNamesStrSlice)
 
 		if moduleRoot {
 			if hasTest {
@@ -349,7 +340,7 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				javaTestSuite(
 					filepath.Base(args.Rel)+"-tests",
 					srcs,
-					packageNamesStrSlice,
+					packageNames,
 					imports,
 					res,
 				)
@@ -364,7 +355,7 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				javaTestSuite(
 					filepath.Base(args.Rel),
 					srcs,
-					packageNamesStrSlice,
+					packageNames,
 					imports,
 					res,
 				)
@@ -376,17 +367,17 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				}
 				r.SetAttr("srcs", srcs)
 				r.SetAttr("testonly", true)
-				r.SetPrivateAttr(packagesKey, packageNamesStrSlice)
+				r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
 				res.Gen = append(res.Gen, r)
-				imports := append(imports, packageNamesStrSlice...)
-				sort.Strings(imports)
-				res.Imports = append(res.Imports, imports)
+				libraryImports := imports.Clone()
+				libraryImports.AddAll(packageNames)
+				res.Imports = append(res.Imports, libraryImports.SortedSlice())
 			}
 		}
 	}
 }
 
-func makeSingleJavaTest(f javaFile, testHelperFiles []string, imports []string, res *language.GenerateResult) {
+func makeSingleJavaTest(f javaFile, testHelperFiles []string, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
 	testName := strings.TrimSuffix(f.path, ".java")
 	r := rule.NewRule("java_test", testName)
 	r.SetAttr("srcs", []string{f.path})
@@ -397,7 +388,9 @@ func makeSingleJavaTest(f javaFile, testHelperFiles []string, imports []string, 
 	}
 
 	res.Gen = append(res.Gen, r)
-	res.Imports = append(res.Imports, append(imports, f.pkg))
+	testImports := imports.Clone()
+	testImports.Add(f.pkg)
+	res.Imports = append(res.Imports, testImports.SortedSlice())
 }
 
 var junit5RuntimeDeps = []string{
@@ -406,18 +399,18 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func javaTestSuite(name string, srcs, packageNames, imports []string, res *language.GenerateResult) {
+func javaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
 	r := rule.NewRule("java_test_suite", name)
 	r.SetAttr("srcs", srcs)
-	r.SetPrivateAttr(packagesKey, packageNames)
+	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
 
 	r.SetAttr("runner", "junit5")
 	r.SetAttr("runtime_deps", mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact))
 
 	res.Gen = append(res.Gen, r)
-	imports = append(imports, packageNames...)
-	sort.Strings(imports)
-	res.Imports = append(res.Imports, imports)
+	suiteImports := imports.Clone()
+	suiteImports.AddAll(packageNames)
+	res.Imports = append(res.Imports, suiteImports.SortedSlice())
 }
 
 func strSliceUniq(elts []string) []string {
@@ -440,16 +433,6 @@ func filterStrSlice(elts []string, f func(string) bool) []string {
 			continue
 		}
 		out = append(out, elt)
-	}
-	return out
-}
-
-func filterImports(imports map[string]bool, f func(imp string) bool) []string {
-	var out []string
-	for imp := range imports {
-		if f(imp) {
-			out = append(out, imp)
-		}
 	}
 	return out
 }

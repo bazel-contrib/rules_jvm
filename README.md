@@ -52,6 +52,8 @@ The linters are configured using specific rules. The mappings are:
 
 These rules require Java 11 or above.
 
+The gazelle plugin requires Go 1.18 or above.
+
 ## Java Rules
 
 [arl]: https://github.com/apple/apple_rules_lint

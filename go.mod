@@ -4,10 +4,12 @@ go 1.18
 
 require (
 	github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829
-	github.com/bazelbuild/bazel-gazelle v0.25.0
+	github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16
 	github.com/bazelbuild/buildtools v0.0.0-20220323134444-a9f46b2bb3de
 	github.com/bazelbuild/rules_go v0.31.0
+	github.com/google/btree v1.1.2
 	github.com/google/go-cmp v0.5.7
+	github.com/google/uuid v1.1.2
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/rs/zerolog v1.26.1
 	github.com/sergi/go-diff v1.2.0

@@ -40,8 +40,8 @@ def go_deps():
     go_repository(
         name = "com_github_bazelbuild_bazel_gazelle",
         importpath = "github.com/bazelbuild/bazel-gazelle",
-        sum = "h1:umlCZxzCEr8BHdesfY2sv5T8NTv9+JiPL8f/Vk83Aag=",
-        version = "v0.25.0",
+        sum = "h1:TxcWafIs8LlRONmcmp7KA83f0//+BfvAuHVkibsrT2U=",
+        version = "v0.25.1-0.20220406134132-bd319f810c16",
     )
     go_repository(
         name = "com_github_bazelbuild_buildtools",
@@ -222,6 +222,12 @@ def go_deps():
         importpath = "github.com/golang/snappy",
         sum = "h1:yAGX7huGHXlcLOEtBnF4w7FQwA26wojNCwOYAEhLjQM=",
         version = "v0.0.4",
+    )
+    go_repository(
+        name = "com_github_google_btree",
+        importpath = "github.com/google/btree",
+        sum = "h1:xf4v41cLI2Z6FxbKm+8Bu+m8ifhj15JuZ9sa0jZCMUU=",
+        version = "v1.1.2",
     )
     go_repository(
         name = "com_github_google_go_cmp",

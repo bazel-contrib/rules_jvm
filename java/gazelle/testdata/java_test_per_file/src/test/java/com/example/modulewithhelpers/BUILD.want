@@ -19,12 +19,9 @@ java_test(
     srcs = ["AppTest.java"],
     _gazelle_imports = [
         "com.example.modulewithhelpers",
-        "com.example.modulewithhelpers.withdirectory",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
-        "com.google.common.math.IntMath", # TODO: Why is this duplicate here? Unclear.
         "java.lang.Exception",
-        "java.lang.Exception", # TODO: Why is this duplicate here? Unclear.
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert",
@@ -38,13 +35,10 @@ java_test(
     name = "com_example_modulewithhelpers_withdirectory_AnotherTest",
     srcs = ["withdirectory/AnotherTest.java"],
     _gazelle_imports = [
-        "com.example.modulewithhelpers",
         "com.example.modulewithhelpers.withdirectory",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
-        "com.google.common.math.IntMath", # TODO: Why is this duplicate here? Unclear.
         "java.lang.Exception",
-        "java.lang.Exception", # TODO: Why is this duplicate here? Unclear.
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one

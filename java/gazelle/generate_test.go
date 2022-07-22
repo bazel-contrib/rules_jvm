@@ -3,6 +3,7 @@ package gazelle
 import (
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +50,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			makeSingleJavaTest(f, tc.testHelperFiles, tc.imports, &res)
+			makeSingleJavaTest(f, tc.testHelperFiles, sorted_set.NewSortedSet(tc.imports), &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
