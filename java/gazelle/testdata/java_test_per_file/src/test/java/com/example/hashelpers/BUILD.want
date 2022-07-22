@@ -5,13 +5,13 @@ java_test(
     name = "AppTest",
     srcs = ["AppTest.java"],
     _gazelle_imports = [
+        "com.example.hashelpers",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
         "java.lang.Exception",
         "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
         "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Assert",
         "org.junit.Test",
-        "com.example.hashelpers",
     ],
     _java_packages = ["com.example.hashelpers"],
     test_class = "com.example.hashelpers.AppTest",
@@ -25,13 +25,13 @@ java_test(
     name = "OtherAppTest",
     srcs = ["OtherAppTest.java"],
     _gazelle_imports = [
+        "com.example.hashelpers",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
         "java.lang.Exception",
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Test",
-        "com.example.hashelpers",
     ],
     _java_packages = ["com.example.hashelpers"],
     test_class = "com.example.hashelpers.OtherAppTest",

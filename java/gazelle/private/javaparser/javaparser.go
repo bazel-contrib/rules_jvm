@@ -10,6 +10,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/netutil"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 )
@@ -89,9 +90,9 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 
 	return &java.Package{
 		Name:        resp.GetName(),
-		Imports:     resp.GetImports(),
-		Mains:       resp.GetMains(),
-		Files:       in.Files,
+		Imports:     sorted_set.NewSortedSet(resp.GetImports()),
+		Mains:       sorted_set.NewSortedSet(resp.GetMains()),
+		Files:       sorted_set.NewSortedSet(in.Files),
 		TestPackage: java.IsTestPath(in.Rel),
 	}, nil
 }

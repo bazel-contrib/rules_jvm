@@ -12,7 +12,6 @@ java_test_suite(
         "com.example.hello.notworld.withhelpers",
         "com.example.hello.notworld.withhelpers.withdirectory",
         "java.lang.String",
-        "java.lang.String", # TODO: Why is there a duplicate?
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert",

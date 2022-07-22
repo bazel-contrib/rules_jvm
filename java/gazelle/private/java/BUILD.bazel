@@ -11,6 +11,9 @@ go_library(
     ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/java",
     visibility = ["//java/gazelle:__subpackages__"],
+    deps = [
+        "//java/gazelle/private/sorted_set",
+    ],
 )
 
 go_test(
