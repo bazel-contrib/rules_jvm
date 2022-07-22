@@ -50,6 +50,10 @@ To generate BUILD files:
 bazel run //:gazelle
 ```
 
+## Requirements
+
+This gazelle plugin requires Go 1.18 or above.
+
 ## Configuration options
 
 This Gazelle extension supports some configuration options, which are enabled by
