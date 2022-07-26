@@ -46,6 +46,10 @@ func TestInsert(t *testing.T) {
 	s := ss.NewSortedSet([]string{})
 
 	{
+		if len := s.Len(); len != 0 {
+			t.Errorf("Want len 0 got %v", len)
+		}
+
 		got := s.SortedSlice()
 		want := []string{}
 		if !reflect.DeepEqual(got, want) {
@@ -62,6 +66,10 @@ func TestInsert(t *testing.T) {
 
 	s.Add("cheese")
 	{
+		if len := s.Len(); len != 1 {
+			t.Errorf("Want len 1 got %v", len)
+		}
+
 		got := s.SortedSlice()
 		want := []string{"cheese"}
 		if !reflect.DeepEqual(got, want) {
@@ -78,6 +86,10 @@ func TestInsert(t *testing.T) {
 
 	s.Add("cheese")
 	{
+		if len := s.Len(); len != 1 {
+			t.Errorf("Want len 1 got %v", len)
+		}
+
 		got := s.SortedSlice()
 		want := []string{"cheese"}
 		if !reflect.DeepEqual(got, want) {
@@ -94,6 +106,10 @@ func TestInsert(t *testing.T) {
 
 	s.Add("onions")
 	{
+		if len := s.Len(); len != 2 {
+			t.Errorf("Want len 2 got %v", len)
+		}
+
 		got := s.SortedSlice()
 		want := []string{"cheese", "onions"}
 		if !reflect.DeepEqual(got, want) {
@@ -110,6 +126,10 @@ func TestInsert(t *testing.T) {
 
 	s.Add("brie")
 	{
+		if len := s.Len(); len != 3 {
+			t.Errorf("Want len 3 got %v", len)
+		}
+
 		got := s.SortedSlice()
 		want := []string{"brie", "cheese", "onions"}
 		if !reflect.DeepEqual(got, want) {

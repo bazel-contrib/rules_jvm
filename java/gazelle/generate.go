@@ -146,7 +146,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				pkg:  javaPkg.Name,
 			})
 		}
-		generateTestRules(args, cfg, javaFiles, javaPkg.Imports, false, &res)
+		generateTestRules(args, cfg, javaFiles, javaPkg.Imports, false, sorted_set.NewSortedSet([]string{}), &res)
 	} else {
 		r := rule.NewRule("java_library", filepath.Base(args.Rel))
 		r.SetAttr("srcs", javaFilenames)
@@ -259,13 +259,22 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		srcs = append(srcs, strings.TrimPrefix(f, args.Rel+"/"))
 	}
 
+	testutilPackageNames := sorted_set.NewSortedSet([]string{})
+
 	if len(srcs) > 0 {
 		r := rule.NewRule("java_library", filepath.Base(args.Rel))
 		r.SetAttr("srcs", srcs)
 		r.SetAttr("visibility", []string{"//:__subpackages__"})
+		for _, pkg := range allPackageNames {
+			testutilPackageNames.Add(pkg)
+		}
 		r.SetPrivateAttr(packagesKey, allPackageNames)
 		res.Gen = append(res.Gen, r)
-		res.Imports = append(res.Imports, filteredImports.SortedSlice())
+		// TODO: This should probably generate two separate targets for "test helper library" and "production library".
+		// At least, it should filter down to the imports required by the srcs it's generating for.
+		helperImports := filteredImports.Clone()
+		helperImports.AddAll(allTestImports)
+		res.Imports = append(res.Imports, helperImports.SortedSlice())
 	}
 
 	for _, m := range allMains {
@@ -276,10 +285,10 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		res.Imports = append(res.Imports, []string{})
 	}
 
-	generateTestRules(args, cfg, allTestJavaFilenames, allTestImports, true, res)
+	generateTestRules(args, cfg, allTestJavaFilenames, allTestImports, true, testutilPackageNames, res)
 }
 
-func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaFilenames javaFiles, imports *sorted_set.SortedSet[string], moduleRoot bool, res *language.GenerateResult) {
+func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaFilenames javaFiles, imports *sorted_set.SortedSet[string], moduleRoot bool, testutilPackageNames *sorted_set.SortedSet[string], res *language.GenerateResult) {
 	switch cfg.TestMode() {
 	case "file":
 		if moduleRoot {
@@ -301,10 +310,27 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				res.Imports = append(res.Imports, moduleImports.SortedSlice())
 			}
 		} else {
-			var testHelperFiles []string
-			for _, f := range javaFilenames {
-				if maven.IsTestFile(filepath.Base(f.path)) {
-					testHelperFiles = append(testHelperFiles, f.path)
+			if testutilPackageNames.Len() == 0 {
+				var helperSrcs []javaFile
+				for _, f := range javaFilenames {
+					if !maven.IsTestFile(filepath.Base(f.path)) {
+						helperSrcs = append(helperSrcs, f)
+					}
+				}
+				if len(helperSrcs) > 0 {
+					r := rule.NewRule("java_library", filepath.Base(args.Rel))
+					var srcs []string
+					for _, tf := range helperSrcs {
+						srcs = append(srcs, strings.TrimPrefix(tf.path, args.Rel+"/"))
+						// Add a _TESTONLY! prefix to the package name so that we resolve to the test-helper library rather than the production library, if both are present.
+						testutilPackageNames.Add("_TESTONLY!" + tf.pkg)
+					}
+					r.SetAttr("srcs", srcs)
+					r.SetAttr("testonly", true)
+					r.SetPrivateAttr(packagesKey, testutilPackageNames.SortedSlice())
+					res.Gen = append(res.Gen, r)
+					libraryImports := imports.Clone()
+					res.Imports = append(res.Imports, libraryImports.SortedSlice())
 				}
 			}
 
@@ -312,7 +338,7 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 				if !maven.IsTestFile(filepath.Base(f.path)) {
 					continue
 				}
-				makeSingleJavaTest(f, testHelperFiles, imports, res)
+				makeSingleJavaTest(f, testutilPackageNames, imports, res)
 			}
 		}
 
@@ -377,19 +403,17 @@ func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaF
 	}
 }
 
-func makeSingleJavaTest(f javaFile, testHelperFiles []string, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
+func makeSingleJavaTest(f javaFile, testutilPackageNames *sorted_set.SortedSet[string], imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
 	testName := strings.TrimSuffix(f.path, ".java")
 	r := rule.NewRule("java_test", testName)
 	r.SetAttr("srcs", []string{f.path})
 	r.SetAttr("test_class", f.pkg+"."+testName)
 	r.SetPrivateAttr(packagesKey, []string{f.pkg})
-	if len(testHelperFiles) > 0 {
-		r.SetAttr("deps", testHelperFiles)
-	}
 
 	res.Gen = append(res.Gen, r)
 	testImports := imports.Clone()
 	testImports.Add(f.pkg)
+	testImports.AddAll(testutilPackageNames)
 	res.Imports = append(res.Imports, testImports.SortedSlice())
 }
 

@@ -85,3 +85,7 @@ func (s *SortedSet[T]) Clone() *SortedSet[T] {
 		tree: s.tree.Clone(),
 	}
 }
+
+func (s *SortedSet[T]) Len() int {
+	return s.tree.Len()
+}
