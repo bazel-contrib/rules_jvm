@@ -10,7 +10,6 @@ import (
 	"unicode"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
@@ -25,15 +24,13 @@ type main struct {
 }
 
 type javaFile struct {
-	path string
-	pkg  string
+	pathRelativeToBazelWorkspaceRoot string
+	pkg                              string
 }
 
-type javaFiles []javaFile
-
-func (x javaFiles) Len() int           { return len(x) }
-func (x javaFiles) Less(i, j int) bool { return x[i].path < x[j].path }
-func (x javaFiles) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func javaFileLess(l, r javaFile) bool {
+	return l.pathRelativeToBazelWorkspaceRoot < r.pathRelativeToBazelWorkspaceRoot
+}
 
 // GenerateRules extracts build metadata from source files in a directory.
 //
@@ -100,32 +97,24 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		res.Imports = append(res.Imports, []string{})
 	}
 
-	javaFilenames := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
-	if len(javaFilenames) == 0 {
-		if isModule && cfg.IsModuleRoot() {
-			l.generateModuleRoot(args, cfg, &res)
-		}
+	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
 
-		return res
-	}
-	sort.Strings(javaFilenames)
+	sort.Strings(javaFilenamesRelativeToPackage)
 
 	javaPkg, err := l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
 		Rel:   args.Rel,
-		Files: javaFilenames,
+		Files: javaFilenamesRelativeToPackage,
 	})
 	if err != nil {
 		panic(err)
 	}
 
 	if isModule {
-		if len(javaFilenames) > 0 {
+		if len(javaFilenamesRelativeToPackage) > 0 {
 			l.javaPackageCache[args.Rel] = javaPkg
 		}
 
-		if cfg.IsModuleRoot() {
-			l.generateModuleRoot(args, cfg, &res)
-		} else {
+		if !cfg.IsModuleRoot() {
 			log.Debug().Msg("module // sub directory, returning early")
 			if args.File != nil {
 				// In module mode, there should be no intermediate build files.
@@ -133,113 +122,94 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					log.Fatal().Err(err).Msg("could not delete build file")
 				}
 			}
+			return res
 		}
-
-		return res
 	}
 
-	if java.IsTestPath(args.Rel) {
-		var javaFiles javaFiles
-		for _, f := range javaFilenames {
-			javaFiles = append(javaFiles, javaFile{
-				path: f,
-				pkg:  javaPkg.Name,
-			})
-		}
-		generateTestRules(args, cfg, javaFiles, javaPkg.Imports, false, sorted_set.NewSortedSet([]string{}), &res)
-	} else {
-		r := rule.NewRule("java_library", filepath.Base(args.Rel))
-		r.SetAttr("srcs", javaFilenames)
-		r.SetAttr("visibility", []string{"//:__subpackages__"})
-		r.SetPrivateAttr(packagesKey, []string{javaPkg.Name})
-		res.Gen = append(res.Gen, r)
-		res.Imports = append(res.Imports, javaPkg.Imports.SortedSlice())
-	}
-
-	for _, m := range javaPkg.Mains.SortedSlice() {
-		r := rule.NewRule("java_binary", m)
-		r.SetAttr("main_class", javaPkg.Name+"."+m)
-		r.SetAttr("runtime_deps", []string{":" + filepath.Base(args.Rel)})
-		r.SetAttr("visibility", []string{"//visibility:public"})
-
-		res.Gen = append(res.Gen, r)
-		res.Imports = append(res.Imports, []string{})
-	}
-
-	for i := 0; i < len(res.Gen); i++ {
-		log.Debug().Fields(map[string]interface{}{
-			"idx":     i,
-			"rule":    fmt.Sprintf("%#v", res.Gen[i]),
-			"imports": fmt.Sprintf("%#v", res.Imports[i]),
-		}).Msg("generate return")
-	}
-
-	return res
-}
-
-func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig.Config, res *language.GenerateResult) {
-	log := l.logger.With().Str("step", "generateModuleRoot").Str("rel", args.Rel).Logger()
-
-	log.Debug().
-		Str("granularity", cfg.ModuleGranularity()).
-		Bool("isModuleRoot", cfg.IsModuleRoot()).
-		Msg("GenerateRules")
-
-	var allPackageNames []string
-	allImports := sorted_set.NewSortedSet([]string{})
-	allTestImports := sorted_set.NewSortedSet([]string{})
 	var allMains []main
-	var allJavaFilenames []string
-	var allTestJavaFilenames javaFiles
 
-	for mRel, javaPkg := range l.javaPackageCache {
-		if !strings.HasPrefix(mRel, args.Rel) {
-			continue
-		}
+	// Files and imports for code which isn't tests, and isn't used as helpers in tests.
+	productionJavaFiles := sorted_set.NewSortedSet([]string{})
+	productionJavaImports := sorted_set.NewSortedSet([]string{})
 
-		log.Debug().
-			Str("rel", mRel).
-			Str("package", javaPkg.Name).
-			Strs("imports", javaPkg.Imports.SortedSlice()).
-			Strs("mains", javaPkg.Mains.SortedSlice()).
-			Msg("java package cache")
+	// Files and imports for actual test classes.
+	testJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
+	testJavaImports := sorted_set.NewSortedSet([]string{})
 
-		allPackageNames = append(allPackageNames, javaPkg.Name)
+	// Files which are used by non-test classes in test java packages.
+	testHelperJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
 
-		if !javaPkg.TestPackage {
-			allImports.AddAll(javaPkg.Imports)
-			for _, m := range javaPkg.Mains.SortedSlice() {
-				allMains = append(allMains, main{
-					pkg:       javaPkg.Name,
-					className: m,
-				})
+	// All java packages present in this bazel package.
+	allPackageNames := sorted_set.NewSortedSet([]string{})
+
+	if isModule {
+		for mRel, mJavaPkg := range l.javaPackageCache {
+			if !strings.HasPrefix(mRel, args.Rel) {
+				continue
 			}
-			for _, f := range javaPkg.Files.SortedSlice() {
-				allJavaFilenames = append(allJavaFilenames, filepath.Join(mRel, f))
-			}
-		} else {
-			allTestImports.AddAll(javaPkg.Imports)
-			for _, f := range javaPkg.Files.SortedSlice() {
-				path := filepath.Join(mRel, f)
-				if maven.IsTestFile(filepath.Base(path)) || cfg.TestMode() == "suite" {
-					allTestJavaFilenames = append(allTestJavaFilenames, javaFile{
-						path: path,
-						pkg:  javaPkg.Name,
+			allPackageNames.Add(mJavaPkg.Name)
+			productionJavaImports.AddAll(mJavaPkg.Imports)
+
+			if !mJavaPkg.TestPackage {
+				for _, f := range mJavaPkg.Files.SortedSlice() {
+					productionJavaFiles.Add(filepath.Join(mRel, f))
+				}
+				for _, className := range mJavaPkg.Mains.SortedSlice() {
+					allMains = append(allMains, main{
+						pkg:       mJavaPkg.Name,
+						className: className,
 					})
-				} else {
-					allJavaFilenames = append(allJavaFilenames, path)
+				}
+			} else {
+				for _, f := range mJavaPkg.Files.SortedSlice() {
+					path := filepath.Join(mRel, f)
+					file := javaFile{
+						pathRelativeToBazelWorkspaceRoot: path,
+						pkg:                              mJavaPkg.Name,
+					}
+					testJavaImports.AddAll(mJavaPkg.Imports)
+					if maven.IsTestFile(filepath.Base(f)) {
+						testJavaFiles.Add(file)
+					} else {
+						testHelperJavaFiles.Add(file)
+					}
 				}
 			}
 		}
+	} else {
+		allPackageNames.Add(javaPkg.Name)
+		if javaPkg.TestPackage {
+			testJavaImports.AddAll(javaPkg.Imports)
+		} else {
+			productionJavaImports.AddAll(javaPkg.Imports)
+		}
+		for _, mainClassName := range javaPkg.Mains.SortedSlice() {
+			allMains = append(allMains, main{
+				pkg:       javaPkg.Name,
+				className: mainClassName,
+			})
+		}
+		for _, f := range javaFilenamesRelativeToPackage {
+			path := filepath.Join(args.Rel, f)
+			if javaPkg.TestPackage {
+				file := javaFile{
+					pathRelativeToBazelWorkspaceRoot: path,
+					pkg:                              javaPkg.Name,
+				}
+				if maven.IsTestFile(filepath.Base(f)) {
+					testJavaFiles.Add(file)
+				} else {
+					testHelperJavaFiles.Add(file)
+				}
+			} else {
+				productionJavaFiles.Add(path)
+			}
+		}
 	}
 
-	sort.Strings(allJavaFilenames)
-	allPackageNames = strSliceUniq(allPackageNames)
-	sort.Strings(allPackageNames)
-	sort.Sort(allTestJavaFilenames)
-
-	filteredImports := allImports.Filter(func(i string) bool {
-		for _, n := range allPackageNames {
+	allPackageNamesSlice := allPackageNames.SortedSlice()
+	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i string) bool {
+		for _, n := range allPackageNamesSlice {
 			if strings.HasPrefix(i, n) {
 				// Assume the standard java convention of class names starting with upper case
 				// and package components starting with lower case.
@@ -254,166 +224,128 @@ func (l javaLang) generateModuleRoot(args language.GenerateArgs, cfg *javaconfig
 		return true
 	})
 
-	var srcs []string
-	for _, f := range allJavaFilenames {
-		srcs = append(srcs, strings.TrimPrefix(f, args.Rel+"/"))
-	}
-
-	testutilPackageNames := sorted_set.NewSortedSet([]string{})
-
-	if len(srcs) > 0 {
-		r := rule.NewRule("java_library", filepath.Base(args.Rel))
-		r.SetAttr("srcs", srcs)
-		r.SetAttr("visibility", []string{"//:__subpackages__"})
-		for _, pkg := range allPackageNames {
-			testutilPackageNames.Add(pkg)
-		}
-		r.SetPrivateAttr(packagesKey, allPackageNames)
-		res.Gen = append(res.Gen, r)
-		// TODO: This should probably generate two separate targets for "test helper library" and "production library".
-		// At least, it should filter down to the imports required by the srcs it's generating for.
-		helperImports := filteredImports.Clone()
-		helperImports.AddAll(allTestImports)
-		res.Imports = append(res.Imports, helperImports.SortedSlice())
-	}
-
 	for _, m := range allMains {
-		r := rule.NewRule("java_binary", m.className) // FIXME check collision on name
-		r.SetAttr("main_class", m.pkg+"."+m.className)
-		r.SetAttr("runtime_deps", []string{":" + filepath.Base(args.Rel)})
-		res.Gen = append(res.Gen, r)
-		res.Imports = append(res.Imports, []string{})
+		generateJavaBinary(m, filepath.Base(args.Rel), &res)
 	}
 
-	generateTestRules(args, cfg, allTestJavaFilenames, allTestImports, true, testutilPackageNames, res)
-}
+	if productionJavaFiles.Len() > 0 {
+		generateJavaLibrary(args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
+	}
 
-func generateTestRules(args language.GenerateArgs, cfg *javaconfig.Config, javaFilenames javaFiles, imports *sorted_set.SortedSet[string], moduleRoot bool, testutilPackageNames *sorted_set.SortedSet[string], res *language.GenerateResult) {
-	switch cfg.TestMode() {
-	case "file":
-		if moduleRoot {
-			for _, tf := range javaFilenames {
-				if !maven.IsTestFile(filepath.Base(tf.path)) {
-					continue
-				}
+	// We add special packages to point to testonly libraries which - this accumulates them,
+	// as well as the existing java imports of tests.
+	testJavaImportsWithHelpers := testJavaImports.Clone()
 
-				testClass := tf.pkg + "." + strings.TrimSuffix(filepath.Base(tf.path), ".java")
-				testName := strings.ReplaceAll(testClass, ".", "_")
-				r := rule.NewRule("java_test", testName)
-				r.SetAttr("srcs", []string{strings.TrimPrefix(tf.path, args.Rel+"/")})
-				r.SetAttr("test_class", testClass)
-				r.SetPrivateAttr(packagesKey, []string{tf.pkg})
+	if testHelperJavaFiles.Len() > 0 {
+		// Suites generate their own helper library.
+		if cfg.TestMode() == "file" {
+			srcs := make([]string, 0, testHelperJavaFiles.Len())
+			packages := sorted_set.NewSortedSet([]string{})
 
-				res.Gen = append(res.Gen, r)
-				moduleImports := imports.Clone()
-				moduleImports.Add(tf.pkg)
-				res.Imports = append(res.Imports, moduleImports.SortedSlice())
+			for _, tf := range testHelperJavaFiles.SortedSlice() {
+				// Add a _TESTONLY! prefix to the package name so that we resolve to the test-helper library rather than the production library, if both are present.
+				testonlyPackage := "_TESTONLY!" + tf.pkg
+				packages.Add(testonlyPackage)
+				testJavaImportsWithHelpers.Add(testonlyPackage)
+				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-		} else {
-			if testutilPackageNames.Len() == 0 {
-				var helperSrcs []javaFile
-				for _, f := range javaFilenames {
-					if !maven.IsTestFile(filepath.Base(f.path)) {
-						helperSrcs = append(helperSrcs, f)
-					}
-				}
-				if len(helperSrcs) > 0 {
-					r := rule.NewRule("java_library", filepath.Base(args.Rel))
-					var srcs []string
-					for _, tf := range helperSrcs {
-						srcs = append(srcs, strings.TrimPrefix(tf.path, args.Rel+"/"))
-						// Add a _TESTONLY! prefix to the package name so that we resolve to the test-helper library rather than the production library, if both are present.
-						testutilPackageNames.Add("_TESTONLY!" + tf.pkg)
-					}
-					r.SetAttr("srcs", srcs)
-					r.SetAttr("testonly", true)
-					r.SetPrivateAttr(packagesKey, testutilPackageNames.SortedSlice())
-					res.Gen = append(res.Gen, r)
-					libraryImports := imports.Clone()
-					res.Imports = append(res.Imports, libraryImports.SortedSlice())
-				}
-			}
-
-			for _, f := range javaFilenames {
-				if !maven.IsTestFile(filepath.Base(f.path)) {
-					continue
-				}
-				makeSingleJavaTest(f, testutilPackageNames, imports, res)
-			}
-		}
-
-	case "suite":
-		hasTest := false
-		for _, f := range javaFilenames {
-			if maven.IsTestFile(f.path) {
-				hasTest = true
-				break
-			}
-		}
-
-		packageNames := sorted_set.NewSortedSet([]string{})
-		for _, f := range javaFilenames {
-			packageNames.Add(f.pkg)
-		}
-
-		if moduleRoot {
-			if hasTest {
-				var srcs []string
-				for _, tf := range javaFilenames {
-					srcs = append(srcs, strings.TrimPrefix(tf.path, args.Rel+"/"))
-				}
-
-				javaTestSuite(
-					filepath.Base(args.Rel)+"-tests",
-					srcs,
-					packageNames,
-					imports,
-					res,
-				)
-			}
-		} else {
-			if hasTest {
-				var srcs []string
-				for _, tf := range javaFilenames {
-					srcs = append(srcs, strings.TrimPrefix(tf.path, args.Rel+"/"))
-				}
-
-				javaTestSuite(
-					filepath.Base(args.Rel),
-					srcs,
-					packageNames,
-					imports,
-					res,
-				)
-			} else {
-				r := rule.NewRule("java_library", filepath.Base(args.Rel))
-				var srcs []string
-				for _, tf := range javaFilenames {
-					srcs = append(srcs, strings.TrimPrefix(tf.path, args.Rel+"/"))
-				}
-				r.SetAttr("srcs", srcs)
-				r.SetAttr("testonly", true)
-				r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
-				res.Gen = append(res.Gen, r)
-				libraryImports := imports.Clone()
-				libraryImports.AddAll(packageNames)
-				res.Imports = append(res.Imports, libraryImports.SortedSlice())
-			}
+			generateJavaLibrary(args.Rel, filepath.Base(args.Rel), srcs, packages.SortedSlice(), testJavaImports.SortedSlice(), true, &res)
 		}
 	}
+
+	allTestRelatedSrcs := testJavaFiles.Clone()
+	allTestRelatedSrcs.AddAll(testHelperJavaFiles)
+
+	if allTestRelatedSrcs.Len() > 0 {
+		switch cfg.TestMode() {
+		case "file":
+			for _, tf := range testJavaFiles.SortedSlice() {
+				generateJavaTest(args.Rel, tf, isModule, testJavaImportsWithHelpers, &res)
+			}
+
+		case "suite":
+			packageNames := sorted_set.NewSortedSet([]string{})
+			for _, tf := range allTestRelatedSrcs.SortedSlice() {
+				packageNames.Add(tf.pkg)
+			}
+
+			suiteName := filepath.Base(args.Rel)
+			if isModule {
+				suiteName += "-tests"
+			}
+
+			srcs := make([]string, 0, allTestRelatedSrcs.Len())
+			for _, src := range allTestRelatedSrcs.SortedSlice() {
+				srcs = append(srcs, strings.TrimPrefix(src.pathRelativeToBazelWorkspaceRoot, args.Rel+"/"))
+			}
+			generateJavaTestSuite(
+				suiteName,
+				srcs,
+				packageNames,
+				testJavaImportsWithHelpers,
+				&res,
+			)
+		}
+	}
+
+	for i := 0; i < len(res.Gen); i++ {
+		log.Debug().Fields(map[string]interface{}{
+			"idx":     i,
+			"rule":    fmt.Sprintf("%#v", res.Gen[i]),
+			"imports": fmt.Sprintf("%#v", res.Imports[i]),
+		}).Msg("generate return")
+	}
+
+	return res
 }
 
-func makeSingleJavaTest(f javaFile, testutilPackageNames *sorted_set.SortedSet[string], imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
-	testName := strings.TrimSuffix(f.path, ".java")
+func generateJavaLibrary(pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []string, imports []string, testonly bool, res *language.GenerateResult) {
+	r := rule.NewRule("java_library", name)
+
+	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
+	for _, src := range srcsRelativeToBazelWorkspace {
+		srcs = append(srcs, strings.TrimPrefix(src, pathToPackageRelativeToBazelWorkspace+"/"))
+	}
+	sort.Strings(srcs)
+
+	r.SetAttr("srcs", srcs)
+	if testonly {
+		r.SetAttr("testonly", true)
+	} else {
+		r.SetAttr("visibility", []string{"//:__subpackages__"})
+	}
+	r.SetPrivateAttr(packagesKey, packages)
+	res.Gen = append(res.Gen, r)
+	res.Imports = append(res.Imports, imports)
+}
+
+func generateJavaBinary(m main, libName string, res *language.GenerateResult) {
+	r := rule.NewRule("java_binary", m.className) // FIXME check collision on name
+	r.SetAttr("main_class", m.pkg+"."+m.className)
+	r.SetAttr("runtime_deps", []string{":" + libName})
+	r.SetAttr("visibility", []string{"//visibility:public"})
+	res.Gen = append(res.Gen, r)
+	res.Imports = append(res.Imports, []string{})
+}
+
+func generateJavaTest(pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
+	className := strings.TrimSuffix(filepath.Base(f.pathRelativeToBazelWorkspaceRoot), ".java")
+	fullyQualifiedTestClass := f.pkg + "." + className
+	var testName string
+	if includePackageInName {
+		testName = strings.ReplaceAll(fullyQualifiedTestClass, ".", "_")
+	} else {
+		testName = className
+	}
 	r := rule.NewRule("java_test", testName)
-	r.SetAttr("srcs", []string{f.path})
-	r.SetAttr("test_class", f.pkg+"."+testName)
+	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
+	r.SetAttr("srcs", []string{path})
+	r.SetAttr("test_class", fullyQualifiedTestClass)
 	r.SetPrivateAttr(packagesKey, []string{f.pkg})
 
 	res.Gen = append(res.Gen, r)
 	testImports := imports.Clone()
 	testImports.Add(f.pkg)
-	testImports.AddAll(testutilPackageNames)
 	res.Imports = append(res.Imports, testImports.SortedSlice())
 }
 
@@ -423,7 +355,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func javaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
+func generateJavaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
 	r := rule.NewRule("java_test_suite", name)
 	r.SetAttr("srcs", srcs)
 	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())

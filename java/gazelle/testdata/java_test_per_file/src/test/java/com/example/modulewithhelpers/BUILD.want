@@ -2,6 +2,7 @@ load("@rules_java//java:defs.bzl", "java_library", "java_test")
 
 java_library(
     name = "modulewithhelpers",
+    testonly = True,
     srcs = [
         "Helper.java",
         "withdirectory/Helper.java",
@@ -16,16 +17,17 @@ java_library(
         "org.junit.Test", # TODO: per-file tests should have per-test imports, excluding this one
     ],
     _java_packages = [
-        "com.example.modulewithhelpers",
-        "com.example.modulewithhelpers.withdirectory",
+        "_TESTONLY!com.example.modulewithhelpers",
+        "_TESTONLY!com.example.modulewithhelpers.withdirectory",
     ],
-    visibility = ["//:__subpackages__"],
 )
 
 java_test(
     name = "com_example_modulewithhelpers_AppTest",
     srcs = ["AppTest.java"],
     _gazelle_imports = [
+        "_TESTONLY!com.example.modulewithhelpers",
+        "_TESTONLY!com.example.modulewithhelpers.withdirectory",
         "com.example.modulewithhelpers",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
@@ -43,6 +45,8 @@ java_test(
     name = "com_example_modulewithhelpers_withdirectory_AnotherTest",
     srcs = ["withdirectory/AnotherTest.java"],
     _gazelle_imports = [
+        "_TESTONLY!com.example.modulewithhelpers",
+        "_TESTONLY!com.example.modulewithhelpers.withdirectory",
         "com.example.modulewithhelpers.withdirectory",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one

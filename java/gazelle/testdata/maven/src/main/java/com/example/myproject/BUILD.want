@@ -1,5 +1,13 @@
 load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 
+java_binary(
+    name = "App",
+    _gazelle_imports = [],
+    main_class = "com.example.myproject.App",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":myproject"],
+)
+
 java_library(
     name = "myproject",
     srcs = ["App.java"],
@@ -10,12 +18,4 @@ java_library(
     ],
     _java_packages = ["com.example.myproject"],
     visibility = ["//:__subpackages__"],
-)
-
-java_binary(
-    name = "App",
-    _gazelle_imports = [],
-    main_class = "com.example.myproject.App",
-    visibility = ["//visibility:public"],
-    runtime_deps = [":myproject"],
 )

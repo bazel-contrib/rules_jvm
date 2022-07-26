@@ -80,7 +80,7 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 
 	absRepoRoot, err := filepath.Abs(c.RepoRoot)
 	if err != nil {
-		t.Fatalf("error getting absolute path for workspace")
+		t.Fatalf("error getting absolute pathRelativeToBazelWorkspaceRoot for workspace")
 	}
 	c.RepoRoot = absRepoRoot
 

@@ -5,7 +5,7 @@ import (
 )
 
 // SortedSet is a Set whose elements are traversable in sorted ordered.
-type SortedSet[T btree.Ordered] struct {
+type SortedSet[T any] struct {
 	tree *btree.BTreeG[T]
 }
 
@@ -16,6 +16,18 @@ const degree int = 2
 func NewSortedSet[T btree.Ordered](in []T) *SortedSet[T] {
 	ss := &SortedSet[T]{
 		tree: btree.NewOrderedG[T](degree),
+	}
+	for _, v := range in {
+		ss.Add(v)
+	}
+	return ss
+}
+
+// NewSortedSetFn makes a SortedSet of the elements in the passed slice.
+// The original slice is not modified.
+func NewSortedSetFn[T any](in []T, less btree.LessFunc[T]) *SortedSet[T] {
+	ss := &SortedSet[T]{
+		tree: btree.NewG[T](degree, less),
 	}
 	for _, v := range in {
 		ss.Add(v)
@@ -64,11 +76,11 @@ func (s *SortedSet[T]) AddAll(other *SortedSet[T]) {
 // which the passed predicate evaluates true.
 func (s *SortedSet[T]) Filter(predicate func(T) bool) *SortedSet[T] {
 	new := &SortedSet[T]{
-		tree: btree.NewOrderedG[T](degree),
+		tree: s.tree.Clone(),
 	}
 	s.tree.Ascend(func(v T) bool {
-		if predicate(v) {
-			new.Add(v)
+		if !predicate(v) {
+			new.tree.Delete(v)
 		}
 		return true
 	})

@@ -1,6 +1,14 @@
 load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
+java_binary(
+    name = "Hello",
+    _gazelle_imports = [],
+    main_class = "com.example.hello.Hello",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":module1"],
+)
+
 java_library(
     name = "module1",
     srcs = [
@@ -20,13 +28,6 @@ java_library(
         "com.example.hello.world",
     ],
     visibility = ["//:__subpackages__"],
-)
-
-java_binary(
-    name = "Hello",
-    _gazelle_imports = [],
-    main_class = "com.example.hello.Hello",
-    runtime_deps = [":module1"],
 )
 
 java_test_suite(

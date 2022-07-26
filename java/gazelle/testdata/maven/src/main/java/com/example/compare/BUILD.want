@@ -1,5 +1,13 @@
 load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 
+java_binary(
+    name = "Compare",
+    _gazelle_imports = [],
+    main_class = "com.example.compare.Compare",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":compare"],
+)
+
 java_library(
     name = "compare",
     srcs = ["Compare.java"],
@@ -10,12 +18,4 @@ java_library(
     ],
     _java_packages = ["com.example.compare"],
     visibility = ["//:__subpackages__"],
-)
-
-java_binary(
-    name = "Compare",
-    _gazelle_imports = [],
-    main_class = "com.example.compare.Compare",
-    visibility = ["//visibility:public"],
-    runtime_deps = [":compare"],
 )
