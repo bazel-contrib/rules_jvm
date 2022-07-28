@@ -1,7 +1,7 @@
 package com.example.hello;
 
-import com.example.hello.DeleteBookRequest;
-import com.example.hello.HelloProto;
+import com.example.hello.proto.DeleteBookRequest;
+import com.example.hello.proto.HelloProto;
 
 public class Hello {
     public static void main(String[] args) {
