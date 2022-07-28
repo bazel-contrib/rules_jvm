@@ -99,6 +99,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
 
+	if len(javaFilenamesRelativeToPackage) == 0 {
+		if !isModule || !cfg.IsModuleRoot() {
+			return res
+		}
+	}
+
 	sort.Strings(javaFilenamesRelativeToPackage)
 
 	javaPkg, err := l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
