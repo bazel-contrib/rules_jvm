@@ -230,12 +230,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		return true
 	})
 
-	for _, m := range allMains {
-		generateJavaBinary(m, filepath.Base(args.Rel), &res)
-	}
-
 	if productionJavaFiles.Len() > 0 {
 		generateJavaLibrary(args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
+	}
+
+	for _, m := range allMains {
+		generateJavaBinary(m, filepath.Base(args.Rel), &res)
 	}
 
 	// We add special packages to point to testonly libraries which - this accumulates them,
