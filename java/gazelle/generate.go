@@ -154,9 +154,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				continue
 			}
 			allPackageNames.Add(mJavaPkg.Name)
-			productionJavaImports.AddAll(mJavaPkg.Imports)
 
 			if !mJavaPkg.TestPackage {
+				productionJavaImports.AddAll(mJavaPkg.Imports)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
@@ -167,13 +167,13 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					})
 				}
 			} else {
+				testJavaImports.AddAll(mJavaPkg.Imports)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
 						pathRelativeToBazelWorkspaceRoot: path,
 						pkg:                              mJavaPkg.Name,
 					}
-					testJavaImports.AddAll(mJavaPkg.Imports)
 					if maven.IsTestFile(filepath.Base(f)) {
 						testJavaFiles.Add(file)
 					} else {

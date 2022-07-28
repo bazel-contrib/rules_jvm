@@ -10,10 +10,6 @@ java_library(
     _gazelle_imports = [
         "com.example.hello.notworld.NotWorld",
         "java.lang.String",
-        "org.hamcrest.MatcherAssert",
-        "org.hamcrest.Matchers",
-        "org.junit.Assert",
-        "org.junit.jupiter.api.Test",
     ],
     _java_packages = [
         "com.example.hello",
