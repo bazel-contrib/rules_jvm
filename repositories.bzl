@@ -57,6 +57,7 @@ def contrib_rules_jvm_deps():
 
 def contrib_rules_jvm_gazelle_deps():
     maybe(
+        http_archive,
         name = "bazel_gazelle",
         sha256 = "501deb3d5695ab658e82f6f6f549ba681ea3ca2a5fb7911154b5aa45596183fa",
         urls = [
