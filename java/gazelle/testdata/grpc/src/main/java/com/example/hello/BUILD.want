@@ -4,8 +4,8 @@ java_library(
     name = "hello",
     srcs = ["hello.java"],
     _gazelle_imports = [
-        "com.example.hello.DeleteBookRequest",
-        "com.example.hello.HelloProto",
+        "com.example.hello.proto.DeleteBookRequest",
+        "com.example.hello.proto.HelloProto",
         "java.lang.String",
     ],
     _java_packages = ["com.example.hello"],

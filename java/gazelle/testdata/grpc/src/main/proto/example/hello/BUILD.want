@@ -25,7 +25,7 @@ java_grpc_library(
 java_library(
     name = "example_hello_java_library",
     _gazelle_imports = [],
-    _java_packages = ["com.example.hello"],
+    _java_packages = ["com.example.hello.proto"],
     visibility = ["//:__subpackages__"],
     exports = [
         ":example_hello_java_grpc",
