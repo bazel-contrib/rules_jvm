@@ -31,6 +31,7 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (jc *Configurer) KnownDirectives() []string {
 	return []string{
+		javaconfig.JavaExtensionDirective,
 		javaconfig.MavenInstallFile,
 		javaconfig.ModuleGranularityDirective,
 		javaconfig.TestMode,
