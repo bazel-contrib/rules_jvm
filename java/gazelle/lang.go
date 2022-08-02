@@ -98,6 +98,16 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 				"runtime_deps": true,
 			},
 		},
+		"java_proto_library": {
+			NonEmptyAttrs: map[string]bool{
+				"deps": true,
+				"srcs": true,
+			},
+			MergeableAttrs: map[string]bool{"srcs": true},
+			ResolveAttrs: map[string]bool{
+				"deps": true,
+			},
+		},
 	}
 }
 
