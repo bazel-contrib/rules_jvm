@@ -24,8 +24,20 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.PrimitiveTypeTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.util.JavacTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.lang.model.type.TypeKind;
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
 
 public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
@@ -34,6 +46,11 @@ public class ClasspathParser {
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
   private final JavaParser javaParser;
+
+  // get the system java compiler instance
+  private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+  private static final List<String> OPTIONS = List.of("--enable-preview", "--release=" + Runtime.version().feature());
+
 
   public ClasspathParser(JavaParser javaParser) {
     this.javaParser = javaParser;
@@ -178,6 +195,42 @@ public class ClasspathParser {
   private void parseFileGatherDependencies(Path classPath) {
     CompilationUnit cu;
     try {
+      var compUnits = compiler.
+              getStandardFileManager(null, null, null).
+              getJavaFileObjects(classPath.toString());
+      var task = (JavacTask) compiler.getTask(null, null, null,
+              OPTIONS, null, compUnits);
+      for (var compileUnitTree : task.parse()) {
+        // Get the Package for this class
+        logger.debug ("JavaTools: Got package for class: {}", compileUnitTree.getPackage().getPackageName());
+
+        // Get list of imports for this class
+        for (var imports : compileUnitTree.getImports()) {
+          logger.debug("JavaTools: found import static {}: {}", imports.isStatic(), imports.getQualifiedIdentifier().toString());
+        }
+        // Get list of fully qualified class or interface names - TODO
+
+        // Check for main function in this class.
+        for (var typeDecls : compileUnitTree.getTypeDecls()) {
+          ClassTree classDecl = (ClassTree) typeDecls;
+          var className = classDecl.getSimpleName();
+          for (var membersDecls : classDecl.getMembers()) {
+            if (membersDecls.getKind() == Tree.Kind.METHOD) {
+              var method = (MethodTree)membersDecls;
+              if (method.getModifiers().getFlags().containsAll(Set.of(PUBLIC, STATIC)) &&
+                      ((PrimitiveTypeTree)method.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID &&
+                      method.getName().toString().equals("main")) {
+                logger.debug("JavaTools found main: {} -- {} -- {}", className, method.getModifiers().getFlags(), method.getName());
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception exception) {
+      logger.error ("JavaTools failed to parse {}, skipping file", classPath);
+    }
+
+    try {
       ParseResult<CompilationUnit> result = this.javaParser.parse(classPath);
       if (result.isSuccessful()) {
         cu = result.getResult().get();
@@ -193,4 +246,5 @@ public class ClasspathParser {
     parsePackages(cu);
     findMainMethods(cu);
   }
+
 }
