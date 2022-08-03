@@ -1,0 +1,24 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+java_test_suite(
+    name = "justhelpers-tests",
+    srcs = [
+        "Helper.java",
+        "withdirectory/Helper.java",
+    ],
+    _gazelle_imports = [
+        "com.example.hello.notworld.justhelpers",
+        "com.example.hello.notworld.justhelpers.withdirectory",
+        "java.lang.String",
+    ],
+    _java_packages = [
+        "com.example.hello.notworld.justhelpers",
+        "com.example.hello.notworld.justhelpers.withdirectory",
+    ],
+    runner = "junit5",
+    runtime_deps = [
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven//:org_junit_platform_junit_platform_launcher",
+        "@maven//:org_junit_platform_junit_platform_reporting",
+    ],
+)

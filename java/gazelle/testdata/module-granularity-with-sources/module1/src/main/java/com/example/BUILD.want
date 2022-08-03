@@ -20,5 +20,6 @@ java_binary(
     name = "Hello",
     _gazelle_imports = [],
     main_class = "com.example.hello.Hello",
+    visibility = ["//visibility:public"],
     runtime_deps = [":example"],
 )
