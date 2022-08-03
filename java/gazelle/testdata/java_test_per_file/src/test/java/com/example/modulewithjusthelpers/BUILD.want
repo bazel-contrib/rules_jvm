@@ -1,0 +1,15 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "modulewithjusthelpers",
+    testonly = True,
+    srcs = [
+        "Helper.java",
+        "withdirectory/Helper.java",
+    ],
+    _gazelle_imports = ["com.google.common.math.IntMath"],
+    _java_packages = [
+        "_TESTONLY!com.example.modulewithjusthelpers",
+        "_TESTONLY!com.example.modulewithjusthelpers.withdirectory",
+    ],
+)

@@ -3,14 +3,10 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "generators",
     srcs = [
-        "BuildFileVisitor.java",
         "ClasspathParser.java",
         "GrpcServer.java",
         "JavaIdentifier.java",
-        "KnownTypeSolvers.java",
         "Main.java",
-        "PackageDependencies.java",
-        "PackageParser.java",
     ],
     visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
     runtime_deps = [
@@ -19,10 +15,7 @@ java_library(
     ],
     deps = [
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_java_library",
-        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/file",
-        "@contrib_rules_jvm_deps//:com_github_javaparser_javaparser_core",
-        "@contrib_rules_jvm_deps//:com_github_javaparser_javaparser_symbol_solver_core",
-        "@contrib_rules_jvm_deps//:com_google_code_gson_gson",
+        "@contrib_rules_jvm_deps//:com_google_code_findbugs_jsr305",
         "@contrib_rules_jvm_deps//:com_google_guava_guava",
         "@contrib_rules_jvm_deps//:commons_cli_commons_cli",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_api",

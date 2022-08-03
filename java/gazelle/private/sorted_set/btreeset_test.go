@@ -203,6 +203,43 @@ func TestClone(t *testing.T) {
 	}
 }
 
+func TestCloneCustomComparator(t *testing.T) {
+	s := ss.NewSortedSetFn([]string{"cheese", "onions"}, func(l, r string) bool {
+		// Reverse order
+		return l > r
+	})
+	s2 := s.Clone()
+
+	{
+		want1 := []string{"onions", "cheese"}
+		got1 := s.SortedSlice()
+		want2 := []string{"onions", "cheese"}
+		got2 := s2.SortedSlice()
+		if !reflect.DeepEqual(want1, got1) {
+			t.Errorf("want %v got %v", want1, got1)
+		}
+		if !reflect.DeepEqual(want2, got2) {
+			t.Errorf("want %v got %v", want2, got2)
+		}
+	}
+
+	s.Add("brie")
+	s2.Add("cheddar")
+
+	{
+		want1 := []string{"onions", "cheese", "brie"}
+		got1 := s.SortedSlice()
+		want2 := []string{"onions", "cheese", "cheddar"}
+		got2 := s2.SortedSlice()
+		if !reflect.DeepEqual(want1, got1) {
+			t.Errorf("want %v got %v", want1, got1)
+		}
+		if !reflect.DeepEqual(want2, got2) {
+			t.Errorf("want %v got %v", want2, got2)
+		}
+	}
+}
+
 func TestAddAll(t *testing.T) {
 	s := ss.NewSortedSet([]string{"cheese", "onions"})
 	s2 := ss.NewSortedSet([]string{"brie", "cheese", "cheddar"})
@@ -230,6 +267,29 @@ func TestFilter(t *testing.T) {
 	}
 
 	want2 := []string{"cheddar", "cheese"}
+	got2 := s2.SortedSlice()
+	if !reflect.DeepEqual(want2, got2) {
+		t.Errorf("want %v got %v", want2, got2)
+	}
+}
+
+func TestFilterCustomComparator(t *testing.T) {
+	s := ss.NewSortedSetFn([]string{"brie", "cheese", "cheddar", "onions"}, func(l, r string) bool {
+		// Reverse order
+		return l > r
+	})
+
+	s2 := s.Filter(func(v string) bool {
+		return strings.HasPrefix(v, "c")
+	})
+
+	want1 := []string{"onions", "cheese", "cheddar", "brie"}
+	got1 := s.SortedSlice()
+	if !reflect.DeepEqual(want1, got1) {
+		t.Errorf("want %v got %v", want1, got1)
+	}
+
+	want2 := []string{"cheese", "cheddar"}
 	got2 := s2.SortedSlice()
 	if !reflect.DeepEqual(want2, got2) {
 		t.Errorf("want %v got %v", want2, got2)

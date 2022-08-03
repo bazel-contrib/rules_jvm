@@ -1,0 +1,50 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+java_library(
+    name = "hashelpers",
+    testonly = True,
+    srcs = ["Helper.java"],
+    _gazelle_imports = [
+        "com.example.myproject.App", # TODO: per-file tests should have per-test imports, excluding this one
+        "com.google.common.math.IntMath",
+        "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Test", # TODO: per-file tests should have per-test imports, excluding this one
+    ],
+    _java_packages = ["_TESTONLY!com.example.hashelpers"],
+)
+
+java_test(
+    name = "AppTest",
+    srcs = ["AppTest.java"],
+    _gazelle_imports = [
+        "_TESTONLY!com.example.hashelpers",
+        "com.example.hashelpers",
+        "com.example.myproject.App",
+        "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Assert",
+        "org.junit.Test",
+    ],
+    _java_packages = ["com.example.hashelpers"],
+    test_class = "com.example.hashelpers.AppTest",
+)
+
+java_test(
+    name = "OtherAppTest",
+    srcs = ["OtherAppTest.java"],
+    _gazelle_imports = [
+        "_TESTONLY!com.example.hashelpers",
+        "com.example.hashelpers",
+        "com.example.myproject.App",
+        "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.hamcrest.MatcherAssert",
+        "org.hamcrest.Matchers",
+        "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
+        "org.junit.Test",
+    ],
+    _java_packages = ["com.example.hashelpers"],
+    test_class = "com.example.hashelpers.OtherAppTest",
+)

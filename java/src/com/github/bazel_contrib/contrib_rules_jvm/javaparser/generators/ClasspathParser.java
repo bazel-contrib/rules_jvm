@@ -1,49 +1,35 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParseProblemException;
-import com.github.javaparser.ParseResult;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.ImportDeclaration;
-import com.github.javaparser.ast.PackageDeclaration;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.type.ArrayType;
-import com.github.javaparser.ast.type.ClassOrInterfaceType;
-import com.github.javaparser.resolution.UnsolvedSymbolException;
-import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
-import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
+import com.google.common.collect.Lists;
+import com.sun.source.tree.ArrayTypeTree;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.PackageTree;
+import com.sun.source.tree.ParameterizedTypeTree;
+import com.sun.source.tree.PrimitiveTypeTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreeScanner;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.util.HashSet;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import com.sun.source.tree.ClassTree;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.ImportTree;
-import com.sun.source.tree.MethodTree;
-import com.sun.source.tree.PrimitiveTypeTree;
-import com.sun.source.tree.Tree;
-import com.sun.source.util.JavacTask;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import javax.annotation.Nullable;
 import javax.lang.model.type.TypeKind;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
@@ -51,14 +37,14 @@ public class ClasspathParser {
   private final Set<String> usedTypes = new TreeSet<>();
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
-  private final JavaParser javaParser;
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-  private static final List<String> OPTIONS = List.of("--enable-preview", "--release=" + Runtime.version().feature());
+  private static final List<String> OPTIONS =
+      List.of("--release=" + Runtime.version().feature());
 
-  public ClasspathParser(JavaParser javaParser) {
-    this.javaParser = javaParser;
+  public ClasspathParser() {
+    // Doesn't need to do anything currently
   }
 
   public Set<String> getUsedTypes() {
@@ -73,210 +59,149 @@ public class ClasspathParser {
     return mainClasses;
   }
 
-  public void parseClasses(String srcs, Path workspace) throws IOException {
-    String pattern = workspace.toString() + "/" + srcs;
-    logger.debug("Pattern: {}", pattern);
-    PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
-    try (Stream<Path> paths =
-        Files.find(workspace, Integer.MAX_VALUE, (path, f) -> pathMatcher.matches(path))) {
-      paths
-          .peek(path -> logger.debug("processing {}", path))
-          .forEach(this::parseFileGatherDependencies);
-    }
-  }
-
-  public void parseClasses(Path workspace, Path directory, List<String> files) {
-    files.stream()
-        .map(filename -> workspace.resolve(directory).resolve(filename))
-        .forEach(this::parseFileGatherDependencies);
-  }
-
-  private void parsePackages(CompilationUnit cu) {
-    packages.addAll(
-        cu.findAll(PackageDeclaration.class).stream()
-            .map(PackageDeclaration::getNameAsString)
-            .collect(Collectors.toList()));
-  }
-
-  //.filter(Dog.class::isInstance)
-  //                      .map(Dog.class::cast)
-
-  private void findMainMethods(CompilationUnitTree compileUnitTree) {
-    // Check for main function in this class.
-    for (Tree typeDecls : compileUnitTree.getTypeDecls()) {
-      ClassTree classDecl = (ClassTree) typeDecls;
-      String className = classDecl.getSimpleName().toString();
-      List<String> mains = classDecl.getMembers().stream()
-              .filter(m -> m.getKind() == Tree.Kind.METHOD)
-              .map(MethodTree.class::cast)
-              .filter(m -> m.getModifiers().getFlags().containsAll(Set.of(PUBLIC, STATIC)))
-              .filter(m -> m.getName().toString().equals("main"))
-              .filter(m -> (m.getReturnType() instanceof PrimitiveTypeTree &&
-                      ((PrimitiveTypeTree)m.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID ))
-              .map(m -> m.getName().toString())
-              .collect(Collectors.toList());
-
-        if (!mains.isEmpty()) {
-          mainClasses.add(className);
-      }
-    }
-  }
-  private void findMainMethods(CompilationUnit cu) {
-    List<String> mains =
-        cu.findAll(MethodDeclaration.class).stream()
-            .filter(MethodDeclaration::isStatic)
-            .filter(MethodDeclaration::isPublic)
-            .filter(m -> m.getType().isVoidType())
-            .filter(m -> m.getNameAsString().equals("main"))
-            .map(m -> ((ClassOrInterfaceDeclaration) m.getParentNode().get()).getNameAsString())
+  public void parseClasses(Path directory, List<String> files) throws IOException {
+    StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+    List<? extends JavaFileObject> objectFiles = files.stream()
+        .map(directory::resolve)
+        .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
+            .map(Lists::newArrayList)
+            .flatMap(List::stream)
             .collect(Collectors.toList());
-    if (!mains.isEmpty()) {
-      mainClasses.addAll(mains);
+    // This happens when Gazelle is run in module mode, it wants to process the module level directory, which would not
+    // have any files. This is not an error, and should just be skipped. The IOException is caught the next level up,
+    // logged, and ignored.
+    if (objectFiles.isEmpty()) {
+      logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
+      throw new IOException("No files to process");
+    }
+    parseFileGatherDependencies(objectFiles);
+  }
+
+  public void parseClasses(List<? extends JavaFileObject> files) throws IOException{
+    this.parseFileGatherDependencies(files);
+  }
+
+  private void parseFileGatherDependencies(Iterable<? extends JavaFileObject> compUnits) throws IOException {
+    JavacTask task = (JavacTask) compiler.getTask(null, null, null, OPTIONS, null, compUnits);
+    try {
+      ClassScanner scanner = new ClassScanner();
+      for (CompilationUnitTree compileUnitTree : task.parse()) {
+        compileUnitTree.accept(scanner, null);
+      }
+    } catch (IOException ioException) {
+      logger.error("JavaTools unable to read file(s)", ioException);
+      throw ioException;
+    } catch (Exception exception) {
+      logger.error("JavaTools failed to parse {}, skipping file", compUnits, exception);
     }
   }
 
-  private void parseImports(CompilationUnitTree compileUnitTree) {
-    for (ImportTree compileImport : compileUnitTree.getImports()) {
-      logger.debug("JavaTools: found import static {}: {}", compileImport.isStatic(), compileImport.getQualifiedIdentifier());
-      String name = compileImport.getQualifiedIdentifier().toString();
-      if (compileImport.isStatic()) {
+  class ClassScanner extends TreeScanner<Void, Void> {
+    private CompilationUnitTree compileUnit;
+    private String fileName;
+    @Nullable private String currentClassName;
+
+    @Override
+    public Void visitCompilationUnit(CompilationUnitTree t, Void v) {
+      compileUnit = t;
+      fileName = Paths.get(compileUnit.getSourceFile().toUri().getPath()).getFileName().toString();
+      currentClassName = null;
+      return super.visitCompilationUnit(t, v);
+    }
+
+    @Override
+    public Void visitPackage(PackageTree p, Void v) {
+      logger.debug("JavaTools: Got package {} for class: {}", p.getPackageName(), fileName);
+      packages.add(p.getPackageName().toString());
+      return super.visitPackage(p, v);
+    }
+
+    /*
+    This code needs to return "package.class" to match what the java/gazelle/private/java/imports.go
+    expects. The imports code splits the string into package and class.
+    There are two corner cases here:
+    Wildcard imports: here we strip the ".*" off the end, matching what the import.go does. Essentially a package
+    without a class.
+    Static import: The assumption here is they are of the form "import package.class.name" so we strip the ".name" from
+    the import to return just the "package.class" as expected.
+     */
+    @Override
+    public Void visitImport(ImportTree i, Void v) {
+      logger.debug(
+          "JavaTools: found import static {}: {}", i.isStatic(), i.getQualifiedIdentifier());
+      String name = i.getQualifiedIdentifier().toString();
+      if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         usedTypes.add(staticPackage);
+      } else if (name.endsWith("*")) {
+        String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
+        usedTypes.add(wildcardPackage);
       } else {
         usedTypes.add(name);
       }
+      return super.visitImport(i, v);
     }
-  }
 
-  private void parseImports(CompilationUnit cu) {
-    // IMPORTS : Checking the imports
-    cu.findAll(ImportDeclaration.class)
-        .forEach(
-            id -> {
-              String name = id.getNameAsString();
-              if (id.isAsterisk()) {
-                logger.debug("Handling wildcard import: {} to package {}", id, name);
-                usedTypes.add(name);
-              } else if (id.isStatic()) {
-                String staticPackage = name.substring(0, name.lastIndexOf('.'));
-                usedTypes.add(staticPackage);
-              } else {
-                usedTypes.add(name);
-              }
-            });
-  }
-
-  private void parseClasses(CompilationUnit cu) {
-    Set<ClassOrInterfaceType> visited = new HashSet<>();
-
-    // CLASSES : Checking the fully qualified class or interface names
-    cu.findAll(ClassOrInterfaceType.class)
-        .forEach(
-            coit -> {
-              if (visited.contains(coit)) {
-                return;
-              }
-              ResolvedReferenceTypeDeclaration type;
-              String typeName = null;
-              if (!Character.isUpperCase(coit.getName().asString().charAt(0))) {
-                logger.trace(
-                    "Working on {} and thinking this is a package, so skipping",
-                    coit.getName().asString());
-              } else if (coit.isArrayType()) {
-                ArrayType arrayTyoe = coit.asArrayType();
-                type =
-                    arrayTyoe
-                        .resolve()
-                        .getComponentType()
-                        .asReferenceType()
-                        .getTypeDeclaration()
-                        .get();
-                typeName = type.getQualifiedName();
-              } else {
-                try {
-                  ResolvedReferenceType ref = coit.resolve();
-                  type = ref.getTypeDeclaration().get();
-                  typeName = type.getQualifiedName();
-                } catch (UnsolvedSymbolException exception) {
-                  logger.trace(
-                      "Working on class {} And unable to find: {} -" + " Continuing",
-                      cu.getPrimaryTypeName().get(),
-                      exception.getName());
-                } catch (UnsupportedOperationException exception) {
-                  // The ResolvedReferenceType is the generics for some classes,
-                  // which the system
-                  // can not resolve
-                  // begin generic. We're not alerting on this, but skipping and
-                  // assuming we don't
-                  // need to resolve
-                  // the generic type reference by applying a dependency.
-                  if (exception.getMessage().contains("CorrespondingDeclaration")) {
-                    logger.debug(
-                        "Working on classes from {} - {}\n"
-                            + " unable to find generic  - Continuing",
-                        cu.getPrimaryTypeName().get(),
-                        coit.getName());
-                  } else if (!exception.getMessage().contains("ResolvedReferenceType")) {
-                    logger.error(
-                        "Working on classes from {} - {}\n" + " Caught exception :",
-                        cu.getPrimaryTypeName().get(),
-                        coit.getName(),
-                        exception);
-                    throw exception;
-                  }
-                }
-              }
-              if (typeName != null) {
-                usedTypes.add(typeName);
-              }
-              visited.add(coit);
-            });
-  }
-
-  private void parseFileGatherDependencies(Path classPath) {
-    CompilationUnit cu;
-
-    try {
-      logger.debug("JavaTools: Parsing file {}", classPath.toAbsolutePath());
-      Iterable<? extends JavaFileObject> compUnits = compiler.
-              getStandardFileManager(null, null, null).
-              getJavaFileObjects(classPath.toString());
-      SimpleJavaFileObject javaSource = new SimpleJavaFileObject()
-      JavacTask task = (JavacTask) compiler.getTask(null, null, null,
-              OPTIONS, null, compUnits);
-      for (CompilationUnitTree compileUnitTree : task.parse()) {
-        // Get the Package for this class
-        logger.debug ("JavaTools: Got package for class: {}", compileUnitTree.getPackage().getPackageName());
-        packages.add(compileUnitTree.getPackage().getPackageName().toString());
-
-
-        // Get list of imports for this class
-        parseImports(compileUnitTree);
-
-        // Get list of fully qualified class or interface names - TODO
-
-        // Check for main function in this class.
-        findMainMethods(compileUnitTree);
+    @Override
+    public Void visitClass(ClassTree t, Void v) {
+      // Set class name for the top level classes only
+      if (currentClassName == null) {
+        currentClassName = t.getSimpleName().toString();
       }
-    } catch (Exception exception) {
-      logger.error ("JavaTools failed to parse {}, skipping file", classPath);
+      return super.visitClass(t, v);
     }
 
-    try {
-      ParseResult<CompilationUnit> result = this.javaParser.parse(classPath);
-      if (result.isSuccessful()) {
-        cu = result.getResult().get();
-      } else {
-        throw new ParseProblemException(result.getProblems());
+    @Override
+    public Void visitMethod(com.sun.source.tree.MethodTree m, Void v) {
+      boolean isVoidReturn = false;
+
+      // Check the return type on the method.
+      // void -> May be a main method
+      // Identifier or Member Select -> May be a fully qualified name and needs to be included in
+      // the types list
+      if (m.getReturnType() != null
+          && m.getReturnType().getKind() == Tree.Kind.PRIMITIVE_TYPE
+          && ((PrimitiveTypeTree) m.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID) {
+        isVoidReturn = true;
+      } else if (m.getReturnType() != null) {
+        checkFullyQualifiedType(m.getReturnType());
       }
-    } catch (IOException exception) {
-      logger.warn("Unable to parse {}. Skipping File", classPath);
-      return;
-    }
-    //parseImports(cu);
-    parseClasses(cu);
-    //parsePackages(cu);
-    //findMainMethods(cu);
-  }
 
+      // Check to see if we have a main method
+      if (m.getName().toString().equals("main")
+          && m.getModifiers().getFlags().containsAll(Set.of(STATIC, PUBLIC))
+          && isVoidReturn) {
+        logger.debug("JavaTools: Found main method for {}", currentClassName);
+        mainClasses.add(currentClassName);
+      }
+
+      // Check the parameters for the method
+      // Identifier or Member Select -> May be a fully qualifyed type name
+      // Parameterized Type -> The generics values may be qualified.
+      // Arry -> The array may be a fully qul
+      for (VariableTree param : m.getParameters()) {
+        checkFullyQualifiedType(param.getType());
+      }
+      return super.visitMethod(m, v);
+    }
+
+    private void checkFullyQualifiedType(Tree identifier) {
+      if (identifier.getKind() == Tree.Kind.IDENTIFIER
+          || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
+        String typeName = identifier.toString();
+        if (typeName.contains(".")) {
+          usedTypes.add(typeName);
+        }
+      } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
+        Tree baseType = ((ParameterizedTypeTree) identifier).getType();
+        checkFullyQualifiedType(baseType);
+        ((ParameterizedTypeTree) identifier)
+            .getTypeArguments()
+            .forEach(this::checkFullyQualifiedType);
+      } else if (identifier.getKind() == Tree.Kind.ARRAY_TYPE) {
+        Tree baseType = ((ArrayTypeTree) identifier).getType();
+        checkFullyQualifiedType(baseType);
+      }
+    }
+  }
 }

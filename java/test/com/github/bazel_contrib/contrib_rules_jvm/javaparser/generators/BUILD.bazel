@@ -8,8 +8,9 @@ java_test_suite(
     srcs = [
         "ClasspathParserTest.java",
         "JavaIdentifierTest.java",
-        "KnownTypeSolversTest.java",
-        "PackageDependenciesTest.java",
+    ],
+    jvm_flags = [
+        "-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG",
     ],
     resource_strip_prefix = "java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators",
     resources = [

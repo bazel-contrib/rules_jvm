@@ -10,47 +10,78 @@ import (
 
 func TestSingleJavaTestFile(t *testing.T) {
 	f := javaFile{
-		path: "FooTest.java",
-		pkg:  "com.example",
+		pathRelativeToBazelWorkspaceRoot: "FooTest.java",
+		pkg:                              "com.example",
 	}
 	type testCase struct {
-		imports     []string
-		wantImports []string
-
-		wantDeps []string
+		includePackageInName bool
+		imports              []string
+		wantImports          []string
+		wantDeps             []string
 	}
 
 	for name, tc := range map[string]testCase{
-		"no imports no helpers": {
-			imports:     nil,
-			wantImports: []string{"com.example"},
-			wantDeps:    nil,
+		"no imports no helpers no package": {
+			includePackageInName: false,
+			imports:              nil,
+			wantImports:          []string{"com.example"},
+			wantDeps:             nil,
 		},
-		"some imports no helpers": {
-			imports:     []string{"io.netty"},
-			wantImports: []string{"io.netty", "com.example"},
-			wantDeps:    nil,
+		"some imports no helpers no package": {
+			includePackageInName: false,
+			imports:              []string{"io.netty"},
+			wantImports:          []string{"io.netty", "com.example"},
+			wantDeps:             nil,
 		},
-		"no imports some helpers": {
-			imports:     nil,
-			wantImports: []string{"com.example"},
-			wantDeps:    []string{":helper"},
+		"no imports some helpers no package": {
+			includePackageInName: false,
+			imports:              nil,
+			wantImports:          []string{"com.example"},
+			wantDeps:             []string{":helper"},
 		},
-		"some imports some helpers": {
-			imports:     []string{"io.netty"},
-			wantImports: []string{"io.netty", "com.example"},
+		"some imports some helpers no package": {
+			includePackageInName: false,
+			imports:              []string{"io.netty"},
+			wantImports:          []string{"io.netty", "com.example"},
+		},
+		"no imports no helpers yes package": {
+			includePackageInName: true,
+			imports:              nil,
+			wantImports:          []string{"com.example"},
+			wantDeps:             nil,
+		},
+		"some imports no helpers yes package": {
+			includePackageInName: true,
+			imports:              []string{"io.netty"},
+			wantImports:          []string{"io.netty", "com.example"},
+			wantDeps:             nil,
+		},
+		"no imports some helpers yes package": {
+			includePackageInName: true,
+			imports:              nil,
+			wantImports:          []string{"com.example"},
+			wantDeps:             []string{":helper"},
+		},
+		"some imports some helpers yes package": {
+			includePackageInName: true,
+			imports:              []string{"io.netty"},
+			wantImports:          []string{"io.netty", "com.example"},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			makeSingleJavaTest(f, sorted_set.NewSortedSet([]string{}), sorted_set.NewSortedSet(tc.imports), &res)
+			generateJavaTest("", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
 			rule := res.Gen[0]
 			require.Equal(t, "java_test", rule.Kind())
-			require.Equal(t, "FooTest", rule.AttrString("name"))
+			if tc.includePackageInName {
+				require.Equal(t, "com_example_FooTest", rule.AttrString("name"))
+			} else {
+				require.Equal(t, "FooTest", rule.AttrString("name"))
+			}
 			require.Equal(t, []string{"FooTest.java"}, rule.AttrStrings("srcs"))
 			require.Equal(t, "com.example.FooTest", rule.AttrString("test_class"))
 

@@ -1,0 +1,23 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_java//java:defs.bzl", "java_library", "java_proto_library")
+
+proto_library(
+    name = "example_hello_proto",
+    srcs = [
+        "book.proto",
+        "hello.proto",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["//example/hello:hello_proto"],
+)
+
+java_proto_library(
+    name = "example_hello_java_proto",
+    deps = [":example_hello_proto"],
+)
+
+java_library(
+    name = "example_hello_java_library",
+    visibility = ["//:__subpackages__"],
+    exports = [":example_hello_java_proto"],
+)
