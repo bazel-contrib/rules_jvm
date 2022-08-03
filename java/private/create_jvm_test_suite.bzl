@@ -72,19 +72,24 @@ def create_jvm_test_suite(
     nontest_srcs = [src for src in srcs if not _is_test(src, test_suffixes)]
 
     if nontest_srcs:
+        lib_dep_name = "%s-test-lib" % name
+        lib_dep_label = ":%s" % lib_dep_name
+        deps_for_library = [dep for dep in deps or [] if _absolutify(dep) != _absolutify(lib_dep_label)]
+
         # Build a shared test library to use for everything. If we don't do this,
         # each rule needs to compile all sources, and that seems grossly inefficient.
         # Only include the non-test sources since we don't want all tests to re-run
         # when only one test source changes.
         define_library(
-            name = "%s-test-lib" % name,
-            deps = deps,
+            name = lib_dep_name,
+            deps = deps_for_library,
             srcs = nontest_srcs,
             testonly = True,
             visibility = visibility,
             **library_attrs
         )
-        deps.append(":%s-test-lib" % name)
+        if not _contains_label(deps or [], lib_dep_label):
+            deps.append(lib_dep_label)
 
     tests = []
 
@@ -113,3 +118,33 @@ def create_jvm_test_suite(
         tags = ["manual"] + tags,
         visibility = visibility,
     )
+
+def _contains_label(haystack_str_list, needle):
+    absolute_needle = _absolutify(needle)
+    for haystack_str in haystack_str_list or []:
+        absolute_haystack_label = _absolutify(haystack_str)
+        if absolute_needle == absolute_haystack_label:
+            return True
+    return False
+
+def _absolutify(label_str):
+    repo = ""
+    package = ""
+    name = ""
+
+    if label_str.startswith("@"):
+        parts = label_str.split("//")
+        repo = parts[0][1:]
+
+    if "//" in label_str:
+        parts = label_str.split("//")
+        package = parts[1].split(":")[0]
+    else:
+        package = native.package_name()
+
+    if ":" in label_str:
+        name = label_str.split(":")[1]
+    else:
+        name = package.split("/")[-1]
+
+    return "@{}//{}:{}".format(repo, package, name)
