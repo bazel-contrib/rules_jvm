@@ -14,6 +14,7 @@ import com.github.javaparser.resolution.UnsolvedSymbolException;
 import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.types.ResolvedReferenceType;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +27,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.Tree;
@@ -35,6 +38,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.lang.model.type.TypeKind;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -50,7 +56,6 @@ public class ClasspathParser {
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
   private static final List<String> OPTIONS = List.of("--enable-preview", "--release=" + Runtime.version().feature());
-
 
   public ClasspathParser(JavaParser javaParser) {
     this.javaParser = javaParser;
@@ -93,6 +98,29 @@ public class ClasspathParser {
             .collect(Collectors.toList()));
   }
 
+  //.filter(Dog.class::isInstance)
+  //                      .map(Dog.class::cast)
+
+  private void findMainMethods(CompilationUnitTree compileUnitTree) {
+    // Check for main function in this class.
+    for (Tree typeDecls : compileUnitTree.getTypeDecls()) {
+      ClassTree classDecl = (ClassTree) typeDecls;
+      String className = classDecl.getSimpleName().toString();
+      List<String> mains = classDecl.getMembers().stream()
+              .filter(m -> m.getKind() == Tree.Kind.METHOD)
+              .map(MethodTree.class::cast)
+              .filter(m -> m.getModifiers().getFlags().containsAll(Set.of(PUBLIC, STATIC)))
+              .filter(m -> m.getName().toString().equals("main"))
+              .filter(m -> (m.getReturnType() instanceof PrimitiveTypeTree &&
+                      ((PrimitiveTypeTree)m.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID ))
+              .map(m -> m.getName().toString())
+              .collect(Collectors.toList());
+
+        if (!mains.isEmpty()) {
+          mainClasses.add(className);
+      }
+    }
+  }
   private void findMainMethods(CompilationUnit cu) {
     List<String> mains =
         cu.findAll(MethodDeclaration.class).stream()
@@ -104,6 +132,19 @@ public class ClasspathParser {
             .collect(Collectors.toList());
     if (!mains.isEmpty()) {
       mainClasses.addAll(mains);
+    }
+  }
+
+  private void parseImports(CompilationUnitTree compileUnitTree) {
+    for (ImportTree compileImport : compileUnitTree.getImports()) {
+      logger.debug("JavaTools: found import static {}: {}", compileImport.isStatic(), compileImport.getQualifiedIdentifier());
+      String name = compileImport.getQualifiedIdentifier().toString();
+      if (compileImport.isStatic()) {
+        String staticPackage = name.substring(0, name.lastIndexOf('.'));
+        usedTypes.add(staticPackage);
+      } else {
+        usedTypes.add(name);
+      }
     }
   }
 
@@ -194,37 +235,28 @@ public class ClasspathParser {
 
   private void parseFileGatherDependencies(Path classPath) {
     CompilationUnit cu;
+
     try {
-      var compUnits = compiler.
+      logger.debug("JavaTools: Parsing file {}", classPath.toAbsolutePath());
+      Iterable<? extends JavaFileObject> compUnits = compiler.
               getStandardFileManager(null, null, null).
               getJavaFileObjects(classPath.toString());
-      var task = (JavacTask) compiler.getTask(null, null, null,
+      SimpleJavaFileObject javaSource = new SimpleJavaFileObject()
+      JavacTask task = (JavacTask) compiler.getTask(null, null, null,
               OPTIONS, null, compUnits);
-      for (var compileUnitTree : task.parse()) {
+      for (CompilationUnitTree compileUnitTree : task.parse()) {
         // Get the Package for this class
         logger.debug ("JavaTools: Got package for class: {}", compileUnitTree.getPackage().getPackageName());
+        packages.add(compileUnitTree.getPackage().getPackageName().toString());
+
 
         // Get list of imports for this class
-        for (var imports : compileUnitTree.getImports()) {
-          logger.debug("JavaTools: found import static {}: {}", imports.isStatic(), imports.getQualifiedIdentifier().toString());
-        }
+        parseImports(compileUnitTree);
+
         // Get list of fully qualified class or interface names - TODO
 
         // Check for main function in this class.
-        for (var typeDecls : compileUnitTree.getTypeDecls()) {
-          ClassTree classDecl = (ClassTree) typeDecls;
-          var className = classDecl.getSimpleName();
-          for (var membersDecls : classDecl.getMembers()) {
-            if (membersDecls.getKind() == Tree.Kind.METHOD) {
-              var method = (MethodTree)membersDecls;
-              if (method.getModifiers().getFlags().containsAll(Set.of(PUBLIC, STATIC)) &&
-                      ((PrimitiveTypeTree)method.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID &&
-                      method.getName().toString().equals("main")) {
-                logger.debug("JavaTools found main: {} -- {} -- {}", className, method.getModifiers().getFlags(), method.getName());
-              }
-            }
-          }
-        }
+        findMainMethods(compileUnitTree);
       }
     } catch (Exception exception) {
       logger.error ("JavaTools failed to parse {}, skipping file", classPath);
@@ -241,10 +273,10 @@ public class ClasspathParser {
       logger.warn("Unable to parse {}. Skipping File", classPath);
       return;
     }
-    parseImports(cu);
+    //parseImports(cu);
     parseClasses(cu);
-    parsePackages(cu);
-    findMainMethods(cu);
+    //parsePackages(cu);
+    //findMainMethods(cu);
   }
 
 }
