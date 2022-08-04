@@ -8,6 +8,8 @@ github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829/go.mod h1:
 github.com/aristanetworks/goarista v0.0.0-20220727195344-9ed9ecb0092c/go.mod h1:yJBmu9a5g2ytzvKEorV8Ezd/swPAVCQqWicHnY5HQbI=
 github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16 h1:TxcWafIs8LlRONmcmp7KA83f0//+BfvAuHVkibsrT2U=
 github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16/go.mod h1:rYwSQJrIxPY7p7zjpycNG6VVETEfrUHIb13a2Cgom5Q=
+github.com/bazelbuild/bazel-gazelle v0.26.0 h1:/gh8S450+nfr3wYI6bTYEi297obbVcMObavhPuB7LVo=
+github.com/bazelbuild/bazel-gazelle v0.26.0/go.mod h1:9LocFQkzkop0G726hCt+oa5bEQSZd3shKLlZUcxRZ4I=
 github.com/bazelbuild/buildtools v0.0.0-20220323134444-a9f46b2bb3de h1:ox8T5nCkvLflRgKZ6uzzdvLDN3gbNZBgLBqA5Xgn7QA=
 github.com/bazelbuild/buildtools v0.0.0-20220323134444-a9f46b2bb3de/go.mod h1:689QdV3hBP7Vo9dJMmzhoYIyo/9iMhEmHkJcnaPRCbo=
 github.com/bazelbuild/buildtools v0.0.0-20220531122519-a43aed7014c8 h1:fmdo+fvvWlhldUcqkhAMpKndSxMN3vH5l7yow5cEaiQ=
