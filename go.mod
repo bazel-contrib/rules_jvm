@@ -9,7 +9,7 @@ require (
 	github.com/bazelbuild/rules_go v0.31.0
 	github.com/google/btree v1.1.2
 	github.com/google/go-cmp v0.5.7
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/rs/zerolog v1.27.0
 	github.com/sergi/go-diff v1.2.0
