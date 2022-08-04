@@ -21,11 +21,7 @@ public class Main {
     line = commandLineOptions(args);
 
     Main main = new Main();
-    if (line.hasOption("server")) {
-      main.runServer();
-    } else {
-      main.run();
-    }
+    main.runServer();
   }
 
   public void runServer() throws InterruptedException, IOException {
@@ -35,17 +31,6 @@ public class Main {
     gRPCServer.start();
     gRPCServer.blockUntilShutdown();
   }
-
-  public void run() throws IOException {
-    PackageParser parser = new PackageParser(workspace());
-    parser.setup(srcs(), tests(), generated());
-    if (imports() != null) {
-      parser.runImports(imports());
-    } else {
-      parser.runAll(dryRun());
-    }
-  }
-
   private Path workspace() {
     return line.hasOption("workspace")
         ? Paths.get(line.getOptionValue("workspace"))
@@ -68,10 +53,6 @@ public class Main {
     return line.getOptionValue("generated");
   }
 
-  private String imports() {
-    return line.getOptionValue("parsed-imports");
-  }
-
   private int serverPort() {
     return line.hasOption("server-port")
         ? Integer.decode(line.getOptionValue("server-port"))
@@ -85,12 +66,6 @@ public class Main {
     options.addOption(new Option("h", "help", false, "This help message"));
     options.addOption(
         new Option(
-            null,
-            "server",
-            false,
-            "Start the Build File gRPC server to manage multiple groups of files"));
-    options.addOption(
-        new Option(
             null, "dry-run", false, "Output only, but do not change files in the workspace"));
 
     options.addOption(new Option(null, "workspace", true, "Workspace root"));
@@ -99,12 +74,6 @@ public class Main {
     options.addOption(new Option(null, "sources", true, "Relative path to java sources"));
     options.addOption(new Option(null, "tests", true, "Relative path to java tests"));
     options.addOption(new Option(null, "generated", true, "Relative path to generated code"));
-    options.addOption(
-        new Option(
-            null,
-            "parse-imports",
-            true,
-            "Generate the imports from list of files (use wild cards)"));
 
     try {
       line = parser.parse(options, args);

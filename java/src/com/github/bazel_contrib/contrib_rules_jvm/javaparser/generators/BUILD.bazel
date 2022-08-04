@@ -3,7 +3,6 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "generators",
     srcs = [
-        "BuildFileVisitor.java",
         "ClasspathParser.java",
         "GrpcServer.java",
         "JavaIdentifier.java",
