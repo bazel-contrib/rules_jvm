@@ -4,17 +4,17 @@ go 1.18
 
 require (
 	github.com/aristanetworks/goarista v0.0.0-20220727195344-9ed9ecb0092c
-	github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16
+	github.com/bazelbuild/bazel-gazelle v0.26.0
 	github.com/bazelbuild/buildtools v0.0.0-20220531122519-a43aed7014c8
 	github.com/bazelbuild/rules_go v0.34.0
 	github.com/google/btree v1.1.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/rs/zerolog v1.27.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/tools v0.1.10
+	golang.org/x/tools v0.1.11
 	google.golang.org/grpc v1.48.0
 )
 
@@ -25,9 +25,9 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
-	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
+	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210921142501-181ce0d877f6 // indirect
