@@ -5,6 +5,7 @@ github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAE
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829 h1:xnu1MpGNjnEooJ8lWa3YiU3330zMZISReAosjpZpLzg=
 github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829/go.mod h1:FmFEhIzCEWoI0WuuZDSWCu25zCNW/X4Czla0ls/HSrs=
+github.com/aristanetworks/goarista v0.0.0-20220727195344-9ed9ecb0092c/go.mod h1:yJBmu9a5g2ytzvKEorV8Ezd/swPAVCQqWicHnY5HQbI=
 github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16 h1:TxcWafIs8LlRONmcmp7KA83f0//+BfvAuHVkibsrT2U=
 github.com/bazelbuild/bazel-gazelle v0.25.1-0.20220406134132-bd319f810c16/go.mod h1:rYwSQJrIxPY7p7zjpycNG6VVETEfrUHIb13a2Cgom5Q=
 github.com/bazelbuild/buildtools v0.0.0-20220323134444-a9f46b2bb3de h1:ox8T5nCkvLflRgKZ6uzzdvLDN3gbNZBgLBqA5Xgn7QA=
