@@ -52,56 +52,40 @@ func NewLanguage() language.Language {
 	return &l
 }
 
+var kindWithRuntimeDeps = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps": true,
+		"srcs": true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"runtime_deps": true,
+	},
+}
+var kindWithoutRuntimeDeps = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps": true,
+		"srcs": true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true},
+	ResolveAttrs: map[string]bool{
+		"deps": true,
+	},
+}
+
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
-		"java_binary": {
-			NonEmptyAttrs: map[string]bool{
-				"deps": true,
-				"srcs": true,
-			},
-			MergeableAttrs: map[string]bool{"srcs": true},
-			ResolveAttrs: map[string]bool{
-				"deps":         true,
-				"runtime_deps": true,
-			},
-		},
-		"java_library": {
-			NonEmptyAttrs: map[string]bool{
-				"deps": true,
-				"srcs": true,
-			},
-			MergeableAttrs: map[string]bool{"srcs": true},
-			ResolveAttrs: map[string]bool{
-				"deps":         true,
-				"runtime_deps": true,
-			},
-		},
-		"java_test": {
-			NonEmptyAttrs: map[string]bool{
-				"deps": true,
-				"srcs": true,
-			},
-			MergeableAttrs: map[string]bool{"srcs": true},
-			ResolveAttrs: map[string]bool{
-				"deps":         true,
-				"runtime_deps": true,
-			},
-		},
-		"java_test_suite": {
-			NonEmptyAttrs: map[string]bool{
-				"deps": true,
-				"srcs": true,
-			},
-			MergeableAttrs: map[string]bool{"srcs": true},
-			ResolveAttrs: map[string]bool{
-				"deps":         true,
-				"runtime_deps": true,
-			},
-		},
+		"java_binary":        kindWithRuntimeDeps,
+		"java_library":       kindWithRuntimeDeps,
+		"java_test":          kindWithRuntimeDeps,
+		"java_test_suite":    kindWithRuntimeDeps,
+		"java_proto_library": kindWithoutRuntimeDeps,
+		"java_grpc_library":  kindWithoutRuntimeDeps,
 	}
 }
 
-var loads = []rule.LoadInfo{
+var javaLoads = []rule.LoadInfo{
 	{
 		Name: "@io_grpc_grpc_java//:java_grpc_library.bzl",
 		Symbols: []string{
@@ -126,7 +110,7 @@ var loads = []rule.LoadInfo{
 }
 
 func (l javaLang) Loads() []rule.LoadInfo {
-	return loads
+	return javaLoads
 }
 
 func (l javaLang) Fix(c *config.Config, f *rule.File) {}

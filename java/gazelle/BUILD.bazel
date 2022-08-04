@@ -45,6 +45,8 @@ go_test(
     srcs = [
         "generate_integration_test.go",
         "generate_test.go",
+        "integration_base_test.go",
+        "resolve_integration_test.go",
         "resolve_test.go",
     ],
     data = glob(["testdata/**"]),
