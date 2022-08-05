@@ -54,60 +54,10 @@ public class PackageParser {
     return javaParser;
   }
 
-  // This was a temporary idea to output the imported / dependencies as a json blob on the command
-  // line for reading
-  // This continues to be here for legacy reasons but will be removed in the future.
-  @Deprecated
-  public void runImports(String imports) throws IOException {
-    ClasspathParser parser = new ClasspathParser(this.javaParser);
-    parser.parseClasses(imports, workspace);
-    List<String> types = new ArrayList<>(parser.getUsedTypes());
-    Gson gson = new Gson();
-    String encoded = gson.toJson(types);
-    // Output as a direct data on the command line rather than via a logger to not include the
-    // logger headers.
-    System.out.println(encoded);
-  }
-
   public ClasspathParser getImports(Path directory, List<String> files) throws IOException {
     ClasspathParser parser = new ClasspathParser(this.javaParser);
     parser.parseClasses(workspace, directory, files);
     return parser;
-  }
-
-  public void runAll(Boolean dryRun) throws IOException {
-    // Resolve the types for all of the packages
-    resolvePackages(packages);
-    // Output the results
-    logger.info("Number of packages: {}", packages.size());
-    for (PackageDependencies pkg : packages) {
-      logger.debug(pkg.getBuildFile().getBazelTarget() + " -> " + pkg);
-      logger.info("\n{}", pkg.updateBuildFile(dryRun));
-    }
-  }
-
-  private void resolvePackages(List<PackageDependencies> packages) throws IOException {
-    try {
-      packages.stream()
-          .map(pkg -> new Pair<>(pkg.getPackagePath().getParent(), new BuildFileVisitor(pkg)))
-          .forEach(
-              both -> {
-                try {
-                  Files.walkFileTree(both.a, both.b);
-                } catch (IOException ex) {
-                  logger.error("Failed to walk tree for: {} \n exception: {} ", both.a, ex);
-                  throw new RuntimeException(ex);
-                }
-              });
-    } catch (RuntimeException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof IOException) {
-        throw (IOException) cause;
-      } else {
-        logger.error("Got unexpected exception from walking the file tree", cause);
-        throw e;
-      }
-    }
   }
 
   /**

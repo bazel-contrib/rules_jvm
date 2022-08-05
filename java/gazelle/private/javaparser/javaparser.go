@@ -43,7 +43,6 @@ func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) *Run
 	cmd := exec.Command(
 		wrapperPath,
 		"--jvm_arg=-Dorg.slf4j.simpleLogger.defaultLogLevel="+javaLogLevel,
-		"--server",
 		"--addr="+addr,
 		"--workspace="+repoRoot,
 	)

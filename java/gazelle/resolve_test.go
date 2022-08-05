@@ -80,19 +80,7 @@ java_library(
 		t.Run(name, func(t *testing.T) {
 			c, langs, _ := testConfig(t)
 
-			mrslv := make(mapResolver)
-			exts := make([]interface{}, 0, len(langs))
-			for _, lang := range langs {
-
-				if jLang, ok := lang.(*javaLang); ok {
-					jLang.mavenResolver = NewTestMavenResolver()
-				}
-
-				for kind := range lang.Kinds() {
-					mrslv[kind] = lang
-				}
-				exts = append(exts, lang)
-			}
+			mrslv, exts := InitTestResolversAndExtensions(langs)
 			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 			rc := testRemoteCache(nil)
 
@@ -128,27 +116,6 @@ java_library(
 			}
 		})
 	}
-}
-
-type TestMavenResolver struct {
-	data map[string]label.Label
-}
-
-func NewTestMavenResolver() *TestMavenResolver {
-	return &TestMavenResolver{
-		data: map[string]label.Label{
-			"com.google.common.primitives": label.New("maven", "", "com_google_guava_guava"),
-			"org.junit":                    label.New("maven", "", "junit_junit"),
-		},
-	}
-}
-
-func (r *TestMavenResolver) Resolve(pkg string) (label.Label, error) {
-	l, found := r.data[pkg]
-	if !found {
-		return label.NoLabel, fmt.Errorf("unexpected import: %s", pkg)
-	}
-	return l, nil
 }
 
 func testRemoteCache(knownRepos []repo.Repo) *repo.RemoteCache {
@@ -205,10 +172,4 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 	value := r.AttrStrings("_imports")
 	r.DelAttr("_imports")
 	return value
-}
-
-type mapResolver map[string]resolve.Resolver
-
-func (mr mapResolver) Resolver(r *rule.Rule, f string) resolve.Resolver {
-	return mr[r.Kind()]
 }

@@ -37,10 +37,8 @@ func (i *arrayFlags) Set(value string) error {
 func main() {
 	var addr, workspacePath string
 	var jvmArgs arrayFlags
-	var serverMode bool
 
 	flag.StringVar(&addr, "addr", "", "Address to listen")
-	flag.BoolVar(&serverMode, "server", false, "Should it start in server mode?")
 	flag.StringVar(&workspacePath, "workspace", "", "Where is the workspace")
 	flag.Var(&jvmArgs, "jvm_arg", "Pass <flag> to the java command itself. <flag> may contain spaces. Can be used multiple times.")
 	flag.Parse()
@@ -75,10 +73,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !serverMode {
-		logger.Fatal().Msg("non server mode is not implemented")
-	}
-
 	binPath, err := findBinary(logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not find BFG")
@@ -100,7 +94,6 @@ func main() {
 	}
 	args = append(
 		args,
-		"--server",
 		"--server-port", port,
 		"--workspace", workspacePath,
 	)
