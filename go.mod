@@ -3,7 +3,7 @@ module github.com/bazel-contrib/rules_jvm
 go 1.18
 
 require (
-	github.com/aristanetworks/goarista v0.0.0-20220727195344-9ed9ecb0092c
+	github.com/aristanetworks/goarista v0.0.0-20220805151739-8d6a27d3a3bb
 	github.com/bazelbuild/bazel-gazelle v0.26.0
 	github.com/bazelbuild/buildtools v0.0.0-20220531122519-a43aed7014c8
 	github.com/bazelbuild/rules_go v0.34.0
