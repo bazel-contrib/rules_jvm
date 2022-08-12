@@ -7,7 +7,7 @@ java_library(
         "hello/Hello.java",
         "hello/world/World.java",
     ],
-    _gazelle_imports = ["java.lang.String"],
+    _gazelle_imports = [],
     _java_packages = [
         "com.example",
         "com.example.hello",

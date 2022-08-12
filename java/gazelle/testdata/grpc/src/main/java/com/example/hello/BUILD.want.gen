@@ -6,7 +6,6 @@ java_library(
     _gazelle_imports = [
         "com.example.hello.proto.DeleteBookRequest",
         "com.example.hello.proto.HelloProto",
-        "java.lang.String",
     ],
     _java_packages = ["com.example.hello"],
     visibility = ["//:__subpackages__"],

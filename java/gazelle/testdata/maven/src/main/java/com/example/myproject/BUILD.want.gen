@@ -3,11 +3,7 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "myproject",
     srcs = ["App.java"],
-    _gazelle_imports = [
-        "com.google.common.primitives.Ints",
-        "java.lang.Exception",
-        "java.lang.String",
-    ],
+    _gazelle_imports = ["com.google.common.primitives.Ints"],
     _java_packages = ["com.example.myproject"],
     visibility = ["//:__subpackages__"],
 )

@@ -6,7 +6,6 @@ java_test_suite(
     _gazelle_imports = [
         "com.example.library",
         "com.example.myproject",
-        "java.lang.Exception",
         "org.junit.Assert",
         "org.junit.Test",
     ],

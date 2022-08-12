@@ -11,6 +11,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +27,12 @@ public class GrpcServer {
   private final Server server;
 
   /** Create a BuildFileGenerator server using serverBuilder as a base and features as data. */
-  public GrpcServer(int port, PackageParser project) {
+  public GrpcServer(int port, Path workspace) {
     this.port = port;
     ServerBuilder serverBuilder = ServerBuilder.forPort(port);
     this.server =
         serverBuilder
-            .addService(new GrpcService(project))
+            .addService(new GrpcService(workspace))
             .addService(ProtoReflectionService.newInstance())
             .build();
   }
@@ -70,10 +71,10 @@ public class GrpcServer {
 
   private static class GrpcService extends JavaParserGrpc.JavaParserImplBase {
 
-    private final PackageParser project;
+    private final Path workspace;
 
-    GrpcService(PackageParser project) {
-      this.project = project;
+    GrpcService(Path workspace) {
+      this.workspace = workspace;
     }
 
     @Override
@@ -83,7 +84,7 @@ public class GrpcServer {
       try {
         responseObserver.onNext(getImports(request));
       } catch (Exception ex) {
-        logger.error("Got Exception parsing package {}: {}", request.getRel(), ex.getMessage());
+        logger.error("Got Exception parsing package {}: {}", Paths.get(request.getRel()), ex.getMessage());
         responseObserver.onError(ex);
       }
       responseObserver.onCompleted();
@@ -98,30 +99,36 @@ public class GrpcServer {
       logger.debug("Working relative directory: {}", request.getRel());
       logger.debug("processing files: {}", files);
 
+      ClasspathParser parser = new ClasspathParser();
+      Path directory = workspace.resolve(request.getRel());
+
       try {
-        ClasspathParser parser = project.getImports(Paths.get(request.getRel()), files);
-        Set<String> packages = parser.getPackages();
-        if (packages.size() > 1) {
-          logger.error(
-              "Set of classes in {} should have only one package, instead is: {}",
-              request.getRel(),
-              packages);
-          throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
-        } else if (packages.isEmpty()) {
-          logger.info("Set of classes has no package");
-          packages.add("");
-        }
-        logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
-        logger.debug("Got used types: {}", parser.getUsedTypes());
-        return Package.newBuilder()
-            .setName(Iterables.getOnlyElement(packages))
-            .addAllImports(parser.getUsedTypes())
-            .addAllMains(parser.getMainClasses())
-            .build();
+        parser.parseClasses(directory, files);
       } catch (IOException exception) {
-        logger.error("Unable to get Imports for request, failing the request", exception);
-        throw new StatusRuntimeException(Status.FAILED_PRECONDITION);
+        // If we fail to process a directory, which can happen with the module level processing
+        // or can't parse any of the files, just return an empty response.
+        return Package.newBuilder()
+                .setName("")
+                .build();
       }
+      Set<String> packages = parser.getPackages();
+      if (packages.size() > 1) {
+        logger.error(
+            "Set of classes in {} should have only one package, instead is: {}",
+            request.getRel(),
+            packages);
+        throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
+      } else if (packages.isEmpty()) {
+        logger.info("Set of classes in {} has no package",Paths.get(request.getRel()).toAbsolutePath());
+        packages.add("");
+      }
+      logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
+      logger.debug("Got used types: {}", parser.getUsedTypes());
+      return Package.newBuilder()
+          .setName(Iterables.getOnlyElement(packages))
+          .addAllImports(parser.getUsedTypes())
+          .addAllMains(parser.getMainClasses())
+          .build();
     }
   }
 }

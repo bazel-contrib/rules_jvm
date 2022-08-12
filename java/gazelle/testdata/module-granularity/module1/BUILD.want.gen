@@ -7,10 +7,7 @@ java_library(
         "src/main/java/com/example/hello/Hello.java",
         "src/main/java/com/example/hello/world/World.java",
     ],
-    _gazelle_imports = [
-        "com.example.hello.notworld.NotWorld",
-        "java.lang.String",
-    ],
+    _gazelle_imports = ["com.example.hello.notworld.NotWorld"],
     _java_packages = [
         "com.example.hello",
         "com.example.hello.world",

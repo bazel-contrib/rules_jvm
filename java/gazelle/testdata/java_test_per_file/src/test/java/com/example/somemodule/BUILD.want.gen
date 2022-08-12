@@ -6,7 +6,6 @@ java_test(
     _gazelle_imports = [
         "com.example.myproject.App",
         "com.example.somemodule.withdirectory",
-        "java.lang.Exception",
         "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
         "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Assert",
@@ -22,7 +21,6 @@ java_test(
     _gazelle_imports = [
         "com.example.myproject.App",
         "com.example.somemodule.withdirectory",
-        "java.lang.Exception",
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one

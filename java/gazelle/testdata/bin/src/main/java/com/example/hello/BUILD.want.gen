@@ -3,7 +3,7 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "hello",
     srcs = ["Hello.java"],
-    _gazelle_imports = ["java.lang.String"],
+    _gazelle_imports = [],
     _java_packages = ["com.example.hello"],
     visibility = ["//:__subpackages__"],
 )

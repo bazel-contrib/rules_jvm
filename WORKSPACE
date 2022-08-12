@@ -44,8 +44,6 @@ load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS")
 maven_install(
     name = "frozen_deps",
     artifacts = [
-        "com.github.javaparser:javaparser-core:3.22.1",
-        "com.github.javaparser:javaparser-symbol-solver-core:3.22.1",
         "com.google.code.findbugs:jsr305:3.0.2",
         "com.google.guava:guava:30.1.1-jre",
         "commons-cli:commons-cli:1.5.0",

@@ -3,11 +3,7 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "compare",
     srcs = ["Compare.java"],
-    _gazelle_imports = [
-        "com.google.common.primitives",
-        "java.lang.Exception",
-        "java.lang.String",
-    ],
+    _gazelle_imports = ["com.google.common.primitives"],
     _java_packages = ["com.example.compare"],
     visibility = ["//:__subpackages__"],
 )

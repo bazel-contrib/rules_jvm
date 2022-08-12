@@ -1,20 +1,24 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import com.github.javaparser.JavaParser;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,12 +29,15 @@ public class ClasspathParserTest {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParserTest.class);
 
   private static Path workspace;
-  private static JavaParser javaParser;
   private static Path directory;
 
   private ClasspathParser parser;
+  private static Map<String, ? extends JavaFileObject> testFiles;
 
   @BeforeAll
+  @SuppressFBWarnings(
+      "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE") // See
+                                                       // https://github.com/spotbugs/spotbugs/issues/1694
   public static void setup() throws IOException, URISyntaxException {
     URI uri = ClasspathParserTest.class.getClassLoader().getResource("workspace").toURI();
     Map<String, String> env = new HashMap<>();
@@ -38,14 +45,19 @@ public class ClasspathParserTest {
     FileSystems.newFileSystem(uri, env);
     workspace = Paths.get(uri);
     directory = workspace.resolve("com/gazelle/java/javaparser/generators");
-    PackageParser parser = new PackageParser(workspace);
-    parser.setup(".", ".", null);
-    javaParser = parser.getJavaParser();
+    try (Stream<Path> stream = Files.list(directory)) {
+      testFiles =
+          stream
+              .filter(file -> !Files.isDirectory(file))
+              .map(name -> new JavaSource(name, name.toString()))
+              .collect(Collectors.toMap(SimpleJavaFileObject::getName, source -> source));
+    }
+    logger.info("Got Test Files {}", testFiles);
   }
 
   @BeforeEach
   public void setupPerTest() {
-    parser = new ClasspathParser(ClasspathParserTest.javaParser);
+    parser = new ClasspathParser();
   }
 
   @Test
@@ -57,109 +69,126 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void simpleTest() {
-    List<String> files = List.of("Main.java");
+  public void simpleTest() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
+    assertEquals(1, files.size());
+    parser.parseClasses(files);
 
-    parser.parseClasses(workspace, directory, files);
-    assertFalse(parser.getUsedTypes().isEmpty());
-    assertFalse(parser.getPackages().isEmpty());
-    assertFalse(parser.getMainClasses().isEmpty());
+    Assertions.assertTrue(parser.getUsedTypes().isEmpty());
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
+    assertEquals(Set.of("Main"), parser.getMainClasses());
   }
 
   @Test
-  public void verifyPackages() {
-    List<String> files = List.of("Main.java");
-
-    parser.parseClasses(workspace, directory, files);
-
-    List<String> packages = new ArrayList<>(parser.getPackages());
-
-    assertEquals(1, packages.size());
-    assertEquals("workspace.com.gazelle.java.javaparser.generators", packages.get(0));
+  public void verifyPackages() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
+    parser.parseClasses(files);
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
   }
 
   @Test
-  public void verifyMainClasses() {
-    List<String> files = List.of("Main.java");
+  public void verifyMainClasses() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
+    parser.parseClasses(files);
 
-    parser.parseClasses(workspace, directory, files);
-    List<String> mainClasses = new ArrayList<>(parser.getMainClasses());
-
-    assertEquals(1, mainClasses.size());
-    assertEquals("Main", mainClasses.get(0));
+    assertEquals(Set.of("Main"), parser.getMainClasses());
   }
 
   @Test
-  public void verifyNoMainClasses() {
-    List<String> files = List.of("ClasspathParser.java");
-
-    parser.parseClasses(workspace, directory, files);
-    List<String> mainClasses = new ArrayList<>(parser.getMainClasses());
-
-    assertEquals(0, mainClasses.size());
-  }
-
-  @Test
-  public void verifyPackagesUnique() {
-    List<String> files = List.of("Main.java", "ClasspathParser.java", "PackageParser.java");
-
-    parser.parseClasses(workspace, directory, files);
-    List<String> packages = new ArrayList<>(parser.getPackages());
-
-    assertEquals(1, packages.size());
-    assertEquals("workspace.com.gazelle.java.javaparser.generators", packages.get(0));
-  }
-
-  @Test
-  public void verifyImportsOnParse() {
-    List<String> files = List.of("Hello.java");
-
-    parser.parseClasses(workspace, directory, files);
-    List<String> types = new ArrayList<>(parser.getUsedTypes());
-
-    assertArrayEquals(
-        types.toArray(),
+  public void verifyNoMainClasses() throws IOException{
+    List<? extends JavaFileObject> files =
         List.of(
-                "com.google.common.primitives.Ints",
-                "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
-                "workspace.com.gazelle.java.javaparser.generators.HelloProto")
-            .toArray());
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ClasspathParser.java"));
+    parser.parseClasses(files);
+
+    assertEquals(0, parser.getMainClasses().size());
   }
 
   @Test
-  public void verifyImportsForSelf() {
-    List<String> files = List.of("App.java");
-
-    parser.parseClasses(workspace, directory, files);
-    List<String> types = new ArrayList<>(parser.getUsedTypes());
-
-    assertArrayEquals(
-        types.toArray(),
+  public void verifyPackagesUnique() throws IOException{
+    List<? extends JavaFileObject> files =
         List.of(
-                "com.google.common.primitives.Ints",
-                "java.lang.Exception",
-                "java.lang.String",
-                "workspace.com.gazelle.java.javaparser.generators.App")
-            .toArray());
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"),
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/PackageParser.java"),
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ClasspathParser.java"));
+    parser.parseClasses(files);
+
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
   }
 
   @Test
-  public void testForMainInSelf() {
-    List<String> files = List.of("App.java");
+  public void verifyImportsOnParse() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Hello.java"));
+    parser.parseClasses(files);
 
-    parser.parseClasses(workspace, directory, files);
-    List<String> mainClasses = new ArrayList<>(parser.getMainClasses());
-
-    assertEquals(1, mainClasses.size());
-    assertEquals("App", mainClasses.get(0));
+    assertEquals(Set.of("com.google.common.primitives.Ints",
+            "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
+            "workspace.com.gazelle.java.javaparser.generators.HelloProto"), parser.getUsedTypes());
   }
 
   @Test
-  public void testWildcardImport() {
-    List<String> files = List.of("Wildcards.java");
-    parser.parseClasses(workspace, directory, files);
-    List<String> types = new ArrayList<>(parser.getUsedTypes());
+  public void testWildcardImportOverlap() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Wildcards.java"));
+    parser.parseClasses(files);
+    assertEquals(Set.of("org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
+  }
 
-    assertArrayEquals(types.toArray(), List.of("org.junit.jupiter.api.Assertions").toArray());
+  @Test
+  public void testFullyQualifiedClassUseNotViaImport() throws IOException{
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/PackageParser.java"));
+    parser.parseClasses(files);
+    assertEquals(Set.of("com.gazelle.java.ArrayParse",
+            "com.gazelle.java.ClasspathParser",
+            "com.gazelle.java.OtherClasspathParse"), parser.getUsedTypes());
+  }
+
+  @Test
+  public void testStaticImport() throws IOException{
+    List<? extends JavaFileObject> files =
+            List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/StaticImports.java"));
+    parser.parseClasses(files);
+
+    assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), parser.getUsedTypes());
+  }
+
+  @Test
+  public void testWildcardImport() throws IOException {
+    List<? extends JavaFileObject> files =
+            List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/WildcardImport.java"));
+    parser.parseClasses(files);
+
+    assertEquals(Set.of("com.google.common.primitives"), parser.getUsedTypes());
+
+  }
+
+  static class JavaSource extends SimpleJavaFileObject {
+    String fileSource;
+
+    public JavaSource(Path directory, String fileName) {
+      super(Path.of(fileName).toUri(), JavaFileObject.Kind.SOURCE);
+      readFileFromSource(directory);
+    }
+
+    private void readFileFromSource(Path fileName) {
+      try {
+        fileSource = Files.readString(fileName);
+      } catch (IOException ex) {
+        logger.error("Unable to read build file: {} : {}", fileName, ex.getMessage());
+      }
+    }
+
+    @Override
+    public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+      return fileSource;
+    }
   }
 }

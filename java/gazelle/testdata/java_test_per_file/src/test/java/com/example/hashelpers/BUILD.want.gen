@@ -7,7 +7,6 @@ java_library(
     _gazelle_imports = [
         "com.example.myproject.App", # TODO: per-file tests should have per-test imports, excluding this one
         "com.google.common.math.IntMath",
-        "java.lang.Exception", # TODO: per-file tests should have per-test imports, excluding this one
         "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
         "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one
@@ -24,7 +23,6 @@ java_test(
         "com.example.hashelpers",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
-        "java.lang.Exception",
         "org.hamcrest.MatcherAssert", # TODO: per-file tests should have per-test imports, excluding this one
         "org.hamcrest.Matchers", # TODO: per-file tests should have per-test imports, excluding this one
         "org.junit.Assert",
@@ -42,7 +40,6 @@ java_test(
         "com.example.hashelpers",
         "com.example.myproject.App",
         "com.google.common.math.IntMath", # TODO: per-file tests should have per-test imports, excluding this one
-        "java.lang.Exception",
         "org.hamcrest.MatcherAssert",
         "org.hamcrest.Matchers",
         "org.junit.Assert", # TODO: per-file tests should have per-test imports, excluding this one

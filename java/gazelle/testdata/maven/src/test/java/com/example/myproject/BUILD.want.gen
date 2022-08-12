@@ -5,7 +5,6 @@ java_test_suite(
     srcs = ["AppTest.java"],
     _gazelle_imports = [
         "com.example.myproject",
-        "java.lang.Exception",
         "org.junit.Assert",
         "org.junit.Test",
     ],
