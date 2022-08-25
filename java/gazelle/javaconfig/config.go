@@ -39,7 +39,6 @@ func (c *Config) NewChild() *Config {
 		isModuleRoot:      false,
 		mavenInstallFile:  c.mavenInstallFile,
 		moduleGranularity: c.moduleGranularity,
-		outputBase:        c.outputBase,
 		repoRoot:          c.repoRoot,
 		testMode:          c.testMode,
 	}
@@ -63,19 +62,17 @@ type Config struct {
 	isModuleRoot      bool
 	mavenInstallFile  string
 	moduleGranularity string
-	outputBase        string
 	repoRoot          string
 	testMode          string
 }
 
 // New creates a new Config.
-func New(repoRoot, outputBase string) *Config {
+func New(repoRoot string) *Config {
 	return &Config{
 		extensionEnabled:  true,
 		isModuleRoot:      false,
 		mavenInstallFile:  "maven_install.json",
 		moduleGranularity: "package",
-		outputBase:        outputBase,
 		repoRoot:          repoRoot,
 		testMode:          "suite",
 	}
@@ -121,10 +118,6 @@ func (c *Config) SetModuleGranularity(granularity string) error {
 	c.moduleGranularity = granularity
 
 	return nil
-}
-
-func (c Config) OutputBase() string {
-	return c.outputBase
 }
 
 func (c Config) TestMode() string {

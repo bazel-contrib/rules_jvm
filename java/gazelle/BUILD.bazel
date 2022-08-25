@@ -17,7 +17,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//java/gazelle/javaconfig",
-        "//java/gazelle/private/bazel",
         "//java/gazelle/private/java",
         "//java/gazelle/private/javaparser",
         "//java/gazelle/private/logconfig",
