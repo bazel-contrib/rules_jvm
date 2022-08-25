@@ -4,7 +4,6 @@ import (
 	"flag"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -40,12 +39,8 @@ func (jc *Configurer) KnownDirectives() []string {
 
 func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if _, exists := c.Exts[languageName]; !exists {
-		outputBase, err := bazel.OutputBase(c.RepoRoot)
-		if err != nil {
-			jc.lang.logger.Fatal().Err(err).Msg("error getting output_base")
-		}
 		c.Exts[languageName] = javaconfig.Configs{
-			"": javaconfig.New(c.RepoRoot, outputBase),
+			"": javaconfig.New(c.RepoRoot),
 		}
 	}
 
