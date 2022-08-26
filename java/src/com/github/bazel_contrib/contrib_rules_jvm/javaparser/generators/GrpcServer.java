@@ -84,7 +84,8 @@ public class GrpcServer {
       try {
         responseObserver.onNext(getImports(request));
       } catch (Exception ex) {
-        logger.error("Got Exception parsing package {}: {}", Paths.get(request.getRel()), ex.getMessage());
+        logger.error(
+            "Got Exception parsing package {}: {}", Paths.get(request.getRel()), ex.getMessage());
         responseObserver.onError(ex);
       }
       responseObserver.onCompleted();
@@ -107,9 +108,7 @@ public class GrpcServer {
       } catch (IOException exception) {
         // If we fail to process a directory, which can happen with the module level processing
         // or can't parse any of the files, just return an empty response.
-        return Package.newBuilder()
-                .setName("")
-                .build();
+        return Package.newBuilder().setName("").build();
       }
       Set<String> packages = parser.getPackages();
       if (packages.size() > 1) {
@@ -119,7 +118,8 @@ public class GrpcServer {
             packages);
         throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
       } else if (packages.isEmpty()) {
-        logger.info("Set of classes in {} has no package",Paths.get(request.getRel()).toAbsolutePath());
+        logger.info(
+            "Set of classes in {} has no package", Paths.get(request.getRel()).toAbsolutePath());
         packages.add("");
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));

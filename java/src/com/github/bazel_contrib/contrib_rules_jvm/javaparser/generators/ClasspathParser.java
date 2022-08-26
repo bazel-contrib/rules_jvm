@@ -40,8 +40,7 @@ public class ClasspathParser {
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-  private static final List<String> OPTIONS =
-      List.of("--release=" + Runtime.version().feature());
+  private static final List<String> OPTIONS = List.of("--release=" + Runtime.version().feature());
 
   public ClasspathParser() {
     // Doesn't need to do anything currently
@@ -61,14 +60,17 @@ public class ClasspathParser {
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
     StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-    List<? extends JavaFileObject> objectFiles = files.stream()
-        .map(directory::resolve)
-        .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
+    List<? extends JavaFileObject> objectFiles =
+        files.stream()
+            .map(directory::resolve)
+            .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
             .map(Lists::newArrayList)
             .flatMap(List::stream)
             .collect(Collectors.toList());
-    // This happens when Gazelle is run in module mode, it wants to process the module level directory, which would not
-    // have any files. This is not an error, and should just be skipped. The IOException is caught the next level up,
+    // This happens when Gazelle is run in module mode, it wants to process the module level
+    // directory, which would not
+    // have any files. This is not an error, and should just be skipped. The IOException is caught
+    // the next level up,
     // logged, and ignored.
     if (objectFiles.isEmpty()) {
       logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
@@ -77,11 +79,12 @@ public class ClasspathParser {
     parseFileGatherDependencies(objectFiles);
   }
 
-  public void parseClasses(List<? extends JavaFileObject> files) throws IOException{
+  public void parseClasses(List<? extends JavaFileObject> files) throws IOException {
     this.parseFileGatherDependencies(files);
   }
 
-  private void parseFileGatherDependencies(Iterable<? extends JavaFileObject> compUnits) throws IOException {
+  private void parseFileGatherDependencies(Iterable<? extends JavaFileObject> compUnits)
+      throws IOException {
     JavacTask task = (JavacTask) compiler.getTask(null, null, null, OPTIONS, null, compUnits);
     try {
       ClassScanner scanner = new ClassScanner();
