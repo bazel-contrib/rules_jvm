@@ -6,7 +6,9 @@ java_library(
         "ClasspathParser.java",
         "GrpcServer.java",
         "JavaIdentifier.java",
+        "LifecycleService.java",
         "Main.java",
+        "TimeoutHandler.java",
     ],
     visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
     runtime_deps = [
@@ -22,6 +24,7 @@ java_library(
         "@contrib_rules_jvm_deps//:io_grpc_grpc_services",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_stub",
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
+        "@maven//:com_google_errorprone_error_prone_annotations",
     ],
 )
 

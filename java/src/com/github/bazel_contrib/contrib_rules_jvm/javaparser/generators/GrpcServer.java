@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+
 import com.gazelle.java.javaparser.v0.JavaParserGrpc;
 import com.gazelle.java.javaparser.v0.Package;
 import com.gazelle.java.javaparser.v0.Package.Builder;
@@ -13,6 +15,8 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -27,16 +31,19 @@ import org.slf4j.LoggerFactory;
 public class GrpcServer {
   private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
-  private final int port;
+  private final Path serverPortFilePath;
+  private final TimeoutHandler timeoutHandler;
   private final Server server;
 
   /** Create a BuildFileGenerator server using serverBuilder as a base and features as data. */
-  public GrpcServer(int port, Path workspace) {
-    this.port = port;
-    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
+  public GrpcServer(Path serverPortFilePath, Path workspace, TimeoutHandler timeoutHandler) {
+    this.serverPortFilePath = serverPortFilePath;
+    this.timeoutHandler = timeoutHandler;
+    ServerBuilder serverBuilder = ServerBuilder.forPort(0);
     this.server =
         serverBuilder
-            .addService(new GrpcService(workspace))
+            .addService(new GrpcService(workspace, timeoutHandler))
+            .addService(new LifecycleService())
             .addService(ProtoReflectionService.newInstance())
             .build();
   }
@@ -44,28 +51,31 @@ public class GrpcServer {
   /** Start serving requests. */
   public void start() throws IOException {
     server.start();
-    logger.debug("Server started, listening on {}", port);
+
+    // Atomically write our server port to a file so that a reading process can't do a partial read.
+    Path tmpPath = serverPortFilePath.resolveSibling(serverPortFilePath.getFileName() + ".tmp");
+    Files.write(tmpPath, String.format("%d", server.getPort()).getBytes(StandardCharsets.UTF_8));
+    Files.move(tmpPath, serverPortFilePath, ATOMIC_MOVE);
+
+    logger.debug("Server started, listening on {}", server.getPort());
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
               @Override
               public void run() {
-                // Use stderr here since the logger may have been reset by its JVM
-                // shutdown hook.
-                System.err.println("*** shutting down gRPC server since JVM is shutting down");
+                timeoutHandler.cancelOutstanding();
                 try {
                   GrpcServer.this.stop();
                 } catch (InterruptedException e) {
                   e.printStackTrace(System.err);
                 }
-                System.err.println("*** server shut down");
               }
             });
   }
 
   /** Stop serving requests and shutdown resources. */
   public void stop() throws InterruptedException {
-    server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
+    server.shutdownNow().awaitTermination(30, TimeUnit.SECONDS);
   }
 
   /** Await termination on the main thread since the grpc library uses daemon threads. */
@@ -76,24 +86,29 @@ public class GrpcServer {
   private static class GrpcService extends JavaParserGrpc.JavaParserImplBase {
 
     private final Path workspace;
+    private final TimeoutHandler timeoutHandler;
 
-    GrpcService(Path workspace) {
+    GrpcService(Path workspace, TimeoutHandler timeoutHandler) {
       this.workspace = workspace;
+      this.timeoutHandler = timeoutHandler;
     }
 
     @Override
     public void parsePackage(
         ParsePackageRequest request, StreamObserver<Package> responseObserver) {
-      logger.debug("Got request, now processing");
+      timeoutHandler.startedRequest();
+
       try {
         responseObserver.onNext(getImports(request));
+        responseObserver.onCompleted();
       } catch (Exception ex) {
         logger.error(
             "Got Exception parsing package {}: {}", Paths.get(request.getRel()), ex.getMessage());
         responseObserver.onError(ex);
+        responseObserver.onCompleted();
+      } finally {
+        timeoutHandler.finishedRequest();
       }
-      responseObserver.onCompleted();
-      logger.debug("Finished processing request");
     }
 
     private Package getImports(ParsePackageRequest request) {

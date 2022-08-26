@@ -99,7 +99,11 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	if jc.lang.parser == nil {
-		jc.lang.parser = javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
+		runner, err := javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
+		if err != nil {
+			jc.lang.logger.Fatal().Err(err).Msg("could not start javaparser")
+		}
+		jc.lang.parser = runner
 	}
 
 	if jc.lang.mavenResolver == nil {

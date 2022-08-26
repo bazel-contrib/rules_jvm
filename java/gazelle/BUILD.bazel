@@ -12,6 +12,9 @@ go_library(
         "lang.go",
         "resolve.go",
     ],
+    data = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main",
+    ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle",
     visibility = ["//visibility:public"],
     deps = [

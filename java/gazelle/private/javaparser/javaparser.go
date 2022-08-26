@@ -2,71 +2,39 @@ package javaparser
 
 import (
 	"context"
-	"os"
-	"os/exec"
+	"fmt"
 	"time"
 
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/netutil"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc"
 )
 
 type Runner struct {
-	logger   zerolog.Logger
-	repoRoot string
-
-	rpc        pb.JavaParserClient
-	rpcProcess *os.Process
-	conn       *grpc.ClientConn
+	logger        zerolog.Logger
+	rpc           pb.JavaParserClient
+	serverManager *servermanager.ServerManager
 }
 
-func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) *Runner {
-	wrapperPath, found := bazel.FindBinary("java/gazelle/private/javaparser/cmd/javaparser-wrapper", "javaparser-wrapper")
-	if !found {
-		logger.Fatal().Msg("could not find javaparser-wrapper")
-	}
+func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) (*Runner, error) {
+	serverManager := servermanager.New(repoRoot, javaLogLevel)
 
-	r := Runner{
-		logger:   logger.With().Str("_c", "javaparser-runnerwrapper").Logger(),
-		repoRoot: repoRoot,
-	}
-
-	addr, err := netutil.RandomAddr()
+	conn, err := serverManager.Connect()
 	if err != nil {
-		logger.Fatal().Msg("could not get an address for javaparser-wrapper")
+		return nil, fmt.Errorf("failed to start / connect to javaparser server: %w", err)
 	}
 
-	cmd := exec.Command(
-		wrapperPath,
-		"--jvm_arg=-Dorg.slf4j.simpleLogger.defaultLogLevel="+javaLogLevel,
-		"--addr="+addr,
-		"--workspace="+repoRoot,
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	r.logger.Debug().Strs("args", cmd.Args).Msg("javaparser args")
-	if err := cmd.Start(); err != nil {
-		r.logger.Fatal().Err(err).Msg("could not start command")
-	}
+	return &Runner{
+		logger:        logger.With().Str("_c", "javaparser").Logger(),
+		rpc:           pb.NewJavaParserClient(conn),
+		serverManager: serverManager,
+	}, nil
+}
 
-	// FIXME we do not have a destructor of the language to stop this
-	r.logger.Debug().
-		Int("pid", cmd.Process.Pid).
-		Msg("gazelle does not know how to kill javaparser, do it yourself")
-	r.rpcProcess = cmd.Process
-
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(30*time.Second))
-	if err != nil {
-		r.logger.Fatal().Err(err).Msg("error connecting to javaparser-wrapper")
-	}
-	r.conn = conn
-	r.rpc = pb.NewJavaParserClient(r.conn)
-
-	return &r
+func (r *Runner) ServerManager() *servermanager.ServerManager {
+	return r.serverManager
 }
 
 type ParsePackageRequest struct {

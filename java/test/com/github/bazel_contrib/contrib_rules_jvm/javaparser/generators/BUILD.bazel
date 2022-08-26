@@ -25,7 +25,6 @@ java_test_suite(
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/file",
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators",
-        "@contrib_rules_jvm_deps//:com_github_javaparser_javaparser_core",
         "@contrib_rules_jvm_deps//:junit_junit",
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
         "@frozen_deps//:com_github_spotbugs_spotbugs_annotations",  # keep
