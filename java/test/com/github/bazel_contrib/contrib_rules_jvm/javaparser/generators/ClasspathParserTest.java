@@ -35,9 +35,8 @@ public class ClasspathParserTest {
   private static Map<String, ? extends JavaFileObject> testFiles;
 
   @BeforeAll
-  @SuppressFBWarnings(
-      "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE") // See
-                                                       // https://github.com/spotbugs/spotbugs/issues/1694
+  @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE") // See
+  // https://github.com/spotbugs/spotbugs/issues/1694
   public static void setup() throws IOException, URISyntaxException {
     URI uri = ClasspathParserTest.class.getClassLoader().getResource("workspace").toURI();
     Map<String, String> env = new HashMap<>();
@@ -69,7 +68,7 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void simpleTest() throws IOException{
+  public void simpleTest() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
     assertEquals(1, files.size());
@@ -81,7 +80,7 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void verifyPackages() throws IOException{
+  public void verifyPackages() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
     parser.parseClasses(files);
@@ -89,7 +88,7 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void verifyMainClasses() throws IOException{
+  public void verifyMainClasses() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
     parser.parseClasses(files);
@@ -98,7 +97,7 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void verifyNoMainClasses() throws IOException{
+  public void verifyNoMainClasses() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get(
@@ -109,7 +108,7 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void verifyPackagesUnique() throws IOException{
+  public void verifyPackagesUnique() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"),
@@ -122,18 +121,21 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void verifyImportsOnParse() throws IOException{
+  public void verifyImportsOnParse() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Hello.java"));
     parser.parseClasses(files);
 
-    assertEquals(Set.of("com.google.common.primitives.Ints",
+    assertEquals(
+        Set.of(
+            "com.google.common.primitives.Ints",
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
-            "workspace.com.gazelle.java.javaparser.generators.HelloProto"), parser.getUsedTypes());
+            "workspace.com.gazelle.java.javaparser.generators.HelloProto"),
+        parser.getUsedTypes());
   }
 
   @Test
-  public void testWildcardImportOverlap() throws IOException{
+  public void testWildcardImportOverlap() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Wildcards.java"));
     parser.parseClasses(files);
@@ -141,20 +143,24 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void testFullyQualifiedClassUseNotViaImport() throws IOException{
+  public void testFullyQualifiedClassUseNotViaImport() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/PackageParser.java"));
     parser.parseClasses(files);
-    assertEquals(Set.of("com.gazelle.java.ArrayParse",
+    assertEquals(
+        Set.of(
+            "com.gazelle.java.ArrayParse",
             "com.gazelle.java.ClasspathParser",
-            "com.gazelle.java.OtherClasspathParse"), parser.getUsedTypes());
+            "com.gazelle.java.OtherClasspathParse"),
+        parser.getUsedTypes());
   }
 
   @Test
-  public void testStaticImport() throws IOException{
+  public void testStaticImport() throws IOException {
     List<? extends JavaFileObject> files =
-            List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/StaticImports.java"));
+        List.of(
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/StaticImports.java"));
     parser.parseClasses(files);
 
     assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), parser.getUsedTypes());
@@ -163,11 +169,11 @@ public class ClasspathParserTest {
   @Test
   public void testWildcardImport() throws IOException {
     List<? extends JavaFileObject> files =
-            List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/WildcardImport.java"));
+        List.of(
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/WildcardImport.java"));
     parser.parseClasses(files);
 
     assertEquals(Set.of("com.google.common.primitives"), parser.getUsedTypes());
-
   }
 
   static class JavaSource extends SimpleJavaFileObject {
