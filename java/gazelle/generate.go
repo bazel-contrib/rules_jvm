@@ -375,19 +375,6 @@ func generateJavaTestSuite(name string, srcs []string, packageNames, imports *so
 	res.Imports = append(res.Imports, suiteImports.SortedSlice())
 }
 
-func strSliceUniq(elts []string) []string {
-	m := make(map[string]bool, len(elts))
-	for _, elt := range elts {
-		m[elt] = true
-	}
-	var out []string
-	for elt := range m {
-		out = append(out, elt)
-	}
-	sort.Strings(out)
-	return out
-}
-
 func filterStrSlice(elts []string, f func(string) bool) []string {
 	var out []string
 	for _, elt := range elts {
