@@ -1,17 +1,16 @@
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
-# gazelle:java_module_granularity module
+# gazelle:java_test_mode suite
 
 java_test_suite(
-    name = "withhelpers-tests",
+    name = "existing_runtime_deps",
     srcs = [
-        "Helper.java",
-        "NotWorldWithHelpersTest.java",
-        "withdirectory/AnotherTest.java",
-        "withdirectory/Helper.java",
+        "Example4Test.java",
+        "Example5Test.java",
     ],
     runner = "junit5",
     runtime_deps = [
+        "@maven//:keep",  # keep
         "@maven//:org_junit_jupiter_junit_jupiter_engine",
         "@maven//:org_junit_platform_junit_platform_launcher",
         "@maven//:org_junit_platform_junit_platform_reporting",
@@ -19,7 +18,6 @@ java_test_suite(
     ],
     deps = [
         "@maven//:junit_junit",
-        "@maven//:org_hamcrest_hamcrest_all",
         "@maven//:org_junit_jupiter_junit_jupiter_api",
     ],
 )

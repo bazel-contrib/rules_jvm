@@ -1,0 +1,5 @@
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.separate [36mpkg=[0mcom.example.separate [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.suite [36mpkg=[0mcom.example.suite [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.separate.existing_runtime_deps [36mpkg=[0mcom.example.separate.existing_runtime_deps [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.suite.existing_runtime_deps [36mpkg=[0mcom.example.suite.existing_runtime_deps [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example [36mpkg=[0mcom.example [36mtargets=[0m[]
