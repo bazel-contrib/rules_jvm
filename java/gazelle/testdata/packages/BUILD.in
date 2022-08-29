@@ -1,0 +1,2 @@
+# gazelle:resolve java com.google.common.primitives @maven//:com_google_guava_guava
+# gazelle:resolve java org.junit @maven//:junit_junit

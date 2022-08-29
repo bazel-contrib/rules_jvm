@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "reset_zerolog_timestamps",
+    srcs = [
+        "constant_logger.go",
+        "noop_language.go",
+    ],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/testutil/reset_zerolog_timestamps",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//language:go_default_library",
+        "@com_github_rs_zerolog//:zerolog",
+    ],
+)

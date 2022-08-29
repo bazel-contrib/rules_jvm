@@ -1,0 +1,4 @@
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.hashelpers [36mpkg=[0mcom.example.hashelpers [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.modulewithhelpers [36mpkg=[0mcom.example.modulewithhelpers [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.modulewithhelpers.withdirectory [36mpkg=[0mcom.example.modulewithhelpers.withdirectory [36mtargets=[0m[]
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import com.example.somemodule.withdirectory [36mpkg=[0mcom.example.somemodule.withdirectory [36mtargets=[0m[]

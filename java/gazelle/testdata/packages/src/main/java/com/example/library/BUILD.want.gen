@@ -1,9 +1,0 @@
-load("@rules_java//java:defs.bzl", "java_library")
-
-java_library(
-    name = "library",
-    srcs = ["Library.java"],
-    _gazelle_imports = ["com.google.common.primitives.Ints"],
-    _java_packages = ["com.example.library"],
-    visibility = ["//:__subpackages__"],
-)
