@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
@@ -115,6 +116,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		panic(err)
 	}
 
+	// We exclude intra-package imports to avoid self-dependencies.
+	// This isn't a great heuristic for a few reasons:
+	//  1. We may want to split targets with more granularity than per-package.
+	//  2. "What input files did you have" isn't a great heuristic for "What classes are generated"
+	//     (e.g. inner classes, annotation processor generated classes, etc).
+	// But it will do for now.
+	javaClassNamesFromFileNames := sorted_set.NewSortedSet([]string{})
+	for _, filename := range javaFilenamesRelativeToPackage {
+		javaClassNamesFromFileNames.Add(strings.TrimSuffix(filename, ".java"))
+	}
+
 	if isModule {
 		if len(javaFilenamesRelativeToPackage) > 0 {
 			l.javaPackageCache[args.Rel] = javaPkg
@@ -156,7 +168,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				productionJavaImports.AddAll(mJavaPkg.Imports)
+				addNonLocalImports(productionJavaImports, mJavaPkg.Imports, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
@@ -167,7 +179,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					})
 				}
 			} else {
-				testJavaImports.AddAll(mJavaPkg.Imports)
+				addNonLocalImports(testJavaImports, mJavaPkg.Imports, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -185,9 +197,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	} else {
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
-			testJavaImports.AddAll(javaPkg.Imports)
+			addNonLocalImports(testJavaImports, javaPkg.Imports, javaPkg.Name, javaClassNamesFromFileNames)
 		} else {
-			productionJavaImports.AddAll(javaPkg.Imports)
+			addNonLocalImports(productionJavaImports, javaPkg.Imports, javaPkg.Name, javaClassNamesFromFileNames)
 		}
 		for _, mainClassName := range javaPkg.Mains.SortedSlice() {
 			allMains = append(allMains, main{
@@ -303,6 +315,23 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	return res
+}
+
+// We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
+func addNonLocalImports(to *sorted_set.SortedSet[string], from *sorted_set.SortedSet[string], pkg string, localClasses *sorted_set.SortedSet[string]) {
+	for _, impString := range from.SortedSlice() {
+		imp := java.NewImport(impString)
+		doAdd := true
+		if pkg == imp.Pkg {
+			if localClasses.Contains(imp.Classes[0]) {
+				doAdd = false
+			}
+		}
+
+		if doAdd {
+			to.Add(impString)
+		}
+	}
 }
 
 func generateJavaLibrary(pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []string, imports []string, testonly bool, res *language.GenerateResult) {

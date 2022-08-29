@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/cmd/javaparser-wrapper/internal/activitytracker"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/netutil"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
@@ -200,10 +199,6 @@ func (s *server) ParsePackage(ctx context.Context, in *pb.ParsePackageRequest) (
 		return nil, err
 	}
 
-	// Filter out the import of classes which are in the current Java package
-	// and are contained in the sent files.
-	pkg.Imports = filterImports(pkg, classNamesFromFiles(in.Files))
-
 	return pkg, nil
 }
 
@@ -234,52 +229,4 @@ func findBinary(logger zerolog.Logger) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not find javaparser")
-}
-
-func beforeLastDot(filename string) string {
-	for i := len(filename) - 1; i >= 0 && !os.IsPathSeparator(filename[i]); i-- {
-		if filename[i] == '.' {
-			return filename[:i]
-		}
-	}
-	return filename
-}
-
-func classNamesFromFiles(filenames []string) []string {
-	out := make([]string, len(filenames))
-	for i, filename := range filenames {
-		out[i] = beforeLastDot(filename)
-	}
-	return out
-}
-
-// splitJavaImport split a Java import in the pacakge name and the class name.
-//
-// It does not handle nested classes.
-func splitJavaImport(imp string) (pkgName, className string) {
-	const sep = "."
-	parts := strings.Split(imp, sep)
-	return strings.Join(parts[:len(parts)-1], sep), parts[len(parts)-1]
-}
-
-// filterImports removes imports that are local to the package.
-func filterImports(pkg *pb.Package, classNames []string) []string {
-	var out []string
-	for _, i := range pkg.GetImports() {
-		imp := java.NewImport(i)
-		if imp.Pkg == pkg.GetName() {
-			ignore := false
-			for _, c := range classNames {
-				if imp.Classes[0] == c {
-					ignore = true
-					break
-				}
-			}
-			if ignore {
-				continue
-			}
-		}
-		out = append(out, i)
-	}
-	return out
 }
