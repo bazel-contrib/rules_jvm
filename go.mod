@@ -11,7 +11,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/rs/zerolog v1.27.0
+	github.com/rs/zerolog v1.28.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/tools v0.1.12
