@@ -1,0 +1,107 @@
+commit d3f585c6234bfba82e6d6ec23a7f9e280a2179eb
+Author: Daniel Wagner-Hall <dwagnerhall@apple.com>
+Date:   Mon Aug 29 10:52:57 2022 -0400
+
+    Allow configuring timeout of generation tests
+
+diff --git a/extend.md b/extend.md
+index 4110cb0..df6cc35 100644
+--- a/extend.md
++++ b/extend.md
+@@ -144,7 +144,8 @@ proto extension stores metadata in hidden attributes of generated
+ ## gazelle_generation_test
+ 
+ <pre>
+-gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a href="#gazelle_generation_test-gazelle_binary">gazelle_binary</a>, <a href="#gazelle_generation_test-test_data">test_data</a>, <a href="#gazelle_generation_test-build_in_suffix">build_in_suffix</a>, <a href="#gazelle_generation_test-build_out_suffix">build_out_suffix</a>)
++gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a href="#gazelle_generation_test-gazelle_binary">gazelle_binary</a>, <a href="#gazelle_generation_test-test_data">test_data</a>, <a href="#gazelle_generation_test-build_in_suffix">build_in_suffix</a>, <a href="#gazelle_generation_test-build_out_suffix">build_out_suffix</a>,
++                        <a href="#gazelle_generation_test-gazelle_timeout_seconds">gazelle_timeout_seconds</a>)
+ </pre>
+ 
+     gazelle_generation_test is a macro for testing gazelle against workspaces.
+@@ -178,5 +179,6 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
+ | <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
+ | <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
+ | <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
++| <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  <code>2</code> |
+ 
+ 
+diff --git a/internal/generationtest/generation_test.go b/internal/generationtest/generation_test.go
+index a0b4d41..ebdb77d 100644
+--- a/internal/generationtest/generation_test.go
++++ b/internal/generationtest/generation_test.go
+@@ -4,6 +4,7 @@ import (
+ 	"flag"
+ 	"path/filepath"
+ 	"testing"
++	"time"
+ 
+ 	"github.com/bazelbuild/bazel-gazelle/testtools"
+ 	"github.com/bazelbuild/rules_go/go/tools/bazel"
+@@ -15,6 +16,7 @@ var (
+ 		" By default, will use files named BUILD.in as the BUILD files before running gazelle.")
+ 	buildOutSuffix = flag.String("build_out_suffix", ".out", "The suffix on the expected BUILD.bazel files after running gazelle. Defaults to .out. "+
+ 		" By default, will use files named BUILD.out as the expected results of the gazelle run.")
++	timeoutSeconds = flag.Int("timeout_seconds", 2, "Number of seconds to allow the gazelle process to run before killing.")
+ )
+ 
+ // TestFullGeneration runs the gazelle binary on a few example
+@@ -51,6 +53,7 @@ func TestFullGeneration(t *testing.T) {
+ 				GazelleBinaryPath:    absoluteGazelleBinary,
+ 				BuildInSuffix:        *buildInSuffix,
+ 				BuildOutSuffix:       *buildOutSuffix,
++				Timeout:              time.Duration(*timeoutSeconds) * time.Second,
+ 			})
+ 		}
+ 	}
+diff --git a/internal/generationtest/generationtest.bzl b/internal/generationtest/generationtest.bzl
+index 396a59a..97ae1ac 100644
+--- a/internal/generationtest/generationtest.bzl
++++ b/internal/generationtest/generationtest.bzl
+@@ -4,7 +4,7 @@ Test for generating rules from gazelle.
+ 
+ load("@io_bazel_rules_go//go:def.bzl", "go_test")
+ 
+-def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = ".in", build_out_suffix = ".out"):
++def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = ".in", build_out_suffix = ".out", gazelle_timeout_seconds = 2):
+     """
+     gazelle_generation_test is a macro for testing gazelle against workspaces.
+ 
+@@ -35,6 +35,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
+             By default, will use files named BUILD.in as the BUILD files before running gazelle.
+         build_out_suffix: The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out.
+             By default, will use files named check the results of the gazelle run against files named BUILD.out.
++        timeout_seconds: Number of seconds to allow the gazelle process to run before killing.
+     """
+     go_test(
+         name = name,
+@@ -47,6 +48,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
+             "-gazelle_binary_path=$(rootpath %s)" % gazelle_binary,
+             "-build_in_suffix=%s" % build_in_suffix,
+             "-build_out_suffix=%s" % build_out_suffix,
++            "-timeout_seconds=%d" % gazelle_timeout_seconds,
+         ],
+         data = test_data + [
+             gazelle_binary,
+diff --git a/testtools/files.go b/testtools/files.go
+index df650f8..8da93ac 100644
+--- a/testtools/files.go
++++ b/testtools/files.go
+@@ -160,6 +160,9 @@ type TestGazelleGenerationArgs struct {
+ 	// BuildOutSuffix is the suffix for all test output build files. Includes the ".".
+ 	// Default: ".out", so out BUILD files should be named BUILD.out.
+ 	BuildOutSuffix string
++
++	// Timeout is the duration after which the generation process will be killed.
++	Timeout time.Duration
+ }
+ 
+ var (
+@@ -322,7 +325,7 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
+ 			}
+ 		}()
+ 
+-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++		ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
+ 		defer cancel()
+ 		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
+ 		cmd.Stdout = &stdout
