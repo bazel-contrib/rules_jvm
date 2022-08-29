@@ -2,7 +2,9 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import com.gazelle.java.javaparser.v0.JavaParserGrpc;
 import com.gazelle.java.javaparser.v0.Package;
+import com.gazelle.java.javaparser.v0.Package.Builder;
 import com.gazelle.java.javaparser.v0.ParsePackageRequest;
+import com.gazelle.java.javaparser.v0.PerClassMetadata;
 import com.google.common.collect.Iterables;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -15,7 +17,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,11 +128,21 @@ public class GrpcServer {
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
       logger.debug("Got used types: {}", parser.getUsedTypes());
-      return Package.newBuilder()
-          .setName(Iterables.getOnlyElement(packages))
-          .addAllImports(parser.getUsedTypes())
-          .addAllMains(parser.getMainClasses())
-          .build();
+
+      Builder packageBuilder =
+          Package.newBuilder()
+              .setName(Iterables.getOnlyElement(packages))
+              .addAllImports(parser.getUsedTypes())
+              .addAllMains(parser.getMainClasses());
+      for (Map.Entry<String, SortedSet<String>> annotations :
+          parser.getAnnotatedClasses().entrySet()) {
+        packageBuilder.putPerClassMetadata(
+            annotations.getKey(),
+            PerClassMetadata.newBuilder()
+                .addAllAnnotationClassNames(annotations.getValue())
+                .build());
+      }
+      return packageBuilder.build();
     }
   }
 }

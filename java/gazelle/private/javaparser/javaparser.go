@@ -87,11 +87,20 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		return nil, err
 	}
 
+	perClassMetadata := make(map[string]java.PerClassMetadata, len(resp.GetPerClassMetadata()))
+	for k, v := range resp.GetPerClassMetadata() {
+		metadata := java.PerClassMetadata{
+			AnnotationClassNames: sorted_set.NewSortedSet(v.GetAnnotationClassNames()),
+		}
+		perClassMetadata[k] = metadata
+	}
+
 	return &java.Package{
-		Name:        resp.GetName(),
-		Imports:     sorted_set.NewSortedSet(resp.GetImports()),
-		Mains:       sorted_set.NewSortedSet(resp.GetMains()),
-		Files:       sorted_set.NewSortedSet(in.Files),
-		TestPackage: java.IsTestPath(in.Rel),
+		Name:             resp.GetName(),
+		Imports:          sorted_set.NewSortedSet(resp.GetImports()),
+		Mains:            sorted_set.NewSortedSet(resp.GetMains()),
+		Files:            sorted_set.NewSortedSet(in.Files),
+		TestPackage:      java.IsTestPath(in.Rel),
+		PerClassMetadata: perClassMetadata,
 	}, nil
 }

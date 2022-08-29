@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.tools.JavaFileObject;
@@ -174,6 +175,63 @@ public class ClasspathParserTest {
     parser.parseClasses(files);
 
     assertEquals(Set.of("com.google.common.primitives"), parser.getUsedTypes());
+  }
+
+  @Test
+  public void testAnnotationAfterImport() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/AnnotationAfterImport.java"));
+    parser.parseClasses(files);
+
+    assertEquals(
+        Map.of(
+            "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
+            treeSet("com.example.FlakyTest")),
+        parser.getAnnotatedClasses());
+  }
+
+  @Test
+  public void testAnnotationFromJavaStandardLibrary() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/AnnotationFromJavaStandardLibrary.java"));
+    parser.parseClasses(files);
+
+    // Ideally this would resolve to java.lang.Deprecated, but nothing currently does that
+    // resolution.
+    assertEquals(
+        Map.of(
+            "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
+            treeSet("Deprecated")),
+        parser.getAnnotatedClasses());
+  }
+
+  @Test
+  public void testAnnotationWithoutImport() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/AnnotationWithoutImport.java"));
+    parser.parseClasses(files);
+
+    // Ideally this would resolve to a fully-qualified class-name, but we don't currently keep
+    // enough state to do that resolution, so we report what we can.
+    assertEquals(
+        Map.of(
+            "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
+            treeSet("WhoKnowsWhereIAmFrom")),
+        parser.getAnnotatedClasses());
+  }
+
+  private <T> TreeSet<T> treeSet(T... values) {
+    TreeSet<T> set = new TreeSet<>();
+    for (T value : values) {
+      set.add(value);
+    }
+    return set;
   }
 
   static class JavaSource extends SimpleJavaFileObject {

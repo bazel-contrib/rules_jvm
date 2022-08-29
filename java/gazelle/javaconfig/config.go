@@ -3,6 +3,8 @@ package javaconfig
 import (
 	"fmt"
 	"path/filepath"
+
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 const (
@@ -34,13 +36,14 @@ type Configs map[string]*Config
 // current Config and sets itself as the parent to the child.
 func (c *Config) NewChild() *Config {
 	return &Config{
-		parent:            c,
-		extensionEnabled:  c.extensionEnabled,
-		isModuleRoot:      false,
-		mavenInstallFile:  c.mavenInstallFile,
-		moduleGranularity: c.moduleGranularity,
-		repoRoot:          c.repoRoot,
-		testMode:          c.testMode,
+		parent:                c,
+		extensionEnabled:      c.extensionEnabled,
+		isModuleRoot:          false,
+		mavenInstallFile:      c.mavenInstallFile,
+		moduleGranularity:     c.moduleGranularity,
+		repoRoot:              c.repoRoot,
+		testMode:              c.testMode,
+		annotationToAttribute: c.annotationToAttribute,
 	}
 }
 
@@ -58,23 +61,30 @@ func (c *Configs) ParentForPackage(pkg string) *Config {
 type Config struct {
 	parent *Config
 
-	extensionEnabled  bool
-	isModuleRoot      bool
-	mavenInstallFile  string
-	moduleGranularity string
-	repoRoot          string
-	testMode          string
+	extensionEnabled      bool
+	isModuleRoot          bool
+	mavenInstallFile      string
+	moduleGranularity     string
+	repoRoot              string
+	testMode              string
+	annotationToAttribute map[string]map[string]bzl.Expr
+}
+
+type LoadInfo struct {
+	From   string
+	Symbol string
 }
 
 // New creates a new Config.
 func New(repoRoot string) *Config {
 	return &Config{
-		extensionEnabled:  true,
-		isModuleRoot:      false,
-		mavenInstallFile:  "maven_install.json",
-		moduleGranularity: "package",
-		repoRoot:          repoRoot,
-		testMode:          "suite",
+		extensionEnabled:      true,
+		isModuleRoot:          false,
+		mavenInstallFile:      "maven_install.json",
+		moduleGranularity:     "package",
+		repoRoot:              repoRoot,
+		testMode:              "suite",
+		annotationToAttribute: make(map[string]map[string]bzl.Expr),
 	}
 }
 
@@ -131,4 +141,16 @@ func (c *Config) SetTestMode(mode string) error {
 
 	c.testMode = mode
 	return nil
+}
+
+func (c *Config) MapAnnotationToAttribute(annotation string, key string, value bzl.Expr) {
+	if _, ok := c.annotationToAttribute[annotation]; !ok {
+		c.annotationToAttribute[annotation] = make(map[string]bzl.Expr)
+	}
+	c.annotationToAttribute[annotation][key] = value
+}
+
+func (c *Config) AttributesForAnnotation(annotation string) (map[string]bzl.Expr, bool) {
+	m, ok := c.annotationToAttribute[annotation]
+	return m, ok
 }
