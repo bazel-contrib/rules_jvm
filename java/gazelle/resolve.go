@@ -224,12 +224,3 @@ func isJavaLibrary(kind string) bool {
 func isJavaProtoLibrary(kind string) bool {
 	return kind == "java_proto_library" || kind == "java_grpc_library"
 }
-
-func stringSliceContains(elts []string, elt string) bool {
-	for _, e := range elts {
-		if e == elt {
-			return true
-		}
-	}
-	return false
-}
