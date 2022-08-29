@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "javaparser-wrapper_lib",
@@ -8,7 +8,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//java/gazelle/private/bazel",
-        "//java/gazelle/private/java",
         "//java/gazelle/private/javaparser/cmd/javaparser-wrapper/internal/activitytracker",
         "//java/gazelle/private/javaparser/netutil",
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
@@ -21,15 +20,4 @@ go_binary(
     name = "javaparser-wrapper",
     embed = [":javaparser-wrapper_lib"],
     visibility = ["//visibility:public"],
-)
-
-go_test(
-    name = "javaparser-wrapper_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":javaparser-wrapper_lib"],
-    deps = [
-        "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
-        "@com_github_google_go_cmp//cmp",
-    ],
 )
