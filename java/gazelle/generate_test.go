@@ -6,6 +6,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-cmp/cmp"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -19,10 +20,12 @@ func TestSingleJavaTestFile(t *testing.T) {
 	type testCase struct {
 		includePackageInName bool
 		importedPackages     []string
+		wrapper              string
 		wantRuleKind         string
 		wantImports          []string
 		wantDeps             []string
 		wantRuntimeDeps      []string
+		wantArgs             []bzl.Expr
 	}
 
 	for name, tc := range map[string]testCase{
@@ -86,6 +89,14 @@ func TestSingleJavaTestFile(t *testing.T) {
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"com.example", "org.junit"},
 		},
+		"wrapper junit4": {
+			includePackageInName: false,
+			importedPackages:     []string{"org.junit"},
+			wrapper:              "some_wrapper",
+			wantRuleKind:         "some_wrapper",
+			wantImports:          []string{"com.example", "org.junit"},
+			wantArgs:             []bzl.Expr{&bzl.Ident{Name: "java_test"}},
+		},
 		"explicit junit5": {
 			includePackageInName: false,
 			importedPackages:     []string{"org.junit.jupiter.api"},
@@ -119,6 +130,19 @@ func TestSingleJavaTestFile(t *testing.T) {
 				"@maven//:org_junit_platform_junit_platform_reporting",
 			},
 		},
+		"wrapper junit5": {
+			includePackageInName: false,
+			importedPackages:     []string{"org.junit.jupiter.api"},
+			wrapper:              "some_wrapper",
+			wantRuleKind:         "some_wrapper",
+			wantImports:          []string{"com.example", "org.junit.jupiter.api"},
+			wantRuntimeDeps: []string{
+				"@maven//:org_junit_jupiter_junit_jupiter_engine",
+				"@maven//:org_junit_platform_junit_platform_launcher",
+				"@maven//:org_junit_platform_junit_platform_reporting",
+			},
+			wantArgs: []bzl.Expr{&bzl.Ident{Name: "java_junit5_test"}},
+		},
 		"explicit both junit4 and junit5": {
 			includePackageInName: false,
 			importedPackages:     []string{"org.junit", "org.junit.jupiter.api"},
@@ -135,7 +159,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, &res)
+			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, tc.wrapper, nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -154,6 +178,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 				wantAttrs = append(wantAttrs, "runtime_deps")
 			}
 			require.ElementsMatch(t, wantAttrs, rule.AttrKeys())
+			require.ElementsMatch(t, tc.wantArgs, rule.Args())
 
 			require.Len(t, res.Imports, 1, "want 1 generated importedPackages")
 			wantImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)

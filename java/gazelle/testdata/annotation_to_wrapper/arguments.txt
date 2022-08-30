@@ -1,0 +1,1 @@
+-java-annotation-to-wrapper=com.example.annotations.RequiresNetwork=@some//:requires_network.bzl,requires_network

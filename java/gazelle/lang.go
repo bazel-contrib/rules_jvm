@@ -8,6 +8,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/logconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -112,7 +113,7 @@ var javaLibraryKind = rule.KindInfo{
 }
 
 func (l javaLang) Kinds() map[string]rule.KindInfo {
-	return map[string]rule.KindInfo{
+	kinds := map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
 		"java_junit5_test":   kindWithRuntimeDeps,
 		"java_library":       javaLibraryKind,
@@ -121,13 +122,16 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 		"java_proto_library": kindWithoutRuntimeDeps,
 		"java_grpc_library":  kindWithoutRuntimeDeps,
 	}
+
+	c := l.Configurer.(*Configurer)
+	for _, wrapper := range c.annotationToWrapper {
+		kinds[wrapper.symbol] = kindWithRuntimeDeps
+	}
+
+	return kinds
 }
 
-func isTestRule(kind string) bool {
-	return kind == "java_junit5_test" || kind == "java_test" || kind == "java_test_suite"
-}
-
-var javaLoads = []rule.LoadInfo{
+var baseJavaLoads = []rule.LoadInfo{
 	{
 		Name: "@io_grpc_grpc_java//:java_grpc_library.bzl",
 		Symbols: []string{
@@ -153,7 +157,30 @@ var javaLoads = []rule.LoadInfo{
 }
 
 func (l javaLang) Loads() []rule.LoadInfo {
-	return javaLoads
+	c := l.Configurer.(*Configurer)
+	if len(c.annotationToWrapper) == 0 {
+		return baseJavaLoads
+	}
+
+	s := sorted_multiset.NewSortedMultiSet[string, string]()
+	for _, li := range baseJavaLoads {
+		for _, symbol := range li.Symbols {
+			s.Add(li.Name, symbol)
+		}
+	}
+
+	for _, wrapper := range c.annotationToWrapper {
+		s.Add(wrapper.from, wrapper.symbol)
+	}
+
+	var loads []rule.LoadInfo
+	for _, name := range s.Keys() {
+		loads = append(loads, rule.LoadInfo{
+			Name:    name,
+			Symbols: s.Values(name),
+		})
+	}
+	return loads
 }
 
 func (l javaLang) Fix(c *config.Config, f *rule.File) {}
