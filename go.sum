@@ -11,6 +11,8 @@ github.com/bazelbuild/buildtools v0.0.0-20220531122519-a43aed7014c8 h1:fmdo+fvvW
 github.com/bazelbuild/buildtools v0.0.0-20220531122519-a43aed7014c8/go.mod h1:689QdV3hBP7Vo9dJMmzhoYIyo/9iMhEmHkJcnaPRCbo=
 github.com/bazelbuild/buildtools v0.0.0-20220822174408-8116150720ab h1:UyXpTgIKY10HZZD3kbIvXV7WRgGmb9IPgtjkLVd+HNg=
 github.com/bazelbuild/buildtools v0.0.0-20220822174408-8116150720ab/go.mod h1:689QdV3hBP7Vo9dJMmzhoYIyo/9iMhEmHkJcnaPRCbo=
+github.com/bazelbuild/buildtools v0.0.0-20220830143905-2a9bddb5c3a7 h1:w+8uO/Fk87q87cePbL8Qir+iETYOfmoqGi0VmG2V/g8=
+github.com/bazelbuild/buildtools v0.0.0-20220830143905-2a9bddb5c3a7/go.mod h1:689QdV3hBP7Vo9dJMmzhoYIyo/9iMhEmHkJcnaPRCbo=
 github.com/bazelbuild/rules_go v0.34.0 h1:cmObMtgIOaEU944SqXtJ9DnlS8IPGGa7pdRnsrpQzXM=
 github.com/bazelbuild/rules_go v0.34.0/go.mod h1:MC23Dc/wkXEyk3Wpq6lCqz0ZAYOZDw2DR5y3N1q2i7M=
 github.com/bmatcuk/doublestar/v4 v4.2.0 h1:Qu+u9wR3Vd89LnlLMHvnZ5coJMWKQamqdz9/p5GNthA=
