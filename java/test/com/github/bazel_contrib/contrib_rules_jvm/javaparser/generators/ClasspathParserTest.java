@@ -182,7 +182,9 @@ public class ClasspathParserTest {
             List.of(
                     testFiles.get("/workspace/com/gazelle/java/javaparser/generators/StaticMethodCall.java"));
     parser.parseClasses(files);
-    assertEquals(Set.of("com.gazelle.java.javaparser.generators"), parser.getUsedTypes());
+    assertEquals(Set.of(
+            "com.gazelle.java.javaparser.ClasspathParser",
+            "com.gazelle.java.javaparser.ClasspathParser.InnerClass"), parser.getUsedTypes());
   }
 
   static class JavaSource extends SimpleJavaFileObject {

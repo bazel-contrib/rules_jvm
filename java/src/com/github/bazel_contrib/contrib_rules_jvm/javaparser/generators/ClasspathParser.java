@@ -214,12 +214,12 @@ public class ClasspathParser {
         Tree baseType = ((ArrayTypeTree) identifier).getType();
         checkFullyQualifiedType(baseType);
       } else if (identifier.getKind() == Tree.Kind.METHOD_INVOCATION) {
-        // This returns {package}.Class.method
-        // Split by "." to get the parts, and strip off the class and method() names to get the package.
+        // This returns {package}.Class{.innerClasses}.method
+        // Split by "." to get the parts, and strip off the method() names to get the type name.
         Tree methodInvocation = ((MethodInvocationTree)identifier).getMethodSelect();
         String[] typeNames = methodInvocation.toString().split("[.]");
         if (typeNames.length > 2) {
-          String packageName = String.join(".", Arrays.copyOfRange(typeNames, 0, typeNames.length-2));
+          String packageName = String.join(".", Arrays.copyOfRange(typeNames, 0, typeNames.length-1));
           usedTypes.add(packageName);
         }
       }
