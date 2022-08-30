@@ -8,6 +8,8 @@ import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.PackageTree;
 import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.PrimitiveTypeTree;
@@ -18,6 +20,7 @@ import com.sun.source.util.TreeScanner;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -155,7 +158,7 @@ public class ClasspathParser {
     }
 
     @Override
-    public Void visitMethod(com.sun.source.tree.MethodTree m, Void v) {
+    public Void visitMethod(MethodTree m, Void v) {
       boolean isVoidReturn = false;
 
       // Check the return type on the method.
@@ -188,6 +191,12 @@ public class ClasspathParser {
       return super.visitMethod(m, v);
     }
 
+    @Override
+    public Void visitMethodInvocation(MethodInvocationTree node, Void v) {
+      checkFullyQualifiedType(node);
+      return super.visitMethodInvocation(node, v);
+    }
+
     private void checkFullyQualifiedType(Tree identifier) {
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
@@ -204,6 +213,15 @@ public class ClasspathParser {
       } else if (identifier.getKind() == Tree.Kind.ARRAY_TYPE) {
         Tree baseType = ((ArrayTypeTree) identifier).getType();
         checkFullyQualifiedType(baseType);
+      } else if (identifier.getKind() == Tree.Kind.METHOD_INVOCATION) {
+        // This returns {package}.Class.method
+        // Split by "." to get the parts, and strip off the class and method() names to get the package.
+        Tree methodInvocation = ((MethodInvocationTree)identifier).getMethodSelect();
+        String[] typeNames = methodInvocation.toString().split("[.]");
+        if (typeNames.length > 2) {
+          String packageName = String.join(".", Arrays.copyOfRange(typeNames, 0, typeNames.length-2));
+          usedTypes.add(packageName);
+        }
       }
     }
   }
