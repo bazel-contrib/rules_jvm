@@ -70,6 +70,7 @@ func (c *Config) NewChild() *Config {
 		testMode:               c.testMode,
 		customTestFileSuffixes: c.customTestFileSuffixes,
 		annotationToAttribute:  c.annotationToAttribute,
+		annotationToWrapper:    c.annotationToWrapper,
 		excludedArtifacts:      clonedExcludedArtifacts,
 		mavenRepositoryName:    c.mavenRepositoryName,
 	}
@@ -99,6 +100,7 @@ type Config struct {
 	customTestFileSuffixes *[]string
 	excludedArtifacts      map[string]struct{}
 	annotationToAttribute  map[string]map[string]bzl.Expr
+	annotationToWrapper    map[string]string
 	mavenRepositoryName    string
 }
 
@@ -120,6 +122,7 @@ func New(repoRoot string) *Config {
 		customTestFileSuffixes: nil,
 		excludedArtifacts:      make(map[string]struct{}),
 		annotationToAttribute:  make(map[string]map[string]bzl.Expr),
+		annotationToWrapper:    make(map[string]string),
 		mavenRepositoryName:    "maven",
 	}
 }
@@ -242,6 +245,27 @@ func (c *Config) MapAnnotationToAttribute(annotation string, key string, value b
 func (c *Config) AttributesForAnnotation(annotation string) (map[string]bzl.Expr, bool) {
 	m, ok := c.annotationToAttribute[annotation]
 	return m, ok
+}
+
+func (c *Config) MapAnnotationToWrapper(annotation string, wrapper string) {
+	c.annotationToWrapper[annotation] = wrapper
+}
+
+func (c *Config) WrapperForAnnotation(annotation string) (string, bool) {
+	s, ok := c.annotationToWrapper[annotation]
+	return s, ok
+}
+
+func (c *Config) IsTestRule(ruleKind string) bool {
+	if ruleKind == "java_junit5_test" || ruleKind == "java_test" || ruleKind == "java_test_suite" {
+		return true
+	}
+	for _, wrapper := range c.annotationToWrapper {
+		if ruleKind == wrapper {
+			return true
+		}
+	}
+	return false
 }
 
 func equalStringSlices(l, r []string) bool {

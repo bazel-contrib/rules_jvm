@@ -20,6 +20,7 @@ import (
 type Configurer struct {
 	lang                  *javaLang
 	annotationToAttribute annotationToAttribute
+	annotationToWrapper   annotationToWrapper
 	mavenInstallFile      string
 }
 
@@ -27,11 +28,13 @@ func NewConfigurer(lang *javaLang) *Configurer {
 	return &Configurer{
 		lang:                  lang,
 		annotationToAttribute: make(annotationToAttribute),
+		annotationToWrapper:   make(annotationToWrapper),
 	}
 }
 
 func (jc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.Var(&jc.annotationToAttribute, "java-annotation-to-attribute", "Mapping of annotations (on test classes) to attributes which should be set for that test rule. Examples: com.example.annotations.FlakyTest=flaky=True com.example.annotations.SlowTest=timeout=\"long\"")
+	fs.Var(&jc.annotationToWrapper, "java-annotation-to-wrapper", "Mapping of annotations (on test classes) to wrapper rules which should be used around the test rule. Example: com.example.annotations.RequiresNetwork=@some//wrapper:file.bzl=requires_network")
 	fs.StringVar(&jc.mavenInstallFile, "java-maven-install-file", "", "Path of the maven_install.json file. Defaults to \"maven_install.json\".")
 }
 
@@ -41,6 +44,9 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 		for k, v := range kv {
 			cfgs[""].MapAnnotationToAttribute(annotation, k, v)
 		}
+	}
+	for annotation, wrapper := range jc.annotationToWrapper {
+		cfgs[""].MapAnnotationToWrapper(annotation, wrapper.symbol)
 	}
 	if jc.mavenInstallFile != "" {
 		cfgs[""].SetMavenInstallFile(jc.mavenInstallFile)
@@ -190,5 +196,49 @@ func (f *annotationToAttribute) Set(value string) error {
 	}
 
 	(*f)[annotationClassName][key] = parsedValue
+	return nil
+}
+
+type loadInfo struct {
+	from   string
+	symbol string
+}
+
+type annotationToWrapper map[string]loadInfo
+
+func (f *annotationToWrapper) String() string {
+	s := "annotationToWrapper{"
+	for a, li := range *f {
+		s += a + ": "
+		s += fmt.Sprintf(`load("%s", "%s")`, li.from, li.symbol)
+	}
+	s += "}"
+	return s
+}
+
+func (f *annotationToWrapper) Set(value string) error {
+	parts := strings.Split(value, "=")
+	if len(parts) != 2 {
+		return fmt.Errorf("want --java-annotation-to-wrapper to have format com.example.RequiresNetwork=@some_repo//has:wrapper.bzl,wrapper_rule but didn't see exactly one equals sign")
+	}
+	annotation := parts[0]
+
+	if _, ok := (*f)[annotation]; ok {
+		return fmt.Errorf("saw conflicting values for --java-annotation-to-wrapper flag for annotation %v", annotation)
+	}
+
+	vParts := strings.Split(parts[1], ",")
+	if len(vParts) != 2 {
+		return fmt.Errorf("want --java-annotation-to-wrapper to have format com.example.RequiresNetwork=@some_repo//has:wrapper.bzl,wrapper_rule but didn't see exactly one comma after equals sign")
+	}
+
+	from := vParts[0]
+	symbol := vParts[1]
+
+	(*f)[annotation] = loadInfo{
+		from:   from,
+		symbol: symbol,
+	}
+
 	return nil
 }

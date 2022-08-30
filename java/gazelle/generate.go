@@ -36,6 +36,11 @@ func javaFileLess(l, r javaFile) bool {
 	return l.pathRelativeToBazelWorkspaceRoot < r.pathRelativeToBazelWorkspaceRoot
 }
 
+type separateJavaTestReasons struct {
+	attributes map[string]bzl.Expr
+	wrapper    string
+}
+
 // GenerateRules extracts build metadata from source files in a directory.
 //
 // See language.GenerateRules for more information.
@@ -114,7 +119,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	testJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	// Java Test files which need to be generated separately from any others because they have explicit attribute overrides.
-	separateTestJavaFiles := make(map[javaFile]map[string]bzl.Expr)
+	separateTestJavaFiles := make(map[javaFile]separateJavaTestReasons)
 
 	// Files which are used by non-test classes in test java packages.
 	testHelperJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
@@ -234,8 +239,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		switch cfg.TestMode() {
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
-				extraAttributes := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, nil, extraAttributes, &res)
+				separateJavaTestReasons := separateTestJavaFiles[tf]
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 
 		case "suite":
@@ -278,7 +283,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				if testHelperJavaFiles.Len() > 0 {
 					testHelperDep = ptr(testHelperLibname(suiteName))
 				}
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testHelperDep, separateTestJavaFiles[src], &res)
+				separateJavaTestReasons := separateTestJavaFiles[src]
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 		}
 	}
@@ -407,10 +413,11 @@ func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from
 	}
 }
 
-func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]map[string]bzl.Expr, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
+func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]separateJavaTestReasons, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
 	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
 		annotationClassNames := perClassMetadata[file.ClassName().FullyQualifiedClassName()].AnnotationClassNames
 		perFileAttrs := make(map[string]bzl.Expr)
+		wrapper := ""
 		for _, annotationClassName := range annotationClassNames.SortedSlice() {
 			if attrs, ok := cfg.AttributesForAnnotation(annotationClassName); ok {
 				for k, v := range attrs {
@@ -420,10 +427,20 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 					perFileAttrs[k] = v
 				}
 			}
+			newWrapper, ok := cfg.WrapperForAnnotation(annotationClassName)
+			if ok {
+				if wrapper != "" {
+					log.Error().Str("file", file.pathRelativeToBazelWorkspaceRoot).Msgf("Saw conflicting wrappers from annotations: %v and %v. Picking one at random.", wrapper, newWrapper)
+				}
+				wrapper = newWrapper
+			}
 		}
 		testJavaFiles.Add(file)
-		if len(perFileAttrs) > 0 {
-			separateTestJavaFiles[file] = perFileAttrs
+		if len(perFileAttrs) > 0 || wrapper != "" {
+			separateTestJavaFiles[file] = separateJavaTestReasons{
+				attributes: perFileAttrs,
+				wrapper:    wrapper,
+			}
 		}
 	} else {
 		testHelperJavaFiles.Add(file)
@@ -488,7 +505,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], depOnTestHelpers *string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -498,12 +515,12 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		testName = className.BareOuterClassName()
 	}
 
-	ruleKind := "java_test"
+	javaRuleKind := "java_test"
 	if importsJunit5(imports) {
-		ruleKind = "java_junit5_test"
+		javaRuleKind = "java_junit5_test"
 	}
 
-	runtimeDeps := l.collectRuntimeDeps(ruleKind, testName, file)
+	runtimeDeps := l.collectRuntimeDeps(javaRuleKind, testName, file)
 	if importsJunit5(imports) {
 		// This should probably register imports here, and then allow the
 		// resolver to resolve this to an artifact, but we don't currently wire
@@ -514,7 +531,16 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		}
 	}
 
+	ruleKind := javaRuleKind
+	if wrapper != "" {
+		ruleKind = wrapper
+	}
+
 	r := rule.NewRule(ruleKind, testName)
+	if wrapper != "" {
+		r.AddArg(&bzl.Ident{Name: javaRuleKind})
+	}
+
 	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
