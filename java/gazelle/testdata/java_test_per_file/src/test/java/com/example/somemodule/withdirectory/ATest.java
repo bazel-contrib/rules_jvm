@@ -3,7 +3,6 @@ package com.example.somemodule.withdirectory;
 import static org.junit.Assert.assertEquals;
 
 import com.example.myproject.App;
-
 import org.junit.Test;
 
 public class ATest {

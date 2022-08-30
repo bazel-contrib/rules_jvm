@@ -1,16 +1,22 @@
 package gazelle
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/bazelbuild/bazel-gazelle/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"golang.org/x/tools/go/vcs"
@@ -172,4 +178,98 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 	value := r.AttrStrings("_imports")
 	r.DelAttr("_imports")
 	return value
+}
+
+func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
+	// Add a -repo_root argument if none is present. Without this,
+	// config.CommonConfigurer will try to auto-detect a WORKSPACE file,
+	// which will fail.
+	haveRoot := false
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-repo_root") {
+			haveRoot = true
+			break
+		}
+	}
+	if !haveRoot {
+		args = append(args, "-repo_root=.")
+	}
+
+	cexts := []config.Configurer{
+		new(config.CommonConfigurer),
+		new(walk.Configurer),
+		new(resolve.Configurer),
+	}
+
+	l := NewLanguage()
+	l.(*javaLang).mavenResolver = &testResolver{}
+
+	langs := []language.Language{
+		proto.NewLanguage(),
+		l,
+	}
+
+	c := testtools.NewTestConfig(t, cexts, langs, args)
+
+	absRepoRoot, err := filepath.Abs(c.RepoRoot)
+	if err != nil {
+		t.Fatalf("error getting absolute path for workspace")
+	}
+	c.RepoRoot = absRepoRoot
+
+	for _, lang := range langs {
+		cexts = append(cexts, lang)
+	}
+
+	return c, langs, cexts
+}
+
+type testResolver struct{}
+
+func (*testResolver) Resolve(pkg string) (label.Label, error) {
+	return label.NoLabel, errors.New("not implemented")
+}
+
+type mapResolver map[string]resolve.Resolver
+
+func (mr mapResolver) Resolver(r *rule.Rule, f string) resolve.Resolver {
+	return mr[r.Kind()]
+}
+
+func InitTestResolversAndExtensions(langs []language.Language) (mapResolver, []interface{}) {
+	mrslv := make(mapResolver)
+	exts := make([]interface{}, 0, len(langs))
+	for _, lang := range langs {
+		// TODO There has to be a better way to make this generic.
+		if jLang, ok := lang.(*javaLang); ok {
+			jLang.mavenResolver = NewTestMavenResolver()
+		}
+
+		for kind := range lang.Kinds() {
+			mrslv[kind] = lang
+		}
+		exts = append(exts, lang)
+	}
+	return mrslv, exts
+}
+
+type TestMavenResolver struct {
+	data map[string]label.Label
+}
+
+func NewTestMavenResolver() *TestMavenResolver {
+	return &TestMavenResolver{
+		data: map[string]label.Label{
+			"com.google.common.primitives": label.New("maven", "", "com_google_guava_guava"),
+			"org.junit":                    label.New("maven", "", "junit_junit"),
+		},
+	}
+}
+
+func (r *TestMavenResolver) Resolve(pkg string) (label.Label, error) {
+	l, found := r.data[pkg]
+	if !found {
+		return label.NoLabel, fmt.Errorf("unexpected import: %s", pkg)
+	}
+	return l, nil
 }

@@ -1,7 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-# gazelle:exclude testdata
 # gazelle:exclude def.bzl
 
 go_library(
@@ -35,29 +34,21 @@ go_library(
     ],
 )
 
-# Needs to be no-remote as the test invokes "bazel info" (see java/private/bazel/bazel.go)
-# In the production use this recursive call to "bazel info" derives the directory where the external files are
-# loaded, allowing for the dependency verification.
 go_test(
     name = "gazelle_test",
     size = "medium",
     srcs = [
-        "generate_integration_test.go",
         "generate_test.go",
-        "integration_base_test.go",
-        "resolve_integration_test.go",
         "resolve_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":gazelle"],
-    tags = ["no-remote"],
     deps = [
         "//java/gazelle/private/sorted_set",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",
         "@bazel_gazelle//language/proto:go_default_library",
-        "@bazel_gazelle//merger:go_default_library",
         "@bazel_gazelle//pathtools:go_default_library",
         "@bazel_gazelle//repo:go_default_library",
         "@bazel_gazelle//resolve:go_default_library",

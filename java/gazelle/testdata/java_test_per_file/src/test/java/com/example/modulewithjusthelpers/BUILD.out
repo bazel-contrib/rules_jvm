@@ -1,0 +1,13 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+# gazelle:java_module_granularity module
+
+java_library(
+    name = "modulewithjusthelpers",
+    testonly = True,
+    srcs = [
+        "Helper.java",
+        "withdirectory/Helper.java",
+    ],
+    deps = ["@maven//:com_google_guava_guava"],
+)

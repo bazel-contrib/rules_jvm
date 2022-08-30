@@ -1,3 +1,0 @@
-# gazelle:java_test_mode file
-
-# gazelle:resolve java org.hamcrest @maven//:org_hamcrest_hamcrest_all
