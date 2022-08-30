@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "sorted_multiset",
+    srcs = ["multiset.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset",
+    visibility = ["//java/gazelle:__subpackages__"],
+    deps = [
+        "//java/gazelle/private/sorted_set",
+        "@com_github_google_btree//:btree",
+    ],
+)
+
+go_test(
+    name = "sorted_multiset_test",
+    srcs = ["multiset_test.go"],
+    deps = [":sorted_multiset"],
+)
