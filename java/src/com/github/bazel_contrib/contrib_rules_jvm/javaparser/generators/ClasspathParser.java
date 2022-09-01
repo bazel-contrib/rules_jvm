@@ -4,6 +4,7 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import com.google.common.collect.Lists;
+import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
@@ -21,8 +22,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -40,6 +45,10 @@ public class ClasspathParser {
   private final Set<String> usedTypes = new TreeSet<>();
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
+
+  // Mapping from fully-qualified class-name to class-names of annotations on that class.
+  // Annotations will be fully-qualified where that's known, and not where not known.
+  private final Map<String, SortedSet<String>> annotatedClasses = new TreeMap<>();
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -59,6 +68,10 @@ public class ClasspathParser {
 
   public Set<String> getMainClasses() {
     return mainClasses;
+  }
+
+  public Map<String, SortedSet<String>> getAnnotatedClasses() {
+    return annotatedClasses;
   }
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
@@ -105,13 +118,19 @@ public class ClasspathParser {
   class ClassScanner extends TreeScanner<Void, Void> {
     private CompilationUnitTree compileUnit;
     private String fileName;
+
+    @Nullable private String currentPackage;
     @Nullable private String currentClassName;
+
+    @Nullable private Map<String, String> currentFileImports;
 
     @Override
     public Void visitCompilationUnit(CompilationUnitTree t, Void v) {
       compileUnit = t;
       fileName = Paths.get(compileUnit.getSourceFile().toUri().getPath()).getFileName().toString();
       currentClassName = null;
+      currentFileImports = new HashMap<>();
+
       return super.visitCompilationUnit(t, v);
     }
 
@@ -119,6 +138,7 @@ public class ClasspathParser {
     public Void visitPackage(PackageTree p, Void v) {
       logger.debug("JavaTools: Got package {} for class: {}", p.getPackageName(), fileName);
       packages.add(p.getPackageName().toString());
+      currentPackage = p.getPackageName().toString();
       return super.visitPackage(p, v);
     }
 
@@ -143,6 +163,8 @@ public class ClasspathParser {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
         usedTypes.add(wildcardPackage);
       } else {
+        String[] parts = i.getQualifiedIdentifier().toString().split("\\.");
+        currentFileImports.put(parts[parts.length - 1], i.getQualifiedIdentifier().toString());
         usedTypes.add(name);
       }
       return super.visitImport(i, v);
@@ -153,6 +175,16 @@ public class ClasspathParser {
       // Set class name for the top level classes only
       if (currentClassName == null) {
         currentClassName = t.getSimpleName().toString();
+      }
+      for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
+        String annotationClassName = annotation.getAnnotationType().toString();
+        String importedFullyQualified = currentFileImports.get(annotationClassName);
+        String currentFullyQualifiedClass = fullyQualify(currentPackage, currentClassName);
+        if (importedFullyQualified != null) {
+          noteAnnotatedClass(currentFullyQualifiedClass, importedFullyQualified);
+        } else {
+          noteAnnotatedClass(currentFullyQualifiedClass, annotationClassName);
+        }
       }
       return super.visitClass(t, v);
     }
@@ -224,5 +256,20 @@ public class ClasspathParser {
         }
       }
     }
+  }
+
+  private void noteAnnotatedClass(
+      String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
+    if (!annotatedClasses.containsKey(annotatedFullyQualifiedClassName)) {
+      annotatedClasses.put(annotatedFullyQualifiedClassName, new TreeSet<>());
+    }
+    annotatedClasses.get(annotatedFullyQualifiedClassName).add(annotationFullyQualifiedClassName);
+  }
+
+  private String fullyQualify(String packageName, String className) {
+    if (packageName.isEmpty()) {
+      return className;
+    }
+    return packageName + "." + className;
   }
 }

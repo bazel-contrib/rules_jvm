@@ -68,6 +68,10 @@ adding comments to your root `BUILD.bazel` file. For example, to set
 See [javaconfig/config.go](javaconfig/config.go) for a list of configuration
 options and their documentation.
 
+Additionally, some configuration can only be done by flag. See the
+`RegisterFlags` function in [configure.go](configure.go) for a list of these
+options.
+
 ## Troubleshooting
 
 If one forgets to run `bazel fetch @maven//...`, the code will complain and tell

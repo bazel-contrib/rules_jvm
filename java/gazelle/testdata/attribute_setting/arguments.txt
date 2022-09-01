@@ -1,0 +1,1 @@
+-java-annotation-to-attribute=com.example.annotation.FlakyTest=flaky=True

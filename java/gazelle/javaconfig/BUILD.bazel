@@ -5,4 +5,7 @@ go_library(
     srcs = ["config.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig",
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+    ],
 )

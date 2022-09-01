@@ -1,1 +1,2 @@
 [90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/private/maven/resolver.go:33[0m[36m >[0m not loading maven dependencies [36merror=[0m[31m"open %WORKSPACEPATH%/maven_install.json: no such file or directory"[0m [36m_c=[0mmaven-resolver
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:215[0m[36m >[0m missing import DeleteBookRequest.newBuilder() [36mpkg=[0m [36mtargets=[0m[]

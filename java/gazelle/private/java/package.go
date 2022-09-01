@@ -11,4 +11,10 @@ type Package struct {
 	// Especially useful for module mode
 	Files       *sorted_set.SortedSet[string]
 	TestPackage bool
+
+	PerClassMetadata map[string]PerClassMetadata
+}
+
+type PerClassMetadata struct {
+	AnnotationClassNames *sorted_set.SortedSet[string]
 }
