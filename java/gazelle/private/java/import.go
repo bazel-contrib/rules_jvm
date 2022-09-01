@@ -33,6 +33,7 @@ func (i *Import) Path() string {
 
 var stdlibPrefixes = []string{
 	"com.sun.management.",
+	"com.sun.net.httpserver.",
 	"java.",
 	"javax.annotation.security.",
 	"javax.crypto.",
@@ -42,6 +43,8 @@ var stdlibPrefixes = []string{
 	"javax.security.",
 	"javax.xml.",
 	"jdk.",
+	"org.w3c.dom.",
+	"org.xml.sax.",
 	"sun.",
 }
 
