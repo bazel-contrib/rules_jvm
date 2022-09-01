@@ -3,7 +3,6 @@ package maven
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset"
@@ -39,7 +38,11 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 
 	for _, dep := range c.DependencyTree.Dependencies {
 		for _, pkg := range dep.Packages {
-			l := label.New("maven", "", bazel.CleanupLabel(artifactFromCoord(dep.Coord)))
+			c, err := ParseCoordinate(dep.Coord)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse coordinate %v: %w", dep.Coord, err)
+			}
+			l := label.New("maven", "", bazel.CleanupLabel(c.ArtifactString()))
 			r.data.Add(pkg, l.String())
 		}
 	}
@@ -73,16 +76,6 @@ func (r *resolver) Resolve(pkg string) (label.Label, error) {
 
 		return label.NoLabel, errors.New("many possible imports")
 	}
-}
-
-func artifactFromCoord(coord string) string {
-	g, a, _ := splitCoord(coord)
-	return strings.Join([]string{g, a}, ":")
-}
-
-func splitCoord(coord string) (groupId, artifactId, version string) {
-	parts := strings.Split(coord, ":")
-	return parts[0], parts[1], parts[len(parts)-1]
 }
 
 func LabelFromArtifact(artifact string) string {
