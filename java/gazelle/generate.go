@@ -454,7 +454,10 @@ func importsJunit4(imports *sorted_set.SortedSet[string]) bool {
 }
 
 func importsJunit5(imports *sorted_set.SortedSet[string]) bool {
-	return imports.Contains("org.junit.jupiter.api.Test") || imports.Contains("org.junit.jupiter.api")
+	return imports.Contains("org.junit.jupiter.api.Test") ||
+		imports.Contains("org.junit.jupiter.api") ||
+		imports.Contains("org.junit.jupiter.params.ParameterizedTest") ||
+		imports.Contains("org.junit.jupiter.params")
 }
 
 var junit5RuntimeDeps = []string{

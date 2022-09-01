@@ -95,6 +95,17 @@ func TestSingleJavaTestFile(t *testing.T) {
 				"@maven//:org_junit_platform_junit_platform_reporting",
 			},
 		},
+		"parameterized junit5": {
+			includePackageInName: false,
+			imports:              []string{"org.junit.jupiter.params.ParameterizedTest"},
+			wantRuleKind:         "java_junit5_test",
+			wantImports:          []string{"com.example", "org.junit.jupiter.params.ParameterizedTest"},
+			wantRuntimeDeps: []string{
+				"@maven//:org_junit_jupiter_junit_jupiter_engine",
+				"@maven//:org_junit_platform_junit_platform_launcher",
+				"@maven//:org_junit_platform_junit_platform_reporting",
+			},
+		},
 		"explicit both junit4 and junit5": {
 			includePackageInName: false,
 			imports:              []string{"org.junit.Test", "org.junit.jupiter.api.Test"},
@@ -163,6 +174,17 @@ func TestSuite(t *testing.T) {
 			includePackageInName: false,
 			imports:              []string{"org.junit.jupiter.api.Test"},
 			wantImports:          []string{"com.example", "org.junit.jupiter.api.Test"},
+			wantRuntimeDeps: []string{
+				"@maven//:org_junit_jupiter_junit_jupiter_engine",
+				"@maven//:org_junit_platform_junit_platform_launcher",
+				"@maven//:org_junit_platform_junit_platform_reporting",
+			},
+			wantRunner: "junit5",
+		},
+		"parameterized junit5": {
+			includePackageInName: false,
+			imports:              []string{"org.junit.jupiter.params.ParameterizedTest"},
+			wantImports:          []string{"com.example", "org.junit.jupiter.params.ParameterizedTest"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
