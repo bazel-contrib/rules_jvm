@@ -41,4 +41,10 @@ message Package {
   //
   // Example: ["Foo"]
   repeated string mains = 3;
+
+  map<string, PerClassMetadata> per_class_metadata = 4;
+}
+
+message PerClassMetadata {
+    repeated string annotation_class_names = 1;
 }

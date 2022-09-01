@@ -110,7 +110,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			generateJavaTest("", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), &res)
+			generateJavaTest("", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
