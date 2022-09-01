@@ -77,6 +77,7 @@ var kindWithoutRuntimeDeps = rule.KindInfo{
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
+		"java_junit5_test":   kindWithRuntimeDeps,
 		"java_library":       kindWithRuntimeDeps,
 		"java_test":          kindWithRuntimeDeps,
 		"java_test_suite":    kindWithRuntimeDeps,
@@ -104,6 +105,7 @@ var javaLoads = []rule.LoadInfo{
 	{
 		Name: "@contrib_rules_jvm//java:defs.bzl",
 		Symbols: []string{
+			"java_junit5_test",
 			"java_test_suite",
 		},
 	},

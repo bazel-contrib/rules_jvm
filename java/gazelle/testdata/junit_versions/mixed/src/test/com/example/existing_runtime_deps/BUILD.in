@@ -1,0 +1,20 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+# gazelle:java_test_mode suite
+
+java_test_suite(
+    name = "existing_runtime_deps",
+    srcs = [
+        "Example4Test.java",
+        "Example5Test.java",
+    ],
+    runner = "junit5",
+    runtime_deps = [
+        "@maven//:keep",  # keep
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+    ],
+    deps = [
+        "@maven//:junit_junit",
+        "@maven//:org_junit_jupiter_junit_jupiter_api",
+    ],
+)

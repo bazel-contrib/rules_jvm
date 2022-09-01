@@ -372,16 +372,40 @@ func generateJavaTest(pathToPackageRelativeToBazelWorkspace string, f javaFile, 
 	} else {
 		testName = className
 	}
-	r := rule.NewRule("java_test", testName)
+
+	ruleKind := "java_test"
+	var runtimeDeps []string
+	if importsJunit5(imports) {
+		ruleKind = "java_junit5_test"
+		runtimeDeps = append(runtimeDeps, mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact)...)
+	}
+
+	r := rule.NewRule(ruleKind, testName)
 	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
 	r.SetPrivateAttr(packagesKey, []string{f.pkg})
 
+	if len(runtimeDeps) != 0 {
+		// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
+		// but we don't currently wire up the resolver to do this.
+		// We probably should.
+		// In the mean time, hard-code some labels.
+		r.SetAttr("runtime_deps", runtimeDeps)
+	}
+
 	res.Gen = append(res.Gen, r)
 	testImports := imports.Clone()
 	testImports.Add(f.pkg)
 	res.Imports = append(res.Imports, testImports.SortedSlice())
+}
+
+func importsJunit4(imports *sorted_set.SortedSet[string]) bool {
+	return imports.Contains("org.junit.Test") || imports.Contains("org.junit")
+}
+
+func importsJunit5(imports *sorted_set.SortedSet[string]) bool {
+	return imports.Contains("org.junit.jupiter.api.Test") || imports.Contains("org.junit.jupiter.api")
 }
 
 var junit5RuntimeDeps = []string{
@@ -395,8 +419,18 @@ func generateJavaTestSuite(name string, srcs []string, packageNames, imports *so
 	r.SetAttr("srcs", srcs)
 	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
 
-	r.SetAttr("runner", "junit5")
-	r.SetAttr("runtime_deps", mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact))
+	if importsJunit5(imports) {
+		r.SetAttr("runner", "junit5")
+		runtimeDeps := sorted_set.NewSortedSet(mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact))
+		if importsJunit4(imports) {
+			runtimeDeps.Add(maven.LabelFromArtifact("org.junit.vintage:junit-vintage-engine"))
+		}
+		// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
+		// but we don't currently wire up the resolver to do this.
+		// We probably should.
+		// In the mean time, hard-code some labels.
+		r.SetAttr("runtime_deps", runtimeDeps.SortedSlice())
+	}
 
 	res.Gen = append(res.Gen, r)
 	suiteImports := imports.Clone()
