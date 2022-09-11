@@ -18,6 +18,8 @@ github.com/bazelbuild/buildtools v0.0.0-20220907133145-b9bfff5d7f91 h1:7xSt0nPZ7
 github.com/bazelbuild/buildtools v0.0.0-20220907133145-b9bfff5d7f91/go.mod h1:689QdV3hBP7Vo9dJMmzhoYIyo/9iMhEmHkJcnaPRCbo=
 github.com/bazelbuild/rules_go v0.34.0 h1:cmObMtgIOaEU944SqXtJ9DnlS8IPGGa7pdRnsrpQzXM=
 github.com/bazelbuild/rules_go v0.34.0/go.mod h1:MC23Dc/wkXEyk3Wpq6lCqz0ZAYOZDw2DR5y3N1q2i7M=
+github.com/bazelbuild/rules_go v0.35.0 h1:ViPR65vOrg74JKntAUFY6qZkheBKGB6to7wFd8gCRU4=
+github.com/bazelbuild/rules_go v0.35.0/go.mod h1:ahciH68Viyxtm/gvCQplaAiu8buhf/b+gWswcPjFixI=
 github.com/bmatcuk/doublestar/v4 v4.2.0 h1:Qu+u9wR3Vd89LnlLMHvnZ5coJMWKQamqdz9/p5GNthA=
 github.com/bmatcuk/doublestar/v4 v4.2.0/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
