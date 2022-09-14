@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/aristanetworks/goarista v0.0.0-20220912205815-e1021c6d3cb5
-	github.com/bazelbuild/bazel-gazelle v0.26.0
+	github.com/bazelbuild/bazel-gazelle v0.27.0
 	github.com/bazelbuild/buildtools v0.0.0-20220907133145-b9bfff5d7f91
 	github.com/bazelbuild/rules_go v0.35.0
 	github.com/google/btree v1.1.2
@@ -27,7 +27,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b // indirect
-	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
+	golang.org/x/sys v0.0.0-20220913175220-63ea55921009 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220829175752-36a9c930ecbf // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
