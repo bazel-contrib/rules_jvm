@@ -106,6 +106,17 @@ func TestSingleJavaTestFile(t *testing.T) {
 				"@maven//:org_junit_platform_junit_platform_reporting",
 			},
 		},
+		"junitpioneer junit5": {
+			includePackageInName: false,
+			imports:              []string{"org.junitpioneer.jupiter.cartesian.CartesianTest"},
+			wantRuleKind:         "java_junit5_test",
+			wantImports:          []string{"com.example", "org.junitpioneer.jupiter.cartesian.CartesianTest"},
+			wantRuntimeDeps: []string{
+				"@maven//:org_junit_jupiter_junit_jupiter_engine",
+				"@maven//:org_junit_platform_junit_platform_launcher",
+				"@maven//:org_junit_platform_junit_platform_reporting",
+			},
+		},
 		"explicit both junit4 and junit5": {
 			includePackageInName: false,
 			imports:              []string{"org.junit.Test", "org.junit.jupiter.api.Test"},
