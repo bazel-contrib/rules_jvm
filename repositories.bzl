@@ -6,9 +6,9 @@ def contrib_rules_jvm_deps():
     maybe(
         http_archive,
         name = "apple_rules_lint",
-        sha256 = "8feab4b08a958b10cb2abb7f516652cd770b582b36af6477884b3bba1f2f0726",
-        strip_prefix = "apple_rules_lint-0.1.1",
-        url = "https://github.com/apple/apple_rules_lint/archive/0.1.1.zip",
+        sha256 = "78223d7c8372d025fc377a17aca83961c3d9d4829bcbb9f12476cea212ea70ea",
+        strip_prefix = "apple_rules_lint-0.2.0",
+        url = "https://github.com/apple/apple_rules_lint/archive/0.2.0.zip",
     )
     maybe(
         http_archive,
