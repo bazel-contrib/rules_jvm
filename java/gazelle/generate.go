@@ -453,8 +453,19 @@ func importsJunit4(imports *sorted_set.SortedSet[string]) bool {
 	return imports.Contains("org.junit.Test") || imports.Contains("org.junit")
 }
 
+// Determines whether the given import is part of the JUnit Pioneer extension pack for JUnit 5. Only the beginning of
+// the string is considered here to cover classes imported from different sub-packages: org.junitpioneer.vintage.Test,
+// org.junitpioneer.jupiter.RetryingTest, org.junitpioneer.jupiter.cartesian.CartesianTest, etc.
+func importsJunitPioneer(import_ string) bool {
+	return strings.HasPrefix(import_, "org.junitpioneer.")
+}
+
 func importsJunit5(imports *sorted_set.SortedSet[string]) bool {
-	return imports.Contains("org.junit.jupiter.api.Test") || imports.Contains("org.junit.jupiter.api")
+	return imports.Contains("org.junit.jupiter.api.Test") ||
+		imports.Contains("org.junit.jupiter.api") ||
+		imports.Contains("org.junit.jupiter.params.ParameterizedTest") ||
+		imports.Contains("org.junit.jupiter.params") ||
+		imports.Filter(importsJunitPioneer).Len() != 0
 }
 
 var junit5RuntimeDeps = []string{
