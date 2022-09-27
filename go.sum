@@ -8,6 +8,7 @@ github.com/aristanetworks/goarista v0.0.0-20220805151739-8d6a27d3a3bb/go.mod h1:
 github.com/aristanetworks/goarista v0.0.0-20220901082851-893017a1ebff/go.mod h1:RLep/xi+EWuvM2ZR0NCnRHeYwvdinYX6jbAkHZWodb0=
 github.com/aristanetworks/goarista v0.0.0-20220912205815-e1021c6d3cb5/go.mod h1:RLep/xi+EWuvM2ZR0NCnRHeYwvdinYX6jbAkHZWodb0=
 github.com/aristanetworks/goarista v0.0.0-20220916135147-b8cbb2ba9f61/go.mod h1:RLep/xi+EWuvM2ZR0NCnRHeYwvdinYX6jbAkHZWodb0=
+github.com/aristanetworks/goarista v0.0.0-20220920225711-39c593d5fd51/go.mod h1:RLep/xi+EWuvM2ZR0NCnRHeYwvdinYX6jbAkHZWodb0=
 github.com/bazelbuild/bazel-gazelle v0.26.0 h1:/gh8S450+nfr3wYI6bTYEi297obbVcMObavhPuB7LVo=
 github.com/bazelbuild/bazel-gazelle v0.26.0/go.mod h1:9LocFQkzkop0G726hCt+oa5bEQSZd3shKLlZUcxRZ4I=
 github.com/bazelbuild/bazel-gazelle v0.27.0 h1:+/ZhUxlDy4XnyMIGeKkbRZoIGssy1eO51GijwIvvuwE=
