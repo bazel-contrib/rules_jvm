@@ -23,14 +23,14 @@ public class TestRunningSecurityManagerTest {
 
     var restrictive = new TestRunningSecurityManager();
     restrictive.setDelegateSecurityManager(
-            new SecurityManager() {
-              @Override
-              public void checkPermission(Permission perm) {
-                if (permission == perm) {
-                  throw new SecurityException("Oh noes!");
-                }
-              }
-            });
+        new SecurityManager() {
+          @Override
+          public void checkPermission(Permission perm) {
+            if (permission == perm) {
+              throw new SecurityException("Oh noes!");
+            }
+          }
+        });
 
     // This should do nothing, but if an exception is thrown, our test fails.
     permissive.checkPermission(permission);
