@@ -13,32 +13,68 @@ public class JUnit5Runner {
   private static final String JUNIT5_RUNNER_CLASS =
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
 
+  private static final String JAVA17_SYSTEM_EXIT_TOGGLE =
+      "com.github.bazel_contrib.contrib_rules_jvm.junit5.Java17SystemExitToggle";
+
   public static void main(String[] args) {
     var testSuite = System.getProperty("bazel.test_suite");
 
+    var systemExitToggle = getSystemExitToggle();
+
     if (testSuite == null || testSuite.isBlank()) {
       System.err.println("No test suite specified");
-      exit(2); // Same error code as Bazel's own test runner
+      exit(systemExitToggle, 2); // Same error code as Bazel's own test runner
     }
 
     detectJUnit5Classes();
+
+    systemExitToggle.prevent();
 
     try {
       var constructor =
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       var runsTest = constructor.newInstance();
       if (!runsTest.run(testSuite)) {
-        exit(2);
+        exit(systemExitToggle, 2);
       }
     } catch (ReflectiveOperationException e) {
       e.printStackTrace(System.err);
       System.err.println("Unable to create delegate test runner");
-      exit(2);
+      exit(systemExitToggle, 2);
     }
 
     // Exit manually. If we don't do this then tests which hold resources
     // such as Threads may prevent us from exiting properly.
-    exit(0);
+    exit(systemExitToggle, 0);
+  }
+
+  private static SystemExitToggle getSystemExitToggle() {
+    var version = Runtime.version();
+
+    if (version.feature() < 12) {
+      return new Java11SystemExitToggle();
+    }
+
+    // Load the java 17 toggle by reflection, because it's tied
+    // so closely to the OpenJDK
+    try {
+      var java17ToggleClazz =
+          Class.forName(JAVA17_SYSTEM_EXIT_TOGGLE).asSubclass(SystemExitToggle.class);
+      return java17ToggleClazz.getDeclaredConstructor().newInstance();
+    } catch (Exception e) {
+      // We don't care _why_ we can't load the toggle, but we can't. Ideally
+      // this would be a combination of `ReflectiveOperationException` and
+      // `SecurityException`, but the latter is scheduled for removal so
+      // relying on it seems like a Bad Idea.
+
+      // Fall through
+    }
+
+    System.err.println(
+        "Unable to create a mechanism to prevent `System.exit` being called. "
+            + "Tests may cause `bazel test` to exit prematurely.");
+
+    return new NullSystemExitToggle();
   }
 
   private static void detectJUnit5Classes() {
@@ -66,12 +102,8 @@ public class JUnit5Runner {
     }
   }
 
-  private static void exit(int value) {
-    var manager = System.getSecurityManager();
-    if (manager instanceof TestRunningSecurityManager) {
-      var trsm = (TestRunningSecurityManager) manager;
-      trsm.allowExitCall();
-    }
+  private static void exit(SystemExitToggle toggle, int value) {
+    toggle.allow();
     System.exit(value);
   }
 }
