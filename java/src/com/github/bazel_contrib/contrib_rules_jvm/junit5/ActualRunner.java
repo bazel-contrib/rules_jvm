@@ -50,18 +50,13 @@ public class ActualRunner implements RunsTest {
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
 
-      File exitFile = getExitFile();
       var originalSecurityManager = System.getSecurityManager();
-      TestRunningSecurityManager testSecurityManager =
-          new TestRunningSecurityManager(originalSecurityManager);
-      try {
-        System.setSecurityManager(testSecurityManager);
-        var launcher = LauncherFactory.create(config);
-        launcher.execute(request.build());
-      } finally {
-        testSecurityManager.allowRemoval();
-        System.setSecurityManager(originalSecurityManager);
-      }
+
+      File exitFile = getExitFile();
+
+      var launcher = LauncherFactory.create(config);
+      launcher.execute(request.build());
+
       deleteExitFile(exitFile);
 
       try (PrintWriter writer = new PrintWriter(System.out)) {

@@ -11,16 +11,18 @@ public class TestRunningSecurityManagerTest {
 
   @Test
   void shouldStifleSystemExitCalls() {
-    SecurityManager sm = new TestRunningSecurityManager(null);
+    var sm = new TestRunningSecurityManager();
+    sm.setDelegateSecurityManager(null);
     assertThrows(SecurityException.class, () -> sm.checkExit(2));
   }
 
   @Test
   void shouldDelegateToExistingSecurityManagerIfPresent() {
-    SecurityManager permissive = new TestRunningSecurityManager(null);
+    SecurityManager permissive = new TestRunningSecurityManager();
     Permission permission = new RuntimePermission("example.permission");
-    SecurityManager restrictive =
-        new TestRunningSecurityManager(
+
+    var restrictive = new TestRunningSecurityManager();
+    restrictive.setDelegateSecurityManager(
             new SecurityManager() {
               @Override
               public void checkPermission(Permission perm) {

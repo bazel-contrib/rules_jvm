@@ -2,36 +2,38 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import java.security.Permission;
 
-class TestRunningSecurityManager extends SecurityManager {
+public class TestRunningSecurityManager extends SecurityManager {
   private static final RuntimePermission SET_SECURITY_MANAGER_PERMISSION =
       new RuntimePermission("setSecurityManager");
-  private final SecurityManager existing;
-  private boolean allowRemoval = false;
+  private boolean allowExitCall = false;
+  private SecurityManager delegateSecurityManager;
 
-  TestRunningSecurityManager(SecurityManager existing) {
-    this.existing = existing;
+  public void setDelegateSecurityManager(SecurityManager securityManager) {
+    this.delegateSecurityManager = securityManager;
   }
 
-  void allowRemoval() {
-    allowRemoval = true;
+  void allowExitCall() {
+    allowExitCall = true;
   }
 
   @Override
   public void checkExit(int status) {
-    throw new SecurityException("Attempt to call System.exit");
+    if (!allowExitCall) {
+      throw new SecurityException("Attempt to call System.exit");
+    }
   }
 
   @Override
   public void checkPermission(Permission perm) {
     if (SET_SECURITY_MANAGER_PERMISSION.equals(perm)) {
-      if (allowRemoval) {
+      if (allowExitCall) {
         return;
       }
       throw new SecurityException("Replacing the security manager is not allowed");
     }
 
-    if (existing != null) {
-      existing.checkPermission(perm);
+    if (delegateSecurityManager != null) {
+      delegateSecurityManager.checkPermission(perm);
     }
   }
 
@@ -44,8 +46,8 @@ class TestRunningSecurityManager extends SecurityManager {
     // that we are "no security manager" installed and just allow things
     // to happen because that's how most people are running their tests.
 
-    if (existing != null) {
-      existing.checkPermission(perm, context);
+    if (delegateSecurityManager != null) {
+      delegateSecurityManager.checkPermission(perm, context);
     }
   }
 }
