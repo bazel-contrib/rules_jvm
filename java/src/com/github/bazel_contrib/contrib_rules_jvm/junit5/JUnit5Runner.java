@@ -18,7 +18,7 @@ public class JUnit5Runner {
 
     if (testSuite == null || testSuite.isBlank()) {
       System.err.println("No test suite specified");
-      System.exit(2); // Same error code as Bazel's own test runner
+      exit(2); // Same error code as Bazel's own test runner
     }
 
     detectJUnit5Classes();
@@ -28,17 +28,17 @@ public class JUnit5Runner {
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       var runsTest = constructor.newInstance();
       if (!runsTest.run(testSuite)) {
-        System.exit(2);
+        exit(2);
       }
     } catch (ReflectiveOperationException e) {
       e.printStackTrace(System.err);
       System.err.println("Unable to create delegate test runner");
-      System.exit(2);
+      exit(2);
     }
 
     // Exit manually. If we don't do this then tests which hold resources
     // such as Threads may prevent us from exiting properly.
-    System.exit(0);
+    exit(0);
   }
 
   private static void detectJUnit5Classes() {
@@ -64,5 +64,14 @@ public class JUnit5Runner {
               "JUnit 5 test runner is missing a dependency on `artifact(\"%s\")`%n",
               containedInDependency));
     }
+  }
+
+  private static void exit(int value) {
+    var manager = System.getSecurityManager();
+    if (manager instanceof TestRunningSecurityManager) {
+      var trsm = (TestRunningSecurityManager) manager;
+      trsm.allowExitCall();
+    }
+    System.exit(value);
   }
 }

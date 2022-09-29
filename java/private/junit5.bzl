@@ -47,12 +47,22 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     else:
         clazz = get_package_name() + name
 
+    jvm_flags = kwargs.pop("jvm_flags", [])
+    for f in jvm_flags:
+        if f.startswith("-Djava.security.manager="):
+            fail("Only the JUnit5 runner is allowed to set the security manager via a JVM flag")
+
     java_test(
         name = name,
         main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         test_class = clazz,
         runtime_deps = runtime_deps + [
             "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
+        ],
+        jvm_flags = jvm_flags + [
+            # In later versions of Java (after version 11, at least), we could set the value "allow"
+            # but earlier releases need a class name.
+            "-Djava.security.manager=com.github.bazel_contrib.contrib_rules_jvm.junit5.TestRunningSecurityManager",
         ],
         **kwargs
     )
