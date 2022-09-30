@@ -6,9 +6,6 @@ import sun.misc.Unsafe;
 
 public class Java17SystemExitToggle extends Java11SystemExitToggle {
 
-  private SecurityManager previousSecurityManager;
-  private TestRunningSecurityManager testingSecurityManager;
-
   public Java17SystemExitToggle() throws ReflectiveOperationException {
     suppressSecurityManagerWarning();
   }
