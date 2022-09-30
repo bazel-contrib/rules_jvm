@@ -43,7 +43,7 @@ public class ActualRunner implements RunsTest {
       var request =
           LauncherDiscoveryRequestBuilder.request()
               .selectors(List.of(classSelector))
-              .filters(includeEngines("junit-jupiter", "junit-vintage"))
+              .filters(includeEngines("junit-jupiter", "junit-vintage", "junit-platform-suite"))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
