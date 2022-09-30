@@ -27,6 +27,9 @@ java_library(
     name = "junit5-compile",
     srcs = glob(["*.java"]),
     javacopts = [
+        # Target Java 11, no matter which JDK we're on so that we
+        # can be sure that `SecurityManager` is present, even if
+        # someone rebuilds on a JDK that doesn't have it.
         "--release",
         "11",
     ],

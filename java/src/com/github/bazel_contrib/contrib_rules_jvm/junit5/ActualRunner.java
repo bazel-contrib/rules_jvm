@@ -50,8 +50,6 @@ public class ActualRunner implements RunsTest {
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
 
-      var originalSecurityManager = System.getSecurityManager();
-
       File exitFile = getExitFile();
 
       var launcher = LauncherFactory.create(config);
