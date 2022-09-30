@@ -56,7 +56,9 @@ public class JUnit5Runner {
     }
 
     // Load the java 17 toggle by reflection, because it's tied
-    // so closely to the OpenJDK
+    // so closely to the OpenJDK (it relies on the internal fields
+    // of both `sun.misc.Unsafe` and `java.lang.System`: it's a
+    // gross hack.
     try {
       var java17ToggleClazz =
           Class.forName(JAVA17_SYSTEM_EXIT_TOGGLE).asSubclass(SystemExitToggle.class);
@@ -66,6 +68,7 @@ public class JUnit5Runner {
       // this would be a combination of `ReflectiveOperationException` and
       // `SecurityException`, but the latter is scheduled for removal so
       // relying on it seems like a Bad Idea.
+      System.err.println("Failed to load Java 17 system exit override: " + e.getMessage());
 
       // Fall through
     }
