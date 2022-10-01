@@ -2,6 +2,8 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.platform.engine.FilterResult;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
@@ -59,10 +61,19 @@ public class PatternFilter implements PostDiscoveryFilter {
     return FilterResult.excluded("Did not match " + rawPattern);
   }
 
+  /**
+   * Converts comma-separated selections in patterns like:
+   *
+   * <ul>
+   *   <li>classes: "path.to.SomeTest,path.to.AnotherTest" -> "path.to.SomeTest|path.to.AnotherTest"
+   *   <li>methods: "path.to.SomeTest#testSomething,testSomethingElse" ->
+   *       "path.to.SomeTest#testSomething$|path.to.SomeTest#testSomethingElse$"
+   * </ul>
+   */
   private static String convertCommaSeparatedSelections(String pattern) {
     var selections = pattern.split(",");
     if (selections.length == 1) {
-      return pattern;
+      return ensureExactMethodName(pattern);
     }
     var precedingClassSelection = selections[0];
     var precedingHashIndex = precedingClassSelection.indexOf('#');
@@ -76,6 +87,13 @@ public class PatternFilter implements PostDiscoveryFilter {
         selections[i] = precedingClassSelection.substring(0, precedingHashIndex + 1) + selection;
       }
     }
-    return String.join("|", selections);
+    return Stream.of(selections)
+        .map(PatternFilter::ensureExactMethodName)
+        .collect(Collectors.joining("|"));
+  }
+
+  /** Appends '$' to patterns like "class#method" or "#method", unless already done. */
+  private static String ensureExactMethodName(String pattern) {
+    return pattern.matches(".*#.*[^$]$") ? pattern + '$' : pattern;
   }
 }

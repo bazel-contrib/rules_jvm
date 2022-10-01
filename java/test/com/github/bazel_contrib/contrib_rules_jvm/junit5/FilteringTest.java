@@ -134,7 +134,7 @@ public class FilteringTest {
     assertTrue(siblingTestResult.included());
 
     FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
-    assertFalse(nestedTestResult.included(), "nested class should not be matched");
+    assertFalse(nestedTestResult.included(), "method in nested class should not be matched");
   }
 
   @Test
@@ -143,10 +143,10 @@ public class FilteringTest {
         new PatternFilter(JUnit5StyleTest.NestedTest.class.getName().replace("$", "\\$") + "#");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
-    assertFalse(testResult.included(), "enclosing class should not be matched");
+    assertFalse(testResult.included(), "method in enclosing class should not be matched");
 
     FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
-    assertFalse(siblingTestResult.included(), "enclosing class should not be matched");
+    assertFalse(siblingTestResult.included(), "method in enclosing class should not be matched");
 
     FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
     assertTrue(nestedTestResult.included());
@@ -186,11 +186,25 @@ public class FilteringTest {
   }
 
   @Test
-  public void shouldIncludeATestMethodIfTheFilterMatchesTheMethodName() {
+  public void shouldIncludeATestMethodIfTheFilterMatchesTheExactShortMethodName() {
+    PatternFilter filter = new PatternFilter("#alwaysPasses");
+
+    FilterResult testResult = filter.apply(testMethodTestDescriptor);
+    assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertFalse(siblingTestResult.included(), "longer method name should not be matched");
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertFalse(nestedTestResult.included(), "longer method name should not be matched");
+  }
+
+  @Test
+  public void shouldIncludeATestMethodIfTheFilterMatchesTheExactLongMethodName() {
     PatternFilter filter = new PatternFilter("#alwaysPassesToo");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
-    assertFalse(testResult.included(), "different method name should not be matched");
+    assertFalse(testResult.included(), "shorter method name should not be matched");
 
     FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
     assertTrue(siblingTestResult.included());
