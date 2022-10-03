@@ -16,7 +16,7 @@ func NewImport(imp string) *Import {
 	parts := strings.Split(imp, ".")
 	i := 0
 	for ; i < len(parts); i++ {
-		if unicode.IsUpper(rune(parts[i][0])) {
+		if unicode.IsUpper(rune(parts[i][0])) || strings.HasPrefix(parts[i], "_") {
 			break
 		}
 	}
