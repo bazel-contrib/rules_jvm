@@ -43,7 +43,7 @@ public class ActualRunner implements RunsTest {
       var request =
           LauncherDiscoveryRequestBuilder.request()
               .selectors(List.of(classSelector))
-              .filters(includeEngines("junit-jupiter", "junit-vintage"))
+              .filters(includeEngines("junit-jupiter", "junit-vintage", "junit-platform-suite"))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
@@ -51,17 +51,10 @@ public class ActualRunner implements RunsTest {
       request.filters(new PatternFilter(filter));
 
       File exitFile = getExitFile();
-      var originalSecurityManager = System.getSecurityManager();
-      TestRunningSecurityManager testSecurityManager =
-          new TestRunningSecurityManager(originalSecurityManager);
-      try {
-        System.setSecurityManager(testSecurityManager);
-        var launcher = LauncherFactory.create(config);
-        launcher.execute(request.build());
-      } finally {
-        testSecurityManager.allowRemoval();
-        System.setSecurityManager(originalSecurityManager);
-      }
+
+      var launcher = LauncherFactory.create(config);
+      launcher.execute(request.build());
+
       deleteExitFile(exitFile);
 
       try (PrintWriter writer = new PrintWriter(System.out)) {

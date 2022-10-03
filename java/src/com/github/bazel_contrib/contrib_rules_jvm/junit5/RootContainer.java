@@ -13,11 +13,23 @@ public class RootContainer extends BaseResult {
 
   // Insertion order matters when we come to output the results
   private final List<TestSuiteResult> suites = new LinkedList<>();
+  private final TestPlan testPlan;
 
   public RootContainer(TestIdentifier rootId, TestPlan testPlan) {
     super(rootId);
+    this.testPlan = testPlan;
 
-    testPlan.getChildren(rootId).forEach(child -> suites.add(createSuite(child, testPlan)));
+    testPlan.getChildren(rootId).forEach(child -> suites.add(createSuite(child)));
+  }
+
+  public void addDynamicTest(TestIdentifier testIdentifier) {
+    testPlan
+        .getParent(testIdentifier)
+        .flatMap(this::get)
+        .filter(TestSuiteResult.class::isInstance)
+        .map(TestSuiteResult.class::cast)
+        .ifPresent(
+            suite -> suite.add(new TestResult(testPlan, testIdentifier, /*isDynamic=*/ true)));
   }
 
   public void markStarted(TestIdentifier testIdentifier) {
@@ -52,13 +64,13 @@ public class RootContainer extends BaseResult {
     write(() -> suites.forEach(suite -> suite.toXml(xml)));
   }
 
-  private TestSuiteResult createSuite(TestIdentifier suiteId, TestPlan plan) {
+  private TestSuiteResult createSuite(TestIdentifier suiteId) {
     TestSuiteResult suite = new TestSuiteResult(suiteId);
-    for (TestIdentifier child : plan.getChildren(suiteId)) {
+    for (TestIdentifier child : testPlan.getChildren(suiteId)) {
       if (child.isContainer()) {
-        suite.add(createSuite(child, plan));
+        suite.add(createSuite(child));
       } else {
-        suite.add(new TestResult(plan, child));
+        suite.add(new TestResult(testPlan, child, /*isDynamic=*/ false));
       }
     }
     return suite;
