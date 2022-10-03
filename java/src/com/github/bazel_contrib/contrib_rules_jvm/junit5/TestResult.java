@@ -15,10 +15,12 @@ import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
   private final TestPlan testPlan;
+  private final boolean isDynamic;
 
-  public TestResult(TestPlan testPlan, TestIdentifier id) {
+  public TestResult(TestPlan testPlan, TestIdentifier id, boolean isDynamic) {
     super(id);
     this.testPlan = testPlan;
+    this.isDynamic = isDynamic;
   }
 
   public boolean isError() {
@@ -55,11 +57,16 @@ class TestResult extends BaseResult {
 
     write(
         () -> {
-          // Massage the name
-          String name = getTestId().getLegacyReportingName();
-          int index = name.indexOf('(');
-          if (index != -1) {
-            name = name.substring(0, index);
+          String name;
+          if (isDynamic) {
+            name = getTestId().getDisplayName(); // [ordinal] name=value...
+          } else {
+            // Massage the name
+            name = getTestId().getLegacyReportingName();
+            int index = name.indexOf('(');
+            if (index != -1) {
+              name = name.substring(0, index);
+            }
           }
 
           xml.writeStartElement("testcase");
