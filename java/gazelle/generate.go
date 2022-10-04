@@ -310,13 +310,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					srcs = append(srcs, strings.TrimPrefix(src.pathRelativeToBazelWorkspaceRoot, args.Rel+"/"))
 				}
 			}
-			generateJavaTestSuite(
-				suiteName,
-				srcs,
-				packageNames,
-				testJavaImportsWithHelpers,
-				&res,
-			)
+			if len(srcs) > 0 {
+				generateJavaTestSuite(
+					suiteName,
+					srcs,
+					packageNames,
+					testJavaImportsWithHelpers,
+					&res,
+				)
+			}
 
 			sortedSeparateTestJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
 			for src := range separateTestJavaFiles {
@@ -370,9 +372,8 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 				}
 			}
 		}
-		if len(perFileAttrs) == 0 {
-			testJavaFiles.Add(file)
-		} else {
+		testJavaFiles.Add(file)
+		if len(perFileAttrs) > 0 {
 			separateTestJavaFiles[file] = perFileAttrs
 		}
 	} else {
