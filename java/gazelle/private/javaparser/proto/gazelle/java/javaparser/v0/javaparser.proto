@@ -48,3 +48,11 @@ message Package {
 message PerClassMetadata {
     repeated string annotation_class_names = 1;
 }
+
+service Lifecycle {
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+}
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}

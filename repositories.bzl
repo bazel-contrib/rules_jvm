@@ -59,15 +59,10 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "b794b5c4af78574e4bf574c6b2336bbffbdfeadfaae1c14c6184f154e44fdb47",
-        strip_prefix = "bazel-gazelle-622d8889c63227a71d6b393ba5e3a8b8a6761466",
+        sha256 = "dc4ed4f6cbb95abed45e3e3b3b8cb28de16696617a8ab90141c73920a186bb3d",
+        strip_prefix = "bazel-gazelle-05f5493ca9b74f037dde928721dc01ffaa6de1a2",
         urls = [
-            "https://github.com/bazelbuild/bazel-gazelle/archive/622d8889c63227a71d6b393ba5e3a8b8a6761466.tar.gz",
-        ],
-        patch_args = ["-p1"],
-        patches = [
-            # While we wait for https://github.com/bazelbuild/bazel-gazelle/pull/1324 to merge.
-            "@contrib_rules_jvm//java/gazelle/private/patches:bazel_gazelle-1324-allow-configuring-timeout-of-generation-tests.patch",
+            "https://github.com/bazelbuild/bazel-gazelle/archive/05f5493ca9b74f037dde928721dc01ffaa6de1a2.tar.gz",
         ],
     )
 

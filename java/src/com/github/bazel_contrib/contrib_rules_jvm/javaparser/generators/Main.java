@@ -3,6 +3,7 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -20,11 +21,14 @@ public class Main {
   public static void main(String[] args) throws IOException, InterruptedException {
     line = commandLineOptions(args);
     Main main = new Main();
-    main.runServer();
+
+    TimeoutHandler timeoutHander =
+        new TimeoutHandler(new ScheduledThreadPoolExecutor(1), main.idleTimeout());
+    main.runServer(timeoutHander);
   }
 
-  public void runServer() throws InterruptedException, IOException {
-    GrpcServer gRPCServer = new GrpcServer(serverPort(), workspace());
+  public void runServer(TimeoutHandler timeoutHandler) throws InterruptedException, IOException {
+    GrpcServer gRPCServer = new GrpcServer(serverPortFilePath(), workspace(), timeoutHandler);
     gRPCServer.start();
     gRPCServer.blockUntilShutdown();
   }
@@ -35,10 +39,15 @@ public class Main {
         : Paths.get("");
   }
 
-  private int serverPort() {
-    return line.hasOption("server-port")
-        ? Integer.decode(line.getOptionValue("server-port"))
-        : 8980;
+  private Path serverPortFilePath() {
+    return Paths.get(line.getOptionValue("server-port-file-path"));
+  }
+
+  // <=0 means don't timeout.
+  private int idleTimeout() {
+    return line.hasOption("idle-timeout")
+        ? Integer.decode(line.getOptionValue("idle-timeout"))
+        : -1;
   }
 
   private static CommandLine commandLineOptions(String[] args) {
@@ -47,8 +56,13 @@ public class Main {
 
     options.addOption(new Option("h", "help", false, "This help message"));
     options.addOption(new Option(null, "workspace", true, "Workspace root"));
+    options.addOption(new Option(null, "server-port-file-path", true, "TODO"));
     options.addOption(
-        new Option(null, "server-port", true, "Port to connect to the gRPC server (default 8980)"));
+        new Option(
+            null,
+            "idle-timeout",
+            true,
+            "Number of seconds after no gRPC activity to terminate self"));
 
     try {
       line = parser.parse(options, args);

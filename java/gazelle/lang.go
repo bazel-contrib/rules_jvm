@@ -116,3 +116,7 @@ func (l javaLang) Loads() []rule.LoadInfo {
 }
 
 func (l javaLang) Fix(c *config.Config, f *rule.File) {}
+
+func (l javaLang) DoneGeneratingRules() {
+	l.parser.ServerManager().Shutdown()
+}
