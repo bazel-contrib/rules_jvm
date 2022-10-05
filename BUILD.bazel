@@ -16,6 +16,7 @@ buildifier(
 # gazelle:resolve java com.gazelle.java.javaparser.v0 //java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_java_library
 # gazelle:resolve java com.google.common.annotations @contrib_rules_jvm_deps//:com_google_guava_guava
 # gazelle:resolve java com.google.common.collect @contrib_rules_jvm_deps//:com_google_guava_guava
+# gazelle:resolve java com.google.errorprone.annotations.concurrent @contrib_rules_jvm_deps//:com_google_errorprone_error_prone_annotations
 # gazelle:resolve java com.google.gson @contrib_rules_jvm_deps//:com_google_code_gson_gson
 # gazelle:resolve java io.grpc @contrib_rules_jvm_deps//:io_grpc_grpc_api
 # gazelle:resolve java io.grpc.protobuf.services @contrib_rules_jvm_deps//:io_grpc_grpc_services
