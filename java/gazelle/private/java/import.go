@@ -23,7 +23,7 @@ func NewImport(imp string) *Import {
 		// java_library and a java_test_suite in the same file, and a package may need access
 		// to the test library. see java/gazelle/generate.go for details.
 		if strings.HasPrefix(parts[i], "_") && !strings.HasPrefix(parts[i], "_TESTONLY") {
-		    break
+			break
 		}
 	}
 
