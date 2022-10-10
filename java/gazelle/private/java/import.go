@@ -19,7 +19,7 @@ func NewImport(imp string) *Import {
 		if unicode.IsUpper(rune(parts[i][0])) {
 			break
 		}
-        // Assume that a _ prefix denotes a class not a package.
+		// Assume that a _ prefix denotes a class not a package.
 		// This isn't a strong convention in the Java community, but has been spotted in the wild.
 		// If it breaks (i.e. we discover packages starting with underscores), we may tweak this heuristic further.
 		//
