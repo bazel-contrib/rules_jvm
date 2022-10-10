@@ -19,6 +19,10 @@ func NewImport(imp string) *Import {
 		if unicode.IsUpper(rune(parts[i][0])) {
 			break
 		}
+        // Assume that a _ prefix denotes a class not a package.
+		// This isn't a strong convention in the Java community, but has been spotted in the wild.
+		// If it breaks (i.e. we discover packages starting with underscores), we may tweak this heuristic further.
+		//
 		// The "_TESTONLY" comes from the parser to identify cases where there is both a
 		// java_library and a java_test_suite in the same file, and a package may need access
 		// to the test library. see java/gazelle/generate.go for details.
