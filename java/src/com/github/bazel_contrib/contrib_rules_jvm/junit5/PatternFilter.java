@@ -22,6 +22,8 @@ public class PatternFilter implements PostDiscoveryFilter {
   public PatternFilter(String pattern) {
     if (pattern == null || pattern.isEmpty()) {
       pattern = ".*";
+    } else {
+      pattern = convertCommaSeparatedSelections(pattern);
     }
 
     this.rawPattern = pattern;
@@ -55,5 +57,25 @@ public class PatternFilter implements PostDiscoveryFilter {
     }
 
     return FilterResult.excluded("Did not match " + rawPattern);
+  }
+
+  private static String convertCommaSeparatedSelections(String pattern) {
+    var selections = pattern.split(",");
+    if (selections.length == 1) {
+      return pattern;
+    }
+    var precedingClassSelection = selections[0];
+    var precedingHashIndex = precedingClassSelection.indexOf('#');
+    for (int i = 1; i < selections.length; i++) {
+      var selection = selections[i];
+      var hashIndex = selection.indexOf('#');
+      if (hashIndex > -1) { // `class#` or `class#method`
+        precedingClassSelection = selection;
+        precedingHashIndex = hashIndex;
+      } else if (precedingHashIndex > -1) { // prepend preceding `class#`
+        selections[i] = precedingClassSelection.substring(0, precedingHashIndex + 1) + selection;
+      }
+    }
+    return String.join("|", selections);
   }
 }

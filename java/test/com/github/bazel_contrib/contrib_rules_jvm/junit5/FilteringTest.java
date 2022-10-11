@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.engine.config.DefaultJupiterConfiguration;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
@@ -20,7 +21,10 @@ public class FilteringTest {
 
   private JupiterEngineDescriptor engineDescriptor;
   private ClassTestDescriptor classTestDescriptor;
+  private ClassTestDescriptor nestedClassTestDescriptor;
   private TestMethodTestDescriptor testMethodTestDescriptor;
+  private TestMethodTestDescriptor siblingTestMethodTestDescriptor;
+  private TestMethodTestDescriptor nestedTestMethodTestDescriptor;
 
   @BeforeEach
   public void setup() throws NoSuchMethodException {
@@ -34,6 +38,19 @@ public class FilteringTest {
     testMethodTestDescriptor =
         new TestMethodTestDescriptor(
             classId.append("method", "bar"), JUnit5StyleTest.class, method, config);
+    Method siblingMethod = JUnit5StyleTest.class.getMethod("alwaysPassesToo");
+    siblingTestMethodTestDescriptor =
+        new TestMethodTestDescriptor(
+            classId.append("method", "baz"), JUnit5StyleTest.class, siblingMethod, config);
+    nestedClassTestDescriptor =
+        new ClassTestDescriptor(classId, JUnit5StyleTest.NestedTest.class, config);
+    Method nestedMethod = JUnit5StyleTest.NestedTest.class.getMethod("alwaysPassesToo");
+    nestedTestMethodTestDescriptor =
+        new TestMethodTestDescriptor(
+            classId.append("method", "qux"),
+            JUnit5StyleTest.NestedTest.class,
+            nestedMethod,
+            config);
   }
 
   @Test
@@ -48,6 +65,15 @@ public class FilteringTest {
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedClassResult = filter.apply(nestedClassTestDescriptor);
+    assertTrue(nestedClassResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
   }
 
   @Test
@@ -62,6 +88,15 @@ public class FilteringTest {
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedClassResult = filter.apply(nestedClassTestDescriptor);
+    assertTrue(nestedClassResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
   }
 
   @Test
@@ -76,6 +111,15 @@ public class FilteringTest {
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertFalse(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertFalse(siblingTestResult.included());
+
+    FilterResult nestedClassResult = filter.apply(nestedClassTestDescriptor);
+    assertTrue(nestedClassResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertFalse(nestedTestResult.included());
   }
 
   @Test
@@ -85,6 +129,46 @@ public class FilteringTest {
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertFalse(nestedTestResult.included(), "nested class should not be matched");
+  }
+
+  @Test
+  public void shouldIncludeANestedTestMethodIfTheFilterIsJustTheNestedClassName() {
+    PatternFilter filter =
+        new PatternFilter(JUnit5StyleTest.NestedTest.class.getName().replace("$", "\\$") + "#");
+
+    FilterResult testResult = filter.apply(testMethodTestDescriptor);
+    assertFalse(testResult.included(), "enclosing class should not be matched");
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertFalse(siblingTestResult.included(), "enclosing class should not be matched");
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
+  }
+
+  @Test
+  public void shouldIncludeMultipleTestMethodsIfTheFilterComprisesMultipleClassNames() {
+    PatternFilter filter =
+        new PatternFilter(
+            String.join(
+                ",",
+                JUnit5StyleTest.class.getName().replace("$", "\\$"),
+                JUnit5StyleTest.NestedTest.class.getName().replace("$", "\\$")));
+
+    FilterResult testResult = filter.apply(testMethodTestDescriptor);
+    assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
   }
 
   @Test
@@ -93,14 +177,40 @@ public class FilteringTest {
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertFalse(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertFalse(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertFalse(nestedTestResult.included());
   }
 
   @Test
   public void shouldIncludeATestMethodIfTheFilterMatchesTheMethodName() {
-    PatternFilter filter = new PatternFilter("#alwaysPasses");
+    PatternFilter filter = new PatternFilter("#alwaysPassesToo");
+
+    FilterResult testResult = filter.apply(testMethodTestDescriptor);
+    assertFalse(testResult.included(), "different method name should not be matched");
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
+  }
+
+  @Test
+  public void shouldIncludeMultipleTestMethodsIfTheFilterComprisesMultipleMethodNames() {
+    PatternFilter filter = new PatternFilter("JUnit5StyleTest#alwaysPasses,alwaysPassesToo");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertFalse(nestedTestResult.included(), "nested class should not be matched");
   }
 
   private static class EmptyConfigParameters implements ConfigurationParameters {
@@ -123,5 +233,14 @@ public class FilteringTest {
   private static class JUnit5StyleTest {
     @Test
     public void alwaysPasses() {}
+
+    @Test
+    public void alwaysPassesToo() {}
+
+    @Nested
+    private class NestedTest {
+      @Test
+      public void alwaysPassesToo() {}
+    }
   }
 }
