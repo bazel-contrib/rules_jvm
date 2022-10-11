@@ -89,7 +89,7 @@ class TestResult extends BaseResult {
               return;
             }
 
-            xml.writeAttribute("message", throwable.getMessage());
+            xml.writeAttribute("message", String.valueOf(throwable.getMessage())); // or "null"
             xml.writeAttribute("type", throwable.getClass().getName());
 
             StringWriter stringWriter = new StringWriter();
