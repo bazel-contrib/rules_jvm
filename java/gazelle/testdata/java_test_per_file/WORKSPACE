@@ -2,9 +2,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_jvm_external",
-    sha256 = "c0bdf6a9bcaed1b609456282dd33fa382bdeae867fc3b1fb1416fee13ae1bad8",
-    strip_prefix = "rules_jvm_external-9261dd2c29557120aea912ffde12e67d66b7c552",
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/9261dd2c29557120aea912ffde12e67d66b7c552.zip",
+    sha256 = "fd14d9d8605ee4cb8ecf33ef2e329c65ec590a8f39941f75f5c71e5a1d22f89b",
+    strip_prefix = "rules_jvm_external-762f94d8bf405d7250c8d20179acc69e01156581",
+    url = "https://github.com/bazelbuild/rules_jvm_external/archive/762f94d8bf405d7250c8d20179acc69e01156581.zip",
 )
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
