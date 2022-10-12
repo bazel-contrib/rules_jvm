@@ -54,6 +54,7 @@ maven_install(
         "io.grpc:grpc-services:1.40.0",
         "io.grpc:grpc-stub:1.40.0",
         "org.slf4j:slf4j-simple:1.7.32",
+        "com.google.googlejavaformat:google-java-format:1.15.0",
 
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
@@ -107,9 +108,6 @@ frozen_deps_pmi()
 # These are used for our own tests.
 maven_install(
     artifacts = [
-        "com.google.code.findbugs:annotations:3.0.1",
-        "com.google.googlejavaformat:google-java-format:1.15.0",
-
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
         "org.junit.jupiter:junit-jupiter-engine:5.8.2",

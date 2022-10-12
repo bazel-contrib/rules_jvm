@@ -1,4 +1,5 @@
 load("@rules_java//java:defs.bzl", "java_binary")
+load("//java/private:artifact.bzl", "artifact")
 
 # gazelle:exclude tools.go
 
@@ -12,7 +13,7 @@ java_binary(
         "--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
     ],
     main_class = "com.google.googlejavaformat.java.Main",
-    runtime_deps = ["@maven//:com_google_googlejavaformat_google_java_format"],
+    runtime_deps = [artifact("com.google.googlejavaformat:google-java-format")],
 )
 
 py_binary(
