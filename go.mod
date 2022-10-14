@@ -15,7 +15,7 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/tools v0.1.12
-	google.golang.org/grpc v1.50.0
+	google.golang.org/grpc v1.50.1
 )
 
 require (
