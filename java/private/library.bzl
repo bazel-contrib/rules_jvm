@@ -22,8 +22,6 @@ def _create_lint_tests(name, **kwargs):
             # regardless of the library or test tags (e.g. even if we exclude
             # sidecar tests, we want to lint them).
             tags = ["lint", "checkstyle", "java-checkstyle"],
-            size = "small",
-            timeout = "moderate",
         )
 
     pmd = get_lint_config("java-pmd", tags)

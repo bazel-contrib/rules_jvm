@@ -42,7 +42,7 @@ def _checkstyle_impl(ctx):
         ),
     ]
 
-checkstyle_test = rule(
+_checkstyle_test = rule(
     _checkstyle_impl,
     attrs = {
         "srcs": attr.label_list(
@@ -65,3 +65,11 @@ checkstyle_test = rule(
     test = True,
     doc = """Use checkstyle to lint the `srcs`.""",
 )
+
+def checkstyle_test(name, size = "medium", timeout = "short", **kwargs):
+    _checkstyle_test(
+        name = name,
+        size = size,
+        timeout = timeout,
+        **kwargs
+    )
