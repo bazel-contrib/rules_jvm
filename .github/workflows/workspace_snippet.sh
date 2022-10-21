@@ -4,7 +4,7 @@ set -eufo pipefail
 # Set by GH actions, see
 # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
 TAG=${GITHUB_REF_NAME}
-PREFIX="contrib_rules_jvm-${TAG:1}"
+PREFIX="rules_jvm-${TAG:1}"
 SHA=$(git archive --format=tar --prefix=${PREFIX}/ ${TAG} | gzip | shasum -a 256 | awk '{print $1}')
 
 cat << EOF
@@ -15,7 +15,7 @@ http_archive(
     name = "contrib_rules_jvm",
     sha256 = "${SHA}",
     strip_prefix = "${PREFIX}",
-    url = "https://github.com/bazel-contrib/contrib_rules_jvm/archive/${TAG}.tar.gz",
+    url = "https://github.com/bazel-contrib/rules_jvm/archive/refs/tags/${TAG}.tar.gz",
 )
 
 # Fetches the contrib_rules_jvm dependencies.
