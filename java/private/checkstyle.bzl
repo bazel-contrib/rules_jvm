@@ -1,4 +1,5 @@
 load(":checkstyle_config.bzl", "CheckStyleInfo")
+load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
 
 """
 Checkstyle rule implementation
@@ -39,6 +40,10 @@ def _checkstyle_impl(ctx):
             runfiles = runfiles.merge(
                 ctx.attr.config[DefaultInfo].default_runfiles,
             ),
+        ),
+        LinterInfo(
+            language = "java",
+            name = "checkstyle",
         ),
     ]
 
