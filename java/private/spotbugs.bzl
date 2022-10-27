@@ -1,4 +1,5 @@
 load(":spotbugs_config.bzl", "SpotBugsInfo")
+load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
 
 """
 Spotbugs integration logic
@@ -67,6 +68,10 @@ def _spotbugs_impl(ctx):
         DefaultInfo(
             executable = out,
             runfiles = runfiles,
+        ),
+        LinterInfo(
+            language = "java",
+            name = "spotbugs",
         ),
     ]
 

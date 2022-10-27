@@ -1,4 +1,5 @@
 load(":pmd_ruleset.bzl", "PmdInfo")
+load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
 
 def _pmd_test_impl(ctx):
     pmd_info = ctx.attr.ruleset[PmdInfo]
@@ -48,10 +49,16 @@ def _pmd_test_impl(ctx):
         transitive_files = transitive_inputs,
     )
 
-    return DefaultInfo(
-        executable = out,
-        runfiles = runfiles.merge(ctx.attr.ruleset[DefaultInfo].default_runfiles),
-    )
+    return [
+        DefaultInfo(
+            executable = out,
+            runfiles = runfiles.merge(ctx.attr.ruleset[DefaultInfo].default_runfiles),
+        ),
+        LinterInfo(
+            language = "java",
+            name = "pmd",
+        ),
+    ]
 
 pmd_test = rule(
     _pmd_test_impl,
