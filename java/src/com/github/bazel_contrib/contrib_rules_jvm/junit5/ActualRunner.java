@@ -4,6 +4,7 @@ import static java.nio.file.StandardOpenOption.DELETE_ON_CLOSE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.platform.launcher.EngineFilter.includeEngines;
+import static org.junit.platform.launcher.EngineFilter.excludeEngines;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,7 +23,7 @@ import org.junit.platform.launcher.core.LauncherFactory;
 public class ActualRunner implements RunsTest {
 
   @Override
-  public boolean run(String testClassName) {
+  public boolean run(String testClassName, List<String> includeEngines, List<String> excludeEngines) {
     var out = System.getenv("XML_OUTPUT_FILE");
     Path xmlOut;
     try {
@@ -43,12 +44,18 @@ public class ActualRunner implements RunsTest {
       var request =
           LauncherDiscoveryRequestBuilder.request()
               .selectors(List.of(classSelector))
-              .filters(includeEngines("junit-jupiter", "junit-vintage", "junit-platform-suite"))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
+
+      if (includeEngines != null) {
+        request.filters(includeEngines(includeEngines));
+      }
+      if (excludeEngines != null) {
+        request.filters(excludeEngines(excludeEngines));
+      }
 
       File exitFile = getExitFile();
 

@@ -27,6 +27,8 @@ def create_jvm_test_suite(
         tags = [],
         visibility = None,
         size = None,
+        include_engines = [],
+        exclude_engines = [],
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -55,6 +57,8 @@ def create_jvm_test_suite(
       runtime_deps: The list of runtime deps to use when compiling.
       tags: Tags to use for generated targets.
       size: Bazel test size
+      include_engines: A list of JUnit Platform test engine IDs to include (only relevant for `junit5` runner).
+      exclude_engines: A list of JUnit Platform test engine IDs to exclude (only relevant for `junit5` runner).
     """
 
     if runner not in _RUNNERS:
@@ -96,6 +100,8 @@ def create_jvm_test_suite(
 
         define_test(
             name = test_name,
+            include_engines = include_engines,
+            exclude_engines = exclude_engines,
             size = size,
             srcs = [src],
             test_class = test_class,

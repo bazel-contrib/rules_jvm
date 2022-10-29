@@ -15,6 +15,8 @@ java_test_suite(
         ["*.java"],
         exclude = PACKAGE_NAME_TEST,
     ),
+    exclude_engines = ["junit-vintage"],
+    include_engines = ["junit-jupiter"],
     runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",

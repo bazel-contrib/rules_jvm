@@ -16,7 +16,14 @@ JUNIT5_VINTAGE_DEPS = [
     artifact("org.junit.vintage:junit-vintage-engine"),
 ] + JUNIT5_DEPS
 
-def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
+def java_junit5_test(
+        name,
+        test_class = None,
+        runtime_deps = [],
+        jvm_flags = [],
+        include_engines = [],
+        exclude_engines = [],
+        **kwargs):
     """Run junit5 tests using Bazel.
 
     This is designed to be a drop-in replacement for `java_test`, but
@@ -41,11 +48,19 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
       test_class: The Java class to be loaded by the test runner. If not
         specified, the class name will be inferred from a combination of
         the current bazel package and the `name` attribute.
+      include_engines: A list of JUnit Platform test engine IDs to include.
+      exclude_engines: A list of JUnit Platform test engine IDs to exclude.
     """
     if test_class:
         clazz = test_class
     else:
         clazz = get_package_name() + name
+
+    custom_flags = []
+    if include_engines:
+        custom_flags.append("-Dbazel.include_engines=%s" % ",".join(include_engines))
+    if exclude_engines:
+        custom_flags.append("-Dbazel.exclude_engines=%s" % ",".join(exclude_engines))
 
     java_test(
         name = name,
@@ -54,5 +69,6 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
         runtime_deps = runtime_deps + [
             "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         ],
+        jvm_flags = jvm_flags + custom_flags,
         **kwargs
     )

@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import java.util.List;
+
 /**
  * Test bootstrapper. This class only depends on the JRE (java 11+) and will ensure that the
  * required dependencies for a junit5 test are on the classpath before creating the actual runner.
@@ -18,6 +20,8 @@ public class JUnit5Runner {
 
   public static void main(String[] args) {
     var testSuite = System.getProperty("bazel.test_suite");
+    List<String> includeEngines = System.getProperty("bazel.include_engines") == null ? null : List.of(System.getProperty("bazel.include_engines").split(","));
+    List<String> excludeEngines = System.getProperty("bazel.exclude_engines") == null ? null : List.of(System.getProperty("bazel.exclude_engines").split(","));
 
     var systemExitToggle = getSystemExitToggle();
 
@@ -34,7 +38,7 @@ public class JUnit5Runner {
       var constructor =
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       var runsTest = constructor.newInstance();
-      if (!runsTest.run(testSuite)) {
+      if (!runsTest.run(testSuite, includeEngines, excludeEngines)) {
         exit(systemExitToggle, 2);
       }
     } catch (ReflectiveOperationException e) {
