@@ -21,6 +21,8 @@ java_test_suite(
         artifact("com.github.spotbugs:spotbugs-annotations", "frozen_deps"),
         artifact("org.junit.jupiter:junit-jupiter-api", "frozen_deps"),
         artifact("org.junit.platform:junit-platform-engine", "frozen_deps"),
+        artifact("org.mockito:mockito-core"),
+        artifact("org.opentest4j:opentest4j"),
     ] + JUNIT5_VINTAGE_DEPS,
 )
 

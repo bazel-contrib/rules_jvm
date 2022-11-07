@@ -41,7 +41,14 @@ class TestResult extends BaseResult {
     return result.getThrowable().map(thr -> (!(thr instanceof AssertionError))).orElse(false);
   }
 
+  public boolean isDisabled() {
+    return getResult() == null;
+  }
+
   public boolean isSkipped() {
+    if (getResult() == null) {
+      return false;
+    }
     return getResult()
         .getThrowable()
         .map(
@@ -74,8 +81,9 @@ class TestResult extends BaseResult {
           xml.writeAttribute("classname", LegacyReportingUtils.getClassName(testPlan, getTestId()));
           xml.writeAttribute("time", decimalFormat.format(getDuration().toMillis() / 1000f));
 
-          if (isSkipped()) {
+          if (isDisabled() || isSkipped()) {
             xml.writeStartElement("skipped");
+            xml.writeEndElement();
           }
           if (isFailure() || isError()) {
             Throwable throwable = getResult().getThrowable().orElse(null);
@@ -96,7 +104,6 @@ class TestResult extends BaseResult {
             throwable.printStackTrace(new PrintWriter(stringWriter));
 
             xml.writeCData(stringWriter.toString());
-
             xml.writeEndElement();
           }
 
