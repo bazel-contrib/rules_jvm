@@ -20,10 +20,6 @@ class TestSuiteResult extends BaseResult {
   public void toXml(XMLStreamWriter xml) {
     write(
         () -> {
-          if (getSkipReason() != null) {
-            return;
-          }
-
           xml.writeStartElement("testsuite");
 
           xml.writeAttribute("name", getTestId().getLegacyReportingName());
