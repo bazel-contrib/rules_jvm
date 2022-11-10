@@ -2,6 +2,7 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -114,11 +115,28 @@ public class JunitOutputXmlTest {
     assertTrue(skippedSeen);
   }
 
-  private Document generateTestXml(TestSuiteResult suite) {
+  @Test
+  void throwablesWithNullMessageAreSerialized() {
+    var test = new TestResult(Mockito.mock(TestPlan.class), identifier, false);
+    test.markFinished(TestExecutionResult.failed(new Throwable()));
+
+    var root = generateTestXml(test).getDocumentElement();
+    assertNotNull(root);
+    assertEquals("testcase", root.getTagName());
+
+    var failures = root.getElementsByTagName("failure");
+    assertEquals(1, failures.getLength());
+
+    var message = failures.item(0).getAttributes().getNamedItem("message");
+    assertNotNull(message);
+    assertEquals("null", message.getTextContent());
+  }
+
+  private Document generateTestXml(BaseResult result) {
     try {
       Writer writer = new StringWriter();
       XMLStreamWriter xsw = XMLOutputFactory.newDefaultFactory().createXMLStreamWriter(writer);
-      suite.toXml(xsw);
+      result.toXml(xsw);
 
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       DocumentBuilder builder;
