@@ -83,8 +83,7 @@ public class JunitOutputXmlTest {
   }
 
   @Test
-  public void disabledTestsAreMarkedAsSkipped()
-      throws XMLStreamException, ParserConfigurationException, IOException, SAXException {
+  public void disabledTestsAreMarkedAsSkipped() {
     TestSuiteResult suite = new TestSuiteResult(identifier);
     suite.markSkipped("Not today");
 
