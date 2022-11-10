@@ -35,7 +35,6 @@ public class JunitOutputXmlTest {
 
   private TestDescriptor testDescriptor = new StubbedTestDescriptor(createId("descriptors"));
   private TestIdentifier identifier = TestIdentifier.from(testDescriptor);
-  ;
 
   @Test
   public void testResultCanBeDisabled() {
