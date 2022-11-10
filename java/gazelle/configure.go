@@ -49,6 +49,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.MavenInstallFile,
 		javaconfig.ModuleGranularityDirective,
 		javaconfig.TestMode,
+		javaconfig.ExcludeArtifact,
 	}
 }
 
@@ -94,6 +95,8 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.TestMode:
 				cfg.SetTestMode(d.Value)
+			case javaconfig.ExcludeArtifact:
+				cfg.AddExcludedArtifact(d.Value)
 			}
 		}
 	}
@@ -109,6 +112,7 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if jc.lang.mavenResolver == nil {
 		resolver, err := maven.NewResolver(
 			cfg.MavenInstallFile(),
+			cfg.ExcludedArtifacts(),
 			jc.lang.logger,
 		)
 		if err != nil {

@@ -21,7 +21,7 @@ type resolver struct {
 	logger zerolog.Logger
 }
 
-func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
+func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
 		data:   multiset.NewStringMultiSet(),
 		logger: logger.With().Str("_c", "maven-resolver").Logger(),
@@ -43,7 +43,9 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 				return nil, fmt.Errorf("failed to parse coordinate %v: %w", dep.Coord, err)
 			}
 			l := label.New("maven", "", bazel.CleanupLabel(c.ArtifactString()))
-			r.data.Add(pkg, l.String())
+			if _, found := excludedArtifacts[l.String()]; !found {
+				r.data.Add(pkg, l.String())
+			}
 		}
 	}
 

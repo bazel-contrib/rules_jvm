@@ -26,6 +26,10 @@ const (
 
 	// TestMode allows user to choose from per file test or per directory test suite.
 	TestMode = "java_test_mode"
+
+	// ExcludeArtifact tells the resolver to disregard a given maven artifact.
+	// Can be repeated.
+	ExcludeArtifact = "java_exclude_artifact"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -67,6 +71,7 @@ type Config struct {
 	moduleGranularity     string
 	repoRoot              string
 	testMode              string
+	excludedArtifacts     map[string]struct{}
 	annotationToAttribute map[string]map[string]bzl.Expr
 }
 
@@ -84,6 +89,7 @@ func New(repoRoot string) *Config {
 		moduleGranularity:     "package",
 		repoRoot:              repoRoot,
 		testMode:              "suite",
+		excludedArtifacts:     make(map[string]struct{}),
 		annotationToAttribute: make(map[string]map[string]bzl.Expr),
 	}
 }
@@ -140,6 +146,15 @@ func (c *Config) SetTestMode(mode string) error {
 	}
 
 	c.testMode = mode
+	return nil
+}
+
+func (c Config) ExcludedArtifacts() map[string]struct{} {
+	return c.excludedArtifacts
+}
+
+func (c *Config) AddExcludedArtifact(s string) error {
+	c.excludedArtifacts[s] = struct{}{}
 	return nil
 }
 
