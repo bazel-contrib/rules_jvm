@@ -132,6 +132,42 @@ public class JunitOutputXmlTest {
     assertEquals("null", message.getTextContent());
   }
 
+  @Test
+  void throwablesWithIllegalXmlCharactersInMessageAreSerialized() {
+    var test = new TestResult(Mockito.mock(TestPlan.class), identifier, false);
+    test.markFinished(
+        TestExecutionResult.failed(
+            new Throwable(
+                "legal: \u0009"
+                    + " | \n" // #xA
+                    + " | \r" // #xD
+                    + " | [\u0020-\uD7FF]"
+                    + " | [\uE000-\uFFFD]"
+                    + ", illegal: [\0-\u0008]"
+                    + " | [\u000B-\u000C]"
+                    + " | [\u000E-\u0019]"
+                    + " | [\uD800-\uDFFF]"
+                    + " | [\uFFFE-\uFFFF]")));
+
+    var root = generateTestXml(test).getDocumentElement();
+    assertNotNull(root);
+    assertEquals("testcase", root.getTagName());
+
+    var failures = root.getElementsByTagName("failure");
+    assertEquals(1, failures.getLength());
+
+    var message = failures.item(0).getAttributes().getNamedItem("message");
+    assertNotNull(message);
+    assertEquals(
+        "legal:   |   |   | [ -\uD7FF] | [\uE000-�]"
+            + ", illegal: [&#0;-&#8;]"
+            + " | [&#11;-&#12;]"
+            + " | [&#14;-&#25;]"
+            + " | [&#55296;-&#57343;]"
+            + " | [&#65534;-&#65535;]",
+        message.getTextContent());
+  }
+
   private Document generateTestXml(BaseResult result) {
     try {
       Writer writer = new StringWriter();

@@ -97,13 +97,14 @@ class TestResult extends BaseResult {
               return;
             }
 
-            xml.writeAttribute("message", String.valueOf(throwable.getMessage()));
+            xml.writeAttribute(
+                "message", escapeIllegalCharacters(String.valueOf(throwable.getMessage())));
             xml.writeAttribute("type", throwable.getClass().getName());
 
             StringWriter stringWriter = new StringWriter();
             throwable.printStackTrace(new PrintWriter(stringWriter));
 
-            xml.writeCData(stringWriter.toString());
+            xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
             xml.writeEndElement();
           }
 
@@ -128,5 +129,34 @@ class TestResult extends BaseResult {
   @Override
   protected Optional<BaseResult> get(TestIdentifier id) {
     return getTestId().equals(id) ? Optional.of(this) : Optional.empty();
+  }
+
+  private static String escapeIllegalCharacters(String text) {
+    StringBuilder result = new StringBuilder();
+    text.codePoints()
+        .forEach(
+            codePoint -> {
+              if (isLegalCharacter(codePoint)) {
+                result.appendCodePoint(codePoint);
+              } else {
+                result.append("&#").append(codePoint).append(';');
+              }
+            });
+    return result.toString();
+  }
+
+  /**
+   * Returns whether the given code point denotes a legal XML character.
+   *
+   * @see <a href="https://www.w3.org/TR/xml/#charsets">any Unicode character, excluding the
+   *     surrogate blocks, FFFE, and FFFF. </a>
+   */
+  private static boolean isLegalCharacter(int codePoint) {
+    return codePoint == 0x9
+        || codePoint == 0xA
+        || codePoint == 0xD
+        || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+        || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+        || (codePoint >= 0x10000 && codePoint <= 0x10FFFF);
   }
 }
