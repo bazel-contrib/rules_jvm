@@ -1,5 +1,11 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.launcher.TestIdentifier;
+import org.junit.platform.launcher.TestPlan;
+import org.junit.platform.reporting.legacy.LegacyReportingUtils;
+
+import javax.xml.stream.XMLStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.RoundingMode;
@@ -7,13 +13,6 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Optional;
-import javax.xml.stream.XMLStreamWriter;
-import org.junit.AssumptionViolatedException;
-import org.junit.platform.engine.TestExecutionResult;
-import org.junit.platform.launcher.TestIdentifier;
-import org.junit.platform.launcher.TestPlan;
-import org.junit.platform.reporting.legacy.LegacyReportingUtils;
-import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
   private static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS =
@@ -21,6 +20,7 @@ class TestResult extends BaseResult {
 
   private final TestPlan testPlan;
   private final boolean isDynamic;
+
 
   public TestResult(TestPlan testPlan, TestIdentifier id, boolean isDynamic) {
     super(id);
@@ -56,9 +56,7 @@ class TestResult extends BaseResult {
     }
     return getResult()
         .getThrowable()
-        .map(
-            thr ->
-                (thr instanceof TestAbortedException || thr instanceof AssumptionViolatedException))
+        .map(JUnit4Utils::isReasonToSkipTest)
         .orElse(false);
   }
 
