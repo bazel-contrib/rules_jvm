@@ -210,9 +210,10 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 	sort.Strings(labels)
 
 	jr.lang.logger.Warn().
-		Str("pkg", parsedImport.Pkg).
-		Strs("targets", labels).
-		Msgf("missing import %s", imp)
+		Str("package", parsedImport.Pkg).
+		Str("import", imp).
+		Str("from rule", from.String()).
+		Msg("Unable to find package for import in any dependency")
 
 	return label.NoLabel, nil
 }
