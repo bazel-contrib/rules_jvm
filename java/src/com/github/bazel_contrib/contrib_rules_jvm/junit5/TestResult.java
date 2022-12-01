@@ -4,6 +4,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 import java.util.Optional;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.AssumptionViolatedException;
@@ -14,6 +16,9 @@ import org.junit.platform.reporting.legacy.LegacyReportingUtils;
 import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
+  private static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS =
+      new DecimalFormatSymbols(Locale.ROOT);
+
   private final TestPlan testPlan;
   private final boolean isDynamic;
 
@@ -59,7 +64,7 @@ class TestResult extends BaseResult {
 
   @Override
   public void toXml(XMLStreamWriter xml) {
-    DecimalFormat decimalFormat = new DecimalFormat("#.##");
+    DecimalFormat decimalFormat = new DecimalFormat("#.##", DECIMAL_FORMAT_SYMBOLS);
     decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
 
     write(
