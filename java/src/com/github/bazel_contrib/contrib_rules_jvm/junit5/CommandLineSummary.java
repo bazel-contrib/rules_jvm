@@ -28,10 +28,7 @@ public class CommandLineSummary implements TestExecutionListener {
   public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult result) {
     if (result.getStatus().equals(SUCCESSFUL)
         || result.getThrowable().isEmpty()
-        || result
-            .getThrowable()
-            .map(JUnit4Utils::isReasonToSkipTest)
-            .orElse(false)) {
+        || result.getThrowable().map(JUnit4Utils::isReasonToSkipTest).orElse(false)) {
       failures.remove(testIdentifier);
       return;
     }
