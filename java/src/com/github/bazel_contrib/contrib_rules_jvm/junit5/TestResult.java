@@ -8,12 +8,10 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Optional;
 import javax.xml.stream.XMLStreamWriter;
-import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.reporting.legacy.LegacyReportingUtils;
-import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
   private static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS =
@@ -54,12 +52,7 @@ class TestResult extends BaseResult {
     if (getResult() == null) {
       return false;
     }
-    return getResult()
-        .getThrowable()
-        .map(
-            thr ->
-                (thr instanceof TestAbortedException || thr instanceof AssumptionViolatedException))
-        .orElse(false);
+    return getResult().getThrowable().map(JUnit4Utils::isReasonToSkipTest).orElse(false);
   }
 
   @Override

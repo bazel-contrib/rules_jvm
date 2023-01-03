@@ -1,20 +1,26 @@
-load("@rules_jvm_external//:defs.bzl", "artifact")
+load("@rules_jvm_external//:defs.bzl", "DEFAULT_REPOSITORY_NAME", "artifact")
 load("//java/private:library.bzl", "java_test")
 load("//java/private:package.bzl", "get_package_name")
+
+def junit5_deps(repository_name = DEFAULT_REPOSITORY_NAME):
+    return [
+        artifact("org.junit.jupiter:junit-jupiter-engine", repository_name),
+        artifact("org.junit.platform:junit-platform-launcher", repository_name),
+        artifact("org.junit.platform:junit-platform-reporting", repository_name),
+    ]
+
+def junit5_vintage_deps(repository_name = DEFAULT_REPOSITORY_NAME):
+    return junit5_deps(repository_name) + [
+        artifact("org.junit.vintage:junit-vintage-engine", repository_name),
+    ]
 
 """Dependencies typically required by JUnit 5 tests.
 
 See `java_junit5_test` for more details.
 """
-JUNIT5_DEPS = [
-    artifact("org.junit.jupiter:junit-jupiter-engine"),
-    artifact("org.junit.platform:junit-platform-launcher"),
-    artifact("org.junit.platform:junit-platform-reporting"),
-]
+JUNIT5_DEPS = junit5_deps()
 
-JUNIT5_VINTAGE_DEPS = [
-    artifact("org.junit.vintage:junit-vintage-engine"),
-] + JUNIT5_DEPS
+JUNIT5_VINTAGE_DEPS = junit5_vintage_deps()
 
 def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     """Run junit5 tests using Bazel.

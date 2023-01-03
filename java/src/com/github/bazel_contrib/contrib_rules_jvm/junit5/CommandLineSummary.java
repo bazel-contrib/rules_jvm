@@ -7,13 +7,11 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.reporting.legacy.LegacyReportingUtils;
-import org.opentest4j.TestAbortedException;
 
 public class CommandLineSummary implements TestExecutionListener {
 
@@ -30,13 +28,7 @@ public class CommandLineSummary implements TestExecutionListener {
   public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult result) {
     if (result.getStatus().equals(SUCCESSFUL)
         || result.getThrowable().isEmpty()
-        || result
-            .getThrowable()
-            .map(
-                thr ->
-                    (thr instanceof TestAbortedException
-                        || thr instanceof AssumptionViolatedException))
-            .orElse(false)) {
+        || result.getThrowable().map(JUnit4Utils::isReasonToSkipTest).orElse(false)) {
       failures.remove(testIdentifier);
       return;
     }
