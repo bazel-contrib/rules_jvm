@@ -6,23 +6,23 @@ def contrib_rules_jvm_deps():
     maybe(
         http_archive,
         name = "apple_rules_lint",
-        sha256 = "119ecfbecc1befa66d1787b33f39c1250023f5546c73915b2181913628edf21b",
-        strip_prefix = "apple_rules_lint-0.3.1",
-        url = "https://github.com/apple/apple_rules_lint/archive/refs/tags/0.3.1.tar.gz",
+        sha256 = "7c3cc45a95e3ef6fbc484a4234789a027e11519f454df63cbb963ac499f103f9",
+        strip_prefix = "apple_rules_lint-0.3.2",
+        url = "https://github.com/apple/apple_rules_lint/archive/refs/tags/0.3.2.tar.gz",
     )
     maybe(
         http_archive,
         name = "io_bazel_stardoc",
-        sha256 = "c9794dcc8026a30ff67cf7cf91ebe245ca294b20b071845d12c192afe243ad72",
-        url = "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
+        sha256 = "3fd8fec4ddec3c670bd810904e2e33170bedfe12f90adf943508184be458c8bb",
+        url = "https://github.com/bazelbuild/stardoc/releases/download/0.5.3/stardoc-0.5.3.tar.gz",
     )
 
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = "710c2ca4b4d46250cdce2bf8f5aa76ea1f0cba514ab368f2988f70e864cfaf51",
-        strip_prefix = "bazel-skylib-1.2.1",
-        url = "https://github.com/bazelbuild/bazel-skylib/archive/1.2.1.tar.gz",
+        sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
+        strip_prefix = "bazel-skylib-1.3.0",
+        url = "https://github.com/bazelbuild/bazel-skylib/archive/1.3.0.tar.gz",
     )
 
     maybe(
@@ -41,18 +41,10 @@ def contrib_rules_jvm_deps():
 
     maybe(
         http_archive,
-        name = "io_grpc_grpc_java",
-        sha256 = "0f6cf8c1e97757333e08975c8637093b40540a54a201cfd3ce284c8d1d073fae",
-        strip_prefix = "grpc-java-1.47.0",
-        urls = ["https://github.com/grpc/grpc-java/archive/v1.47.0.tar.gz"],
-    )
-
-    maybe(
-        http_archive,
         name = "rules_jvm_external",
-        sha256 = "f3945075856f44fdbdaece3872842c6950a4f07146b40b0cd01d36480dfa5436",
-        strip_prefix = "rules_jvm_external-3957fdc382b5a404fccdde74b91c1e614e07e6bd",
-        url = "https://github.com/bazelbuild/rules_jvm_external/archive/3957fdc382b5a404fccdde74b91c1e614e07e6bd.zip",
+        sha256 = "b17d7388feb9bfa7f2fa09031b32707df529f26c91ab9e5d909eb1676badd9a6",
+        strip_prefix = "rules_jvm_external-4.5",
+        url = "https://github.com/bazelbuild/rules_jvm_external/archive/refs/tags/4.5.zip",
     )
 
 def contrib_rules_jvm_gazelle_deps():
@@ -69,32 +61,32 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "com_github_bazelbuild_buildtools",
-        sha256 = "d368c47bbfc055010f118efb2962987475418737e901f7782d2a966d1dc80296",
-        strip_prefix = "buildtools-4.2.5",
-        url = "https://github.com/bazelbuild/buildtools/archive/4.2.5.tar.gz",
+        sha256 = "e3bb0dc8b0274ea1aca75f1f8c0c835adbe589708ea89bf698069d0790701ea3",
+        strip_prefix = "buildtools-5.1.0",
+        url = "https://github.com/bazelbuild/buildtools/archive/5.1.0.tar.gz",
     )
 
     maybe(
         http_archive,
         name = "io_bazel_rules_go",
-        sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+        sha256 = "56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6",
         urls = [
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip",
         ],
     )
 
     maybe(
         http_archive,
         name = "io_grpc_grpc_java",
-        sha256 = "0f6cf8c1e97757333e08975c8637093b40540a54a201cfd3ce284c8d1d073fae",
-        strip_prefix = "grpc-java-1.47.0",
-        urls = ["https://github.com/grpc/grpc-java/archive/v1.47.0.tar.gz"],
+        sha256 = "b6cfc524647cc680e66989ab22a10b66dc5de8c6d8499f91a7e633634c594c61",
+        strip_prefix = "grpc-java-1.51.1",
+        urls = ["https://github.com/grpc/grpc-java/archive/v1.51.1.tar.gz"],
     )
 
     maybe(
         http_archive,
         name = "rules_proto",
-        sha256 = "66bfdf8782796239d3875d37e7de19b1d94301e8972b3cbd2446b332429b4df1",
-        strip_prefix = "rules_proto-4.0.0",
-        url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0.tar.gz",
+        sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
+        strip_prefix = "rules_proto-5.3.0-21.7",
+        url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
     )
