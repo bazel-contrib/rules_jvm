@@ -22,7 +22,7 @@ JUNIT5_DEPS = junit5_deps()
 
 JUNIT5_VINTAGE_DEPS = junit5_vintage_deps()
 
-def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
+def java_junit5_test(name, test_class = None, runtime_deps = [], package_prefixes = [], **kwargs):
     """Run junit5 tests using Bazel.
 
     This is designed to be a drop-in replacement for `java_test`, but
@@ -51,7 +51,7 @@ def java_junit5_test(name, test_class = None, runtime_deps = [], **kwargs):
     if test_class:
         clazz = test_class
     else:
-        clazz = get_package_name() + name
+        clazz = get_package_name(package_prefixes) + name
 
     java_test(
         name = name,

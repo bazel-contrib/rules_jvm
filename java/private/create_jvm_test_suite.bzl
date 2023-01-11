@@ -27,6 +27,7 @@ def create_jvm_test_suite(
         tags = [],
         visibility = None,
         size = None,
+        package_prefixes = [],
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -92,7 +93,7 @@ def create_jvm_test_suite(
         suffix = src.rfind(".")
         test_name = src[:suffix]
         tests.append(test_name)
-        test_class = get_class_name(package, src)
+        test_class = get_class_name(package, src, package_prefixes)
 
         define_test(
             name = test_name,

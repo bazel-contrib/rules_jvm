@@ -1,0 +1,23 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java:defs.bzl", "java_test_suite", "junit5_deps")
+
+# Ignore this directory because of the wrong package name.
+# gazelle:ignore
+
+PACKAGE_PREFIX_NAME_TEST = [
+    "CustomPackageNameTest.java",
+]
+
+# Test that we can set known package prefixes. We do this by
+# setting the `package_prefixes` property, overriding the
+# assumed known prefixes
+java_test_suite(
+    name = "custom-prefix-tests",
+    size = "small",
+    srcs = PACKAGE_PREFIX_NAME_TEST,
+    package_prefixes = [".custom."],
+    runner = "junit5",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
