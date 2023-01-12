@@ -282,7 +282,7 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 ## java_junit5_test
 
 <pre>
-java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
+java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-package_prefixes">package_prefixes</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
 </pre>
 
 Run junit5 tests using Bazel.
@@ -313,6 +313,7 @@ its goals, but this is not complete or available yet.
 | <a id="java_junit5_test-name"></a>name |  The name of the test.   |  none |
 | <a id="java_junit5_test-test_class"></a>test_class |  The Java class to be loaded by the test runner. If not specified, the class name will be inferred from a combination of the current bazel package and the <code>name</code> attribute.   |  <code>None</code> |
 | <a id="java_junit5_test-runtime_deps"></a>runtime_deps |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-package_prefixes"></a>package_prefixes | Package prefixes to look for when infering class names for tests, prefixed and postfixed with `.`. Example: `[".com.", ".no."]` |  <code>[]</code> |
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
@@ -360,7 +361,7 @@ Adds linting tests to Bazel's own `java_test`
 
 <pre>
 java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-tags">tags</a>, <a href="#java_test_suite-visibility">visibility</a>,
-                <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
+                <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-package_prefixes">package_prefixes</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -394,6 +395,7 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-tags"></a>tags |  <p align="center"> - </p>   |  <code>[]</code> |
 | <a id="java_test_suite-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>None</code> |
 | <a id="java_test_suite-size"></a>size |  The size of the test, passed to <code>java_test</code>   |  <code>None</code> |
+| <a id="java_test_suite-package_prefixes"></a>package_prefixes | Package prefixes to look for when infering class names for tests, prefixed and postfixed with `.`. Example: `[".com.", ".no."]`  |  <code>[]</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
