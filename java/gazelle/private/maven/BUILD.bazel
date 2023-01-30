@@ -22,6 +22,7 @@ go_test(
     name = "maven_test",
     size = "small",
     srcs = [
+        "config_test.go",
         "coordinate_test.go",
         "resolver_test.go",
         "test_test.go",
