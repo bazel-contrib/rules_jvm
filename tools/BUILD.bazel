@@ -23,3 +23,18 @@ py_binary(
     ],
     visibility = ["//visibility:public"],
 )
+
+sh_binary(
+    name = "update-docs",
+    srcs = [
+        "copy-output.sh",
+    ],
+    args = [
+        ".",
+        "$(location //docs:readme)",
+        "README.md",
+    ],
+    data = [
+        "//docs:readme",
+    ],
+)
