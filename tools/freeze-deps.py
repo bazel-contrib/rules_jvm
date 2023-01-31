@@ -92,15 +92,6 @@ with open(build_file) as f:
         load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
         
         {original_contents}
-        
-        bzl_library(
-           name = "defs",
-           srcs = ["defs.bzl"],
-           deps = [
-               "@rules_jvm_external//:implementation",
-           ],
-           visibility = ["//visibility:public"],
-        )
         """.format(original_contents = textwrap.indent(f.read(), "        "))
     )
     output.writestr(zinfo, build_file_contents)
