@@ -1,5 +1,5 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "java_junit5_test", "junit5_deps")
+load("//java:defs.bzl", "java_junit5_test", "java_test_suite", "junit5_deps")
 
 java_junit5_test(
     name = "Junit5TagsTest_only_never",
@@ -32,6 +32,17 @@ java_junit5_test(
     srcs = ["Junit5TagsTest.java"],
     include_tags = ["Always"],
     test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.tags.Junit5TagsTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_test_suite(
+    name = "Junit5SuiteTest_only_always",
+    size = "small",
+    srcs = ["Junit5TagsTest.java"],
+    include_tags = ["Always"],
+    runner = "junit5",
     deps = [
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
