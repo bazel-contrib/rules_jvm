@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.LauncherConstants;
+import org.junit.platform.launcher.TagFilter;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
@@ -58,6 +59,16 @@ public class ActualRunner implements RunsTest {
 
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
+
+      String includeTags = System.getProperty("JUNIT5_INCLUDE_TAGS");
+      if (includeTags != null && !includeTags.isEmpty()) {
+        request.filters(TagFilter.includeTags(includeTags.split(",")));
+      }
+
+      String excludeTags = System.getProperty("JUNIT5_EXCLUDE_TAGS");
+      if (excludeTags != null && !excludeTags.isEmpty()) {
+        request.filters(TagFilter.excludeTags(excludeTags.split(",")));
+      }
 
       File exitFile = getExitFile();
 
