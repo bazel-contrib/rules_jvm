@@ -250,8 +250,8 @@ public class ClasspathParser {
         // Split by "." to get the parts, and strip off the method() names to get the type name.
         Tree methodInvocation = ((MethodInvocationTree) identifier).getMethodSelect();
         String[] typeNames = methodInvocation.toString().split("[.]");
-        // verify we have at least two elements to the package/class list, and the first element is lower case
-        // i.e. not a class name.
+        // verify we have at least two elements to the package/class list, and the first element is
+        // lower case i.e. not a class name.
         if (typeNames.length > 2 && Character.isLowerCase(typeNames[0].charAt(0))) {
           String packageName =
               String.join(".", Arrays.copyOfRange(typeNames, 0, typeNames.length - 1));
