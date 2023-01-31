@@ -1,4 +1,5 @@
 load(":checkstyle_config.bzl", "CheckStyleInfo")
+load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
 
 """
 Checkstyle rule implementation
@@ -40,9 +41,13 @@ def _checkstyle_impl(ctx):
                 ctx.attr.config[DefaultInfo].default_runfiles,
             ),
         ),
+        LinterInfo(
+            language = "java",
+            name = "checkstyle",
+        ),
     ]
 
-checkstyle_test = rule(
+_checkstyle_test = rule(
     _checkstyle_impl,
     attrs = {
         "srcs": attr.label_list(
@@ -65,3 +70,11 @@ checkstyle_test = rule(
     test = True,
     doc = """Use checkstyle to lint the `srcs`.""",
 )
+
+def checkstyle_test(name, size = "medium", timeout = "short", **kwargs):
+    _checkstyle_test(
+        name = name,
+        size = size,
+        timeout = timeout,
+        **kwargs
+    )

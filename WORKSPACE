@@ -45,6 +45,7 @@ maven_install(
     name = "frozen_deps",
     artifacts = [
         "com.google.code.findbugs:jsr305:3.0.2",
+        "com.google.errorprone:error_prone_annotations:2.11.0",
         "com.google.guava:guava:30.1.1-jre",
         "commons-cli:commons-cli:1.5.0",
         "io.grpc:grpc-api:1.40.0",
@@ -53,6 +54,7 @@ maven_install(
         "io.grpc:grpc-services:1.40.0",
         "io.grpc:grpc-stub:1.40.0",
         "org.slf4j:slf4j-simple:1.7.32",
+        "com.google.googlejavaformat:google-java-format:1.15.0",
 
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
@@ -105,10 +107,8 @@ frozen_deps_pmi()
 
 # These are used for our own tests.
 maven_install(
+    name = "contrib_rules_jvm_tests",
     artifacts = [
-        "com.google.code.findbugs:annotations:3.0.1",
-        "com.google.googlejavaformat:google-java-format:1.15.0",
-
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
         "org.junit.jupiter:junit-jupiter-engine:5.8.2",
@@ -116,16 +116,17 @@ maven_install(
         "org.junit.platform:junit-platform-launcher:1.8.2",
         "org.junit.platform:junit-platform-reporting:1.8.2",
         "org.junit.vintage:junit-vintage-engine:5.8.2",
+        "org.mockito:mockito-core:4.8.1",
     ],
     fail_if_repin_required = True,
     fetch_sources = True,
-    maven_install_json = "@//:maven_install.json",
+    maven_install_json = "@//:contrib_rules_jvm_tests_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )
 
-load("@maven//:defs.bzl", maven_pmi = "pinned_maven_install")
+load("@contrib_rules_jvm_tests//:defs.bzl", maven_pmi = "pinned_maven_install")
 
 maven_pmi()
 

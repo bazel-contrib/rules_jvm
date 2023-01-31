@@ -13,8 +13,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
+import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.LauncherConstants;
+import org.junit.platform.launcher.TagFilter;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
@@ -40,28 +44,37 @@ public class ActualRunner implements RunsTest {
 
       var classSelector = DiscoverySelectors.selectClass(testClassName);
 
+      List<String> discoveredEngines =
+          ServiceLoader.load(TestEngine.class).stream()
+              .map(ServiceLoader.Provider::get)
+              .map(TestEngine::getId)
+              .collect(Collectors.toList());
+
       var request =
           LauncherDiscoveryRequestBuilder.request()
               .selectors(List.of(classSelector))
-              .filters(includeEngines("junit-jupiter", "junit-vintage"))
+              .filters(includeEngines(discoveredEngines))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
 
-      File exitFile = getExitFile();
-      var originalSecurityManager = System.getSecurityManager();
-      TestRunningSecurityManager testSecurityManager =
-          new TestRunningSecurityManager(originalSecurityManager);
-      try {
-        System.setSecurityManager(testSecurityManager);
-        var launcher = LauncherFactory.create(config);
-        launcher.execute(request.build());
-      } finally {
-        testSecurityManager.allowRemoval();
-        System.setSecurityManager(originalSecurityManager);
+      String includeTags = System.getProperty("JUNIT5_INCLUDE_TAGS");
+      if (includeTags != null && !includeTags.isEmpty()) {
+        request.filters(TagFilter.includeTags(includeTags.split(",")));
       }
+
+      String excludeTags = System.getProperty("JUNIT5_EXCLUDE_TAGS");
+      if (excludeTags != null && !excludeTags.isEmpty()) {
+        request.filters(TagFilter.excludeTags(excludeTags.split(",")));
+      }
+
+      File exitFile = getExitFile();
+
+      var launcher = LauncherFactory.create(config);
+      launcher.execute(request.build());
+
       deleteExitFile(exitFile);
 
       try (PrintWriter writer = new PrintWriter(System.out)) {

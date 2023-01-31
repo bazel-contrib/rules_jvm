@@ -1,21 +1,17 @@
 load("//java/private:package.bzl", "get_class_name")
 
-_RUNNERS = {
-    "junit4": {
-        "main_class": None,
-        "runtime_deps": [],
-    },
-    "junit5": {
-        "main_class": "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
-        "runtime_deps": ["@contrib_rules_jvm//java:junit5-runner"],
-    },
-}
-
 def _is_test(src, test_suffixes):
     for suffix in test_suffixes:
         if src.endswith(suffix):
             return True
     return False
+
+# If you modify this list, please also update the `_TEST_GENERATORS`
+# map in `java_test_suite.bzl`.
+_RUNNERS = [
+    "junit4",
+    "junit5",
+]
 
 def create_jvm_test_suite(
         name,
@@ -31,6 +27,7 @@ def create_jvm_test_suite(
         tags = [],
         visibility = None,
         size = None,
+        package_prefixes = [],
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -62,8 +59,7 @@ def create_jvm_test_suite(
     """
 
     if runner not in _RUNNERS:
-        fail("Unknown java_test_suite runner. Must be one of {}".format(_RUNNERS.keys()))
-    runner_params = _RUNNERS.get(runner)
+        fail("Unknown java_test_suite runner. Must be one of {}".format(_RUNNERS))
 
     # First, grab any interesting attrs
     library_attrs = {attr: kwargs[attr] for attr in library_attributes if attr in kwargs}
@@ -97,17 +93,16 @@ def create_jvm_test_suite(
         suffix = src.rfind(".")
         test_name = src[:suffix]
         tests.append(test_name)
-        test_class = get_class_name(package, src)
+        test_class = get_class_name(package, src, package_prefixes)
 
         define_test(
             name = test_name,
             size = size,
             srcs = [src],
             test_class = test_class,
-            main_class = runner_params["main_class"],
             deps = deps,
             tags = tags,
-            runtime_deps = runtime_deps + [dep for dep in runner_params["runtime_deps"] if dep not in runtime_deps],
+            runtime_deps = runtime_deps,
             visibility = ["//visibility:private"],
             **kwargs
         )

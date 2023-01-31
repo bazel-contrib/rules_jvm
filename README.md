@@ -52,8 +52,6 @@ The linters are configured using specific rules. The mappings are:
 
 These rules require Java 11 or above.
 
-The gazelle plugin requires Go 1.18 or above.
-
 ## Java Rules
 
 [arl]: https://github.com/apple/apple_rules_lint
@@ -84,27 +82,6 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 | <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
 | <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
 | <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | "plain" |
-
-
-<a id="#checkstyle_test"></a>
-
-## checkstyle_test
-
-<pre>
-checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-config">config</a>, <a href="#checkstyle_test-output_format">output_format</a>, <a href="#checkstyle_test-srcs">srcs</a>)
-</pre>
-
-Use checkstyle to lint the `srcs`.
-
-**ATTRIBUTES**
-
-
-| Name  | Description | Type | Mandatory | Default |
-| :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="checkstyle_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="checkstyle_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle-default-config |
-| <a id="checkstyle_test-output_format"></a>output_format |  Output Format can be plain or xml. Defaults to plain   | String | optional | "plain" |
-| <a id="checkstyle_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
 
 
 <a id="#pmd_ruleset"></a>
@@ -235,6 +212,27 @@ checkstyle_binary(
 | <a id="checkstyle_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
+<a id="#checkstyle_test"></a>
+
+## checkstyle_test
+
+<pre>
+checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-size">size</a>, <a href="#checkstyle_test-timeout">timeout</a>, <a href="#checkstyle_test-kwargs">kwargs</a>)
+</pre>
+
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="checkstyle_test-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="checkstyle_test-size"></a>size |  <p align="center"> - </p>   |  <code>"medium"</code> |
+| <a id="checkstyle_test-timeout"></a>timeout |  <p align="center"> - </p>   |  <code>"short"</code> |
+| <a id="checkstyle_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
 <a id="#java_binary"></a>
 
 ## java_binary
@@ -282,7 +280,8 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 ## java_junit5_test
 
 <pre>
-java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
+java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-package_prefixes">package_prefixes</a>, <a href="#java_junit5_test-jvm_flags">jvm_flags</a>, <a href="#java_junit5_test-include_tags">include_tags</a>,
+                 <a href="#java_junit5_test-exclude_tags">exclude_tags</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
 </pre>
 
 Run junit5 tests using Bazel.
@@ -290,6 +289,13 @@ Run junit5 tests using Bazel.
 This is designed to be a drop-in replacement for `java_test`, but
 rather than using a JUnit4 runner it provides support for using
 JUnit5 directly. The arguments are the same as used by `java_test`.
+
+
+By default Bazel, and by extension this rule, assumes you want to always run all of the tests in a class file.
+The include_tags and exclude_tags allows for selectively running specific tests within a single class file based
+on your use of the `@Tag` Junit5 annotations.
+Please see https://junit.org/junit5/docs/current/user-guide/#running-tests-tags
+for more information about using JUnit5 tag annotation to control test execution.
 
 The generated target does not include any JUnit5 dependencies. If
 you are using the standard `@maven` namespace for your
@@ -313,6 +319,10 @@ its goals, but this is not complete or available yet.
 | <a id="java_junit5_test-name"></a>name |  The name of the test.   |  none |
 | <a id="java_junit5_test-test_class"></a>test_class |  The Java class to be loaded by the test runner. If not specified, the class name will be inferred from a combination of the current bazel package and the <code>name</code> attribute.   |  <code>None</code> |
 | <a id="java_junit5_test-runtime_deps"></a>runtime_deps |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-package_prefixes"></a>package_prefixes |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-jvm_flags"></a>jvm_flags |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-include_tags"></a>include_tags |  Junit5 tag expressions to include execution of tagged tests.   |  <code>[]</code> |
+| <a id="java_junit5_test-exclude_tags"></a>exclude_tags |  Junit tag expressions to exclude execution of tagged tests.   |  <code>[]</code> |
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
@@ -359,8 +369,7 @@ Adds linting tests to Bazel's own `java_test`
 ## java_test_suite
 
 <pre>
-java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-tags">tags</a>, <a href="#java_test_suite-visibility">visibility</a>,
-                <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
+java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -391,8 +400,6 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-package"></a>package |  The package name used by the tests. If not set, this is inferred from the current bazel package name.   |  <code>None</code> |
 | <a id="java_test_suite-deps"></a>deps |  A list of <code>java_*</code> dependencies.   |  <code>None</code> |
 | <a id="java_test_suite-runtime_deps"></a>runtime_deps |  A list of <code>java_*</code> dependencies needed at runtime.   |  <code>[]</code> |
-| <a id="java_test_suite-tags"></a>tags |  <p align="center"> - </p>   |  <code>[]</code> |
-| <a id="java_test_suite-visibility"></a>visibility |  <p align="center"> - </p>   |  <code>None</code> |
 | <a id="java_test_suite-size"></a>size |  The size of the test, passed to <code>java_test</code>   |  <code>None</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
@@ -524,7 +531,7 @@ file you need to do the following:
    
    pinned_maven_install()
    ```
-2. Run `bazel run //tools:freeze-deps -- --repo <repo name> --zip
+2. Run `./tools/freeze-deps.py --repo <repo name> --zip
    <path/to/dependency.zip>`. The `<repo name>` matches the name used
    for the `maven_install()` rule above. This will pin the
    dependencies then collect them into the zip file.

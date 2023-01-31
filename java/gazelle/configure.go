@@ -49,6 +49,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.MavenInstallFile,
 		javaconfig.ModuleGranularityDirective,
 		javaconfig.TestMode,
+		javaconfig.ExcludeArtifact,
 	}
 }
 
@@ -94,17 +95,24 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.TestMode:
 				cfg.SetTestMode(d.Value)
+			case javaconfig.ExcludeArtifact:
+				cfg.AddExcludedArtifact(d.Value)
 			}
 		}
 	}
 
 	if jc.lang.parser == nil {
-		jc.lang.parser = javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
+		runner, err := javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
+		if err != nil {
+			jc.lang.logger.Fatal().Err(err).Msg("could not start javaparser")
+		}
+		jc.lang.parser = runner
 	}
 
 	if jc.lang.mavenResolver == nil {
 		resolver, err := maven.NewResolver(
 			cfg.MavenInstallFile(),
+			cfg.ExcludedArtifacts(),
 			jc.lang.logger,
 		)
 		if err != nil {

@@ -71,6 +71,11 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   }
 
   @Override
+  public void dynamicTestRegistered(TestIdentifier testIdentifier) {
+    roots.forEach(root -> root.addDynamicTest(testIdentifier));
+  }
+
+  @Override
   public void executionStarted(TestIdentifier testIdentifier) {
     roots.forEach(root -> root.markStarted(testIdentifier));
   }

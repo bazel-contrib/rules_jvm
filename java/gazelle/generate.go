@@ -310,13 +310,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					srcs = append(srcs, strings.TrimPrefix(src.pathRelativeToBazelWorkspaceRoot, args.Rel+"/"))
 				}
 			}
-			generateJavaTestSuite(
-				suiteName,
-				srcs,
-				packageNames,
-				testJavaImportsWithHelpers,
-				&res,
-			)
+			if len(srcs) > 0 {
+				generateJavaTestSuite(
+					suiteName,
+					srcs,
+					packageNames,
+					testJavaImportsWithHelpers,
+					&res,
+				)
+			}
 
 			sortedSeparateTestJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
 			for src := range separateTestJavaFiles {
@@ -370,9 +372,8 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 				}
 			}
 		}
-		if len(perFileAttrs) == 0 {
-			testJavaFiles.Add(file)
-		} else {
+		testJavaFiles.Add(file)
+		if len(perFileAttrs) > 0 {
 			separateTestJavaFiles[file] = perFileAttrs
 		}
 	} else {
@@ -453,8 +454,19 @@ func importsJunit4(imports *sorted_set.SortedSet[string]) bool {
 	return imports.Contains("org.junit.Test") || imports.Contains("org.junit")
 }
 
+// Determines whether the given import is part of the JUnit Pioneer extension pack for JUnit 5. Only the beginning of
+// the string is considered here to cover classes imported from different sub-packages: org.junitpioneer.vintage.Test,
+// org.junitpioneer.jupiter.RetryingTest, org.junitpioneer.jupiter.cartesian.CartesianTest, etc.
+func importsJunitPioneer(import_ string) bool {
+	return strings.HasPrefix(import_, "org.junitpioneer.")
+}
+
 func importsJunit5(imports *sorted_set.SortedSet[string]) bool {
-	return imports.Contains("org.junit.jupiter.api.Test") || imports.Contains("org.junit.jupiter.api")
+	return imports.Contains("org.junit.jupiter.api.Test") ||
+		imports.Contains("org.junit.jupiter.api") ||
+		imports.Contains("org.junit.jupiter.params.ParameterizedTest") ||
+		imports.Contains("org.junit.jupiter.params") ||
+		imports.Filter(importsJunitPioneer).Len() != 0
 }
 
 var junit5RuntimeDeps = []string{

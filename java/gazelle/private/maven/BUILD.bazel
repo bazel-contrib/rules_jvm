@@ -4,6 +4,7 @@ go_library(
     name = "maven",
     srcs = [
         "config.go",
+        "coordinate.go",
         "resolver.go",
         "test.go",
     ],
@@ -21,6 +22,8 @@ go_test(
     name = "maven_test",
     size = "small",
     srcs = [
+        "config_test.go",
+        "coordinate_test.go",
         "resolver_test.go",
         "test_test.go",
     ],
@@ -29,5 +32,6 @@ go_test(
     deps = [
         "@bazel_gazelle//label:go_default_library",
         "@com_github_rs_zerolog//:zerolog",
+        "@com_github_stretchr_testify//require",
     ],
 )

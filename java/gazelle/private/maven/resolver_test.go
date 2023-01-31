@@ -15,7 +15,9 @@ func TestResolver(t *testing.T) {
 		Logger().
 		Level(zerolog.DebugLevel)
 
-	r, err := NewResolver("testdata/guava_maven_install.json", logger)
+	m := make(map[string]struct{})
+	m["@maven//:com_google_j2objc_j2objc_annotations"] = struct{}{}
+	r, err := NewResolver("testdata/guava_maven_install.json", m, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,6 +28,11 @@ func TestResolver(t *testing.T) {
 	if err == nil {
 		t.Errorf("Want error finding label for unknown.package, got %v", got)
 	}
+	got, err = r.Resolve("com.google.j2objc.annotations")
+	if err == nil {
+		t.Errorf("Want error finding label for excluded artifact, got %v", got)
+	}
+
 }
 
 func assertResolves(t *testing.T, r Resolver, pkg, wantLabelStr string) {

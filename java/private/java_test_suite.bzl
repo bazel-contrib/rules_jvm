@@ -1,5 +1,6 @@
 load("//java/private:create_jvm_test_suite.bzl", "create_jvm_test_suite")
 load("//java/private:library.bzl", "java_library", "java_test")
+load(":junit5.bzl", "java_junit5_test")
 
 # Lifted from the Selenium project's work on migrating to Bazel.
 # The key thing that this file adds is the ability to specify a
@@ -18,11 +19,24 @@ def _define_library(name, **kwargs):
         **kwargs
     )
 
-def _define_test(name, **kwargs):
+def _define_junit4_test(name, **kwargs):
     java_test(
         name = name,
         **kwargs
     )
+
+def _define_junit5_test(name, **kwargs):
+    java_junit5_test(
+        name = name,
+        **kwargs
+    )
+
+# Note: the keys in this match the keys in `create_jvm_test_suite.bzl`'s
+# `_RUNNERS` constant
+_TEST_GENERATORS = {
+    "junit4": _define_junit4_test,
+    "junit5": _define_junit5_test,
+}
 
 def java_test_suite(
         name,
@@ -32,8 +46,6 @@ def java_test_suite(
         package = None,
         deps = None,
         runtime_deps = [],
-        tags = [],
-        visibility = None,
         size = None,
         **kwargs):
     """Create a suite of java tests from `*Test.java` files.
@@ -70,12 +82,11 @@ def java_test_suite(
         package = package,
         library_attributes = _LIBRARY_ATTRS,
         define_library = _define_library,
-        define_test = _define_test,
+        # Default to bazel's default test runner if we don't know what people want
+        define_test = _TEST_GENERATORS.get(runner, _define_junit4_test),
         runner = runner,
         deps = deps,
         runtime_deps = runtime_deps,
-        tags = tags,
-        visibility = visibility,
         size = size,
         **kwargs
     )

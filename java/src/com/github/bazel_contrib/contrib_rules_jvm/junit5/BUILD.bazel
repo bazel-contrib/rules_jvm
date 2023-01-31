@@ -27,6 +27,9 @@ java_library(
     name = "junit5-compile",
     srcs = glob(["*.java"]),
     javacopts = [
+        # Target Java 11, no matter which JDK we're on so that we
+        # can be sure that `SecurityManager` is present, even if
+        # someone rebuilds on a JDK that doesn't have it.
         "--release",
         "11",
     ],
@@ -40,7 +43,6 @@ java_library(
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
         artifact("org.opentest4j:opentest4j"),
-        artifact("junit:junit"),
     ],
 )
 

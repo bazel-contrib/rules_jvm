@@ -20,10 +20,6 @@ class TestSuiteResult extends BaseResult {
   public void toXml(XMLStreamWriter xml) {
     write(
         () -> {
-          if (getSkipReason() != null) {
-            return;
-          }
-
           xml.writeStartElement("testsuite");
 
           xml.writeAttribute("name", getTestId().getLegacyReportingName());
@@ -31,6 +27,8 @@ class TestSuiteResult extends BaseResult {
 
           int errors = 0;
           int failures = 0;
+          int disabled = 0;
+          int skipped = 0;
           for (TestResult result : results) {
             if (result.isError()) {
               errors++;
@@ -38,9 +36,17 @@ class TestSuiteResult extends BaseResult {
             if (result.isFailure()) {
               failures++;
             }
+            if (result.isDisabled()) {
+              disabled++;
+            }
+            if (result.isSkipped()) {
+              skipped++;
+            }
           }
           xml.writeAttribute("failures", String.valueOf(failures));
           xml.writeAttribute("errors", String.valueOf(errors));
+          xml.writeAttribute("disabled", String.valueOf(disabled));
+          xml.writeAttribute("skipped", String.valueOf(skipped));
 
           // The bazel junit4 test runner seems to leave these values empty.
           // Emulating that somewhat strange behaviour here.

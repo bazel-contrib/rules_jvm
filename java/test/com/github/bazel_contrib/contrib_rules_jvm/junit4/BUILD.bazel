@@ -1,5 +1,5 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "JUNIT5_DEPS", "JUNIT5_VINTAGE_DEPS", "java_test_suite")
+load("//java:defs.bzl", "java_test_suite", "junit5_vintage_deps")
 
 java_test_suite(
     name = "small-tests",
@@ -10,6 +10,6 @@ java_test_suite(
     runner = "junit4",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
-        artifact("junit:junit"),
-    ] + JUNIT5_VINTAGE_DEPS,
+        artifact("junit:junit", "contrib_rules_jvm_tests"),
+    ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
 )
