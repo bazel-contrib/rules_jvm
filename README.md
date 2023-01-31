@@ -62,7 +62,7 @@ The gazelle plugin requires Go 1.18 or above.
 
 
 
-<a id="#checkstyle_config"></a>
+<a id="checkstyle_config"></a>
 
 ## checkstyle_config
 
@@ -79,14 +79,14 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="checkstyle_config-checkstyle_binary"></a>checkstyle_binary |  Checkstyle binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle_cli |
-| <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
-| <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | "plain" |
+| <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="checkstyle_config-checkstyle_binary"></a>checkstyle_binary |  Checkstyle binary to use.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:checkstyle_cli</code> |
+| <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | <code>"plain"</code> |
 
 
-<a id="#pmd_ruleset"></a>
+<a id="pmd_ruleset"></a>
 
 ## pmd_ruleset
 
@@ -101,14 +101,14 @@ Select a rule set for PMD tests.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | "xml" |
-| <a id="pmd_ruleset-pmd_binary"></a>pmd_binary |  PMD binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:pmd |
-| <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | True |
+| <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | <code>"xml"</code> |
+| <a id="pmd_ruleset-pmd_binary"></a>pmd_binary |  PMD binary to use.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>//java:pmd</code> |
+| <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | <code>True</code> |
 
 
-<a id="#pmd_test"></a>
+<a id="pmd_test"></a>
 
 ## pmd_test
 
@@ -123,13 +123,13 @@ Use PMD to lint the `srcs`.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="pmd_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="pmd_test-ruleset"></a>ruleset |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
-| <a id="pmd_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="pmd_test-target"></a>target |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="pmd_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="pmd_test-ruleset"></a>ruleset |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="pmd_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="pmd_test-target"></a>target |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
 
 
-<a id="#spotbugs_config"></a>
+<a id="spotbugs_config"></a>
 
 ## spotbugs_config
 
@@ -144,14 +144,14 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
-| <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
-| <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | True |
-| <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:spotbugs_cli |
+| <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | <code>"default"</code> |
+| <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
+| <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | <code>True</code> |
+| <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:spotbugs_cli</code> |
 
 
-<a id="#spotbugs_test"></a>
+<a id="spotbugs_test"></a>
 
 ## spotbugs_test
 
@@ -166,13 +166,13 @@ Use spotbugs to lint the `srcs`.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:spotbugs-default-config |
-| <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
-| <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | True |
+| <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>//java:spotbugs-default-config</code> |
+| <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
+| <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | <code>True</code> |
 
 
-<a id="#checkstyle_binary"></a>
+<a id="checkstyle_binary"></a>
 
 ## checkstyle_binary
 
@@ -214,7 +214,7 @@ checkstyle_binary(
 | <a id="checkstyle_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#checkstyle_test"></a>
+<a id="checkstyle_test"></a>
 
 ## checkstyle_test
 
@@ -235,7 +235,7 @@ checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_t
 | <a id="checkstyle_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_binary"></a>
+<a id="java_binary"></a>
 
 ## java_binary
 
@@ -254,7 +254,7 @@ Adds linting tests to Bazel's own `java_binary`
 | <a id="java_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_export"></a>
+<a id="java_export"></a>
 
 ## java_export
 
@@ -277,7 +277,7 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 | <a id="java_export-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_junit5_test"></a>
+<a id="java_junit5_test"></a>
 
 ## java_junit5_test
 
@@ -331,7 +331,7 @@ its goals, but this is not complete or available yet.
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_library"></a>
+<a id="java_library"></a>
 
 ## java_library
 
@@ -350,7 +350,7 @@ Adds linting tests to Bazel's own `java_library`
 | <a id="java_library-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_test"></a>
+<a id="java_test"></a>
 
 ## java_test
 
@@ -369,7 +369,7 @@ Adds linting tests to Bazel's own `java_test`
 | <a id="java_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_test_suite"></a>
+<a id="java_test_suite"></a>
 
 ## java_test_suite
 
@@ -409,7 +409,7 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#pmd_binary"></a>
+<a id="pmd_binary"></a>
 
 ## pmd_binary
 
@@ -451,7 +451,7 @@ pmd_binary(
 | <a id="pmd_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#spotbugs_binary"></a>
+<a id="spotbugs_binary"></a>
 
 ## spotbugs_binary
 
