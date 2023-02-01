@@ -79,6 +79,13 @@ def java_junit5_test(
     if exclude_tags:
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_TAGS=" + ",".join(exclude_tags)]
 
+    security_manager_flag_seen = False
+    for flag in jvm_flags:
+        if flag.startswith("-Djava.security.manager="):
+            security_manager_flag_seen = True
+    if not security_manager_flag_seen:
+        jvm_flags = jvm_flags + ["-Djava.security.manager=allow"]
+
     java_test(
         name = name,
         main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
