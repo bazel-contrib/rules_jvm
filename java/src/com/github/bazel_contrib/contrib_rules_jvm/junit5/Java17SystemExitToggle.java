@@ -1,23 +1,26 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.util.Map;
 import sun.misc.Unsafe;
 
-public class Java17SystemExitToggle extends Java11SystemExitToggle {
+public class Java17SystemExitToggle implements SystemExitToggle {
 
-  public Java17SystemExitToggle() throws ReflectiveOperationException {
+  private final SystemExitToggle toggle;
+
+  public Java17SystemExitToggle(SystemExitToggle toggle) throws ReflectiveOperationException {
+    this.toggle = toggle;
     suppressSecurityManagerWarning();
   }
 
   private void suppressSecurityManagerWarning() throws ReflectiveOperationException {
     Class<?> holderClazz = Class.forName("java.lang.System$CallersHolder");
-    var callersField = holderClazz.getDeclaredField("callers");
+    Field callersField = holderClazz.getDeclaredField("callers");
 
-    var unsafe = getUnsafe();
+    Unsafe unsafe = getUnsafe();
 
     // And we can't just grab the field easily
-    var base = unsafe.staticFieldBase(callersField);
+    Object base = unsafe.staticFieldBase(callersField);
     long offset = unsafe.staticFieldOffset(callersField);
     Object callers = unsafe.getObject(base, offset);
 
@@ -32,7 +35,7 @@ public class Java17SystemExitToggle extends Java11SystemExitToggle {
   @Override
   public void prevent() {
     try {
-      super.prevent();
+      toggle.prevent();
     } catch (UnsupportedOperationException ignored) {
       // Thrown when the security manager has been marked as unavailable
       System.err.println(
@@ -45,7 +48,7 @@ public class Java17SystemExitToggle extends Java11SystemExitToggle {
   @Override
   public void allow() {
     try {
-      super.allow();
+      toggle.allow();
     } catch (UnsupportedOperationException ignored) {
       // Thrown when the security manager has been marked as unavailable
       // We have already warned the user about this in the call to `prevent`
@@ -56,10 +59,15 @@ public class Java17SystemExitToggle extends Java11SystemExitToggle {
   private Unsafe getUnsafe() throws ReflectiveOperationException {
     // We want to avoid opening java.lang, so let's jump through hoops
 
-    // First problem: we can't call `Unsafe.getUnsafe` directly.
-    var c = Class.forName("sun.misc.Unsafe");
-    var lookup = MethodHandles.privateLookupIn(c, MethodHandles.lookup());
-    var handle = lookup.findStaticVarHandle(c, "theUnsafe", c);
-    return (Unsafe) handle.get();
+    // First problem: we can't call `Unsafe.getUnsafe` directly and it might also be called
+    // differently.
+    Class<?> unsafe = Class.forName("sun.misc.Unsafe");
+    for (Field f : unsafe.getDeclaredFields()) {
+      if (f.getType() == unsafe) {
+        f.setAccessible(true);
+        return (Unsafe) f.get(null);
+      }
+    }
+    throw new ReflectiveOperationException("Failed to get Unsafe");
   }
 }

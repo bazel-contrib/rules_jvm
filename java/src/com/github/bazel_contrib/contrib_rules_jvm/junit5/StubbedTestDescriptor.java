@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.platform.engine.TestDescriptor;
@@ -27,7 +28,7 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   @Override
   public Set<TestTag> getTags() {
-    return Set.of();
+    return Collections.emptySet();
   }
 
   @Override
@@ -47,7 +48,7 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   @Override
   public Set<? extends TestDescriptor> getChildren() {
-    return Set.of();
+    return Collections.emptySet();
   }
 
   @Override

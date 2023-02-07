@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestExecutionListener;
@@ -27,7 +28,7 @@ public class CommandLineSummary implements TestExecutionListener {
   @Override
   public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult result) {
     if (result.getStatus().equals(SUCCESSFUL)
-        || result.getThrowable().isEmpty()
+        || !result.getThrowable().isPresent()
         || result.getThrowable().map(JUnit4Utils::isReasonToSkipTest).orElse(false)) {
       failures.remove(testIdentifier);
       return;
@@ -81,7 +82,9 @@ public class CommandLineSummary implements TestExecutionListener {
     }
 
     public Throwable getCause() {
-      return result.getThrowable().orElseThrow();
+      return result
+          .getThrowable()
+          .orElseThrow(() -> new NoSuchElementException("No value present"));
     }
   }
 }

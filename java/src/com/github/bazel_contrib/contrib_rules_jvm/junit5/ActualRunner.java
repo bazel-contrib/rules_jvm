@@ -13,8 +13,12 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
+import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherConstants;
 import org.junit.platform.launcher.TagFilter;
 import org.junit.platform.launcher.core.LauncherConfig;
@@ -25,7 +29,7 @@ public class ActualRunner implements RunsTest {
 
   @Override
   public boolean run(String testClassName) {
-    var out = System.getenv("XML_OUTPUT_FILE");
+    String out = System.getenv("XML_OUTPUT_FILE");
     Path xmlOut;
     try {
       xmlOut = out != null ? Paths.get(out) : Files.createTempFile("test", ".xml");
@@ -34,17 +38,17 @@ public class ActualRunner implements RunsTest {
       throw new UncheckedIOException(e);
     }
 
-    try (var bazelJunitXml = new BazelJUnitOutputListener(xmlOut)) {
-      var summary = new CommandLineSummary();
+    try (BazelJUnitOutputListener bazelJunitXml = new BazelJUnitOutputListener(xmlOut)) {
+      CommandLineSummary summary = new CommandLineSummary();
 
       LauncherConfig config =
           LauncherConfig.builder().addTestExecutionListeners(bazelJunitXml, summary).build();
 
-      var classSelector = DiscoverySelectors.selectClass(testClassName);
+      DiscoverySelector classSelector = DiscoverySelectors.selectClass(testClassName);
 
-      var request =
+      LauncherDiscoveryRequestBuilder request =
           LauncherDiscoveryRequestBuilder.request()
-              .selectors(List.of(classSelector))
+              .selectors(Collections.singletonList(classSelector))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
@@ -64,11 +68,11 @@ public class ActualRunner implements RunsTest {
       List<String> includeEngines =
           System.getProperty("JUNIT5_INCLUDE_ENGINES") == null
               ? null
-              : List.of(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
+              : Arrays.asList(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
       List<String> excludeEngines =
           System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null
               ? null
-              : List.of(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
+              : Arrays.asList(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
       if (includeEngines != null) {
         request.filters(includeEngines(includeEngines));
       }
@@ -78,7 +82,7 @@ public class ActualRunner implements RunsTest {
 
       File exitFile = getExitFile();
 
-      var launcher = LauncherFactory.create(config);
+      Launcher launcher = LauncherFactory.create(config);
       launcher.execute(request.build());
 
       deleteExitFile(exitFile);
