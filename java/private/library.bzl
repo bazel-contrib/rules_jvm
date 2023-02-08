@@ -13,7 +13,7 @@ def create_lint_tests(name, **kwargs):
     tags = kwargs.get("tags", [])
 
     checkstyle = get_lint_config("java-checkstyle", tags)
-    if checkstyle != None:
+    if checkstyle != None and not native.existing_rule("%s-checkstyle" % name):
         checkstyle_test(
             name = "%s-checkstyle" % name,
             srcs = srcs,
@@ -25,7 +25,7 @@ def create_lint_tests(name, **kwargs):
         )
 
     pmd = get_lint_config("java-pmd", tags)
-    if pmd != None:
+    if pmd != None and not native.existing_rule("%s-pmd" % name):
         pmd_test(
             name = "%s-pmd" % name,
             srcs = srcs,
@@ -37,7 +37,7 @@ def create_lint_tests(name, **kwargs):
         )
 
     spotbugs = get_lint_config("java-spotbugs", tags)
-    if spotbugs != None:
+    if spotbugs != None and not native.existing_rule("%s-spotbuts" % name):
         spotbugs_test(
             name = "%s-spotbugs" % name,
             config = spotbugs,
