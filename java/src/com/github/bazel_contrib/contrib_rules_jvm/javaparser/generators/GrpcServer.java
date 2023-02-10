@@ -63,7 +63,7 @@ public class GrpcServer {
             new Thread() {
               @Override
               public void run() {
-                timeoutHandler.cancelOutstanding();
+                timeoutHandler.cancelOutstandingAndStopScheduling();
                 try {
                   GrpcServer.this.stop();
                 } catch (InterruptedException e) {
