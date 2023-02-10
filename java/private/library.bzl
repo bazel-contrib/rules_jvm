@@ -37,7 +37,7 @@ def create_lint_tests(name, **kwargs):
         )
 
     spotbugs = get_lint_config("java-spotbugs", tags)
-    if spotbugs != None and not native.existing_rule("%s-spotbuts" % name):
+    if spotbugs != None and not native.existing_rule("%s-spotbugs" % name):
         spotbugs_test(
             name = "%s-spotbugs" % name,
             config = spotbugs,
