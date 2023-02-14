@@ -1,4 +1,5 @@
 load("@apple_rules_lint//lint:defs.bzl", "get_lint_config")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@rules_jvm_external//:defs.bzl", _java_export = "java_export")
 load("//java/private:checkstyle.bzl", "checkstyle_test")
 load("//java/private:pmd.bzl", "pmd_test")
@@ -14,7 +15,8 @@ def create_lint_tests(name, **kwargs):
 
     checkstyle = get_lint_config("java-checkstyle", tags)
     if checkstyle != None:
-        checkstyle_test(
+        maybe(
+            checkstyle_test,
             name = "%s-checkstyle" % name,
             srcs = srcs,
             config = checkstyle,
@@ -26,7 +28,8 @@ def create_lint_tests(name, **kwargs):
 
     pmd = get_lint_config("java-pmd", tags)
     if pmd != None:
-        pmd_test(
+        maybe(
+            pmd_test,
             name = "%s-pmd" % name,
             srcs = srcs,
             target = ":%s" % name,
@@ -38,7 +41,8 @@ def create_lint_tests(name, **kwargs):
 
     spotbugs = get_lint_config("java-spotbugs", tags)
     if spotbugs != None:
-        spotbugs_test(
+        maybe(
+            spotbugs_test,
             name = "%s-spotbugs" % name,
             config = spotbugs,
             only_output_jars = True,

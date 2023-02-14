@@ -4,6 +4,7 @@ load(
     _checkstyle_binary = "checkstyle_binary",
     _checkstyle_config = "checkstyle_config",
 )
+load("//java/private:create_jvm_test_suite.bzl", _create_jvm_test_suite = "create_jvm_test_suite")
 load("//java/private:java_test_suite.bzl", _java_test_suite = "java_test_suite")
 load(
     "//java/private:junit5.bzl",
@@ -32,6 +33,7 @@ load(
 checkstyle_binary = _checkstyle_binary
 checkstyle_config = _checkstyle_config
 checkstyle_test = _checkstyle_test
+create_jvm_test_suite = _create_jvm_test_suite
 java_binary = _java_binary
 java_export = _java_export
 java_library = _java_library
