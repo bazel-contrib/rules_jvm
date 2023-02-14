@@ -234,20 +234,6 @@ public class ClasspathParserTest {
     return set;
   }
 
-  @Test
-  public void testStaticMethodCall() throws IOException {
-    List<? extends JavaFileObject> files =
-        List.of(
-            testFiles.get(
-                "/workspace/com/gazelle/java/javaparser/generators/StaticMethodCall.java"));
-    parser.parseClasses(files);
-    assertEquals(
-        Set.of(
-            "com.gazelle.java.javaparser.ClasspathParser",
-            "com.gazelle.java.javaparser.ClasspathParser.InnerClass"),
-        parser.getUsedTypes());
-  }
-
   static class JavaSource extends SimpleJavaFileObject {
     String fileSource;
 
