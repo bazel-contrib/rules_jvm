@@ -51,6 +51,7 @@ bzl_library(
         ":pmd",
         ":spotbugs",
         "@apple_rules_lint//lint:implementation",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
         "@rules_jvm_external//:implementation",
     ],
 )
