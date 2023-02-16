@@ -20,8 +20,6 @@ public class JUnit5Runner {
 
   public static void main(String[] args) {
     var testSuite = System.getProperty("bazel.test_suite");
-    List<String> includeEngines = System.getProperty("bazel.include_engines") == null ? null : List.of(System.getProperty("bazel.include_engines").split(","));
-    List<String> excludeEngines = System.getProperty("bazel.exclude_engines") == null ? null : List.of(System.getProperty("bazel.exclude_engines").split(","));
 
     var systemExitToggle = getSystemExitToggle();
 
@@ -38,7 +36,7 @@ public class JUnit5Runner {
       var constructor =
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       var runsTest = constructor.newInstance();
-      if (!runsTest.run(testSuite, includeEngines, excludeEngines)) {
+      if (!runsTest.run(testSuite)) {
         exit(systemExitToggle, 2);
       }
     } catch (ReflectiveOperationException e) {

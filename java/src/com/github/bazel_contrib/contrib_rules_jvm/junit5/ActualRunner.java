@@ -23,7 +23,7 @@ import org.junit.platform.launcher.core.LauncherFactory;
 public class ActualRunner implements RunsTest {
 
   @Override
-  public boolean run(String testClassName, List<String> includeEngines, List<String> excludeEngines) {
+  public boolean run(String testClassName) {
     var out = System.getenv("XML_OUTPUT_FILE");
     Path xmlOut;
     try {
@@ -50,6 +50,8 @@ public class ActualRunner implements RunsTest {
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
 
+      List<String> includeEngines = System.getProperty("bazel.include_engines") == null ? null : List.of(System.getProperty("bazel.include_engines").split(","));
+      List<String> excludeEngines = System.getProperty("bazel.exclude_engines") == null ? null : List.of(System.getProperty("bazel.exclude_engines").split(","));
       if (includeEngines != null) {
         request.filters(includeEngines(includeEngines));
       }

@@ -19,17 +19,17 @@ def _define_library(name, **kwargs):
         **kwargs
     )
 
-def _define_junit4_test(name, _include_engines, _exclude_engines, **kwargs):
+def _define_junit4_test(name, **kwargs):
     java_test(
         name = name,
         **kwargs
     )
 
-def _define_junit5_test(name, include_engines, exclude_engines, **kwargs):
+def _define_junit5_test(name, **kwargs):
     java_junit5_test(
         name = name,
-        include_engines = include_engines,
-        exclude_engines = exclude_engines,
+        include_engines = kwargs.pop("include_engines", None),
+        exclude_engines = kwargs.pop("exclude_engines", None),
         **kwargs
     )
 
@@ -49,8 +49,6 @@ def java_test_suite(
         deps = None,
         runtime_deps = [],
         size = None,
-        include_engines = [],
-        exclude_engines = [],
         **kwargs):
     """Create a suite of java tests from `*Test.java` files.
 
@@ -78,8 +76,6 @@ def java_test_suite(
       size: The size of the test, passed to `java_test`
       test_suffixes: The file name suffix used to identify if a file
         contains a test class.
-      include_engines: A list of JUnit Platform test engine IDs to include (only relevant for `junit5` runner).
-      exclude_engines: A list of JUnit Platform test engine IDs to exclude (only relevant for `junit5` runner).
     """
     create_jvm_test_suite(
         name,
@@ -94,7 +90,5 @@ def java_test_suite(
         deps = deps,
         runtime_deps = runtime_deps,
         size = size,
-        include_engines = include_engines,
-        exclude_engines = exclude_engines,
         **kwargs
     )
