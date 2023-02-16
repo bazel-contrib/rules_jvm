@@ -398,17 +398,17 @@ attribute to allow all the tests to be run in one go.
 **PARAMETERS**
 
 
-| Name  | Description                                                                                           | Default Value |
-| :------------- |:------------------------------------------------------------------------------------------------------| :------------- |
-| <a id="java_test_suite-name"></a>name | A unique name for this rule. Will be used to generate a <code>test_suite</code>                       |  none |
-| <a id="java_test_suite-srcs"></a>srcs | Source files to create test rules for.                                                                |  none |
-| <a id="java_test_suite-runner"></a>runner | One of <code>junit4</code> or <code>junit5</code>.                                                    |  <code>"junit4"</code> |
-| <a id="java_test_suite-test_suffixes"></a>test_suffixes | The file name suffix used to identify if a file contains a test class.                                |  <code>["Test.java"]</code> |
-| <a id="java_test_suite-package"></a>package | The package name used by the tests. If not set, this is inferred from the current bazel package name. |  <code>None</code> |
-| <a id="java_test_suite-deps"></a>deps | A list of <code>java_*</code> dependencies.                                                           |  <code>None</code> |
-| <a id="java_test_suite-runtime_deps"></a>runtime_deps | A list of <code>java_*</code> dependencies needed at runtime.                                         |  <code>[]</code> |
-| <a  id="java_test_suite-size"></a>size | The size of the test, passed to <code>java_test</code>                                                |  <code>None</code> |
-| <a id="java_test_suite-kwargs"></a>kwargs | <p align="center"> - </p>                                                                             |  none |
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="java_test_suite-name"></a>name |  A unique name for this rule. Will be used to generate a <code>test_suite</code>   |  none |
+| <a id="java_test_suite-srcs"></a>srcs |  Source files to create test rules for.   |  none |
+| <a id="java_test_suite-runner"></a>runner |  One of <code>junit4</code> or <code>junit5</code>.   |  <code>"junit4"</code> |
+| <a id="java_test_suite-test_suffixes"></a>test_suffixes |  The file name suffix used to identify if a file contains a test class.   |  <code>["Test.java"]</code> |
+| <a id="java_test_suite-package"></a>package |  The package name used by the tests. If not set, this is inferred from the current bazel package name.   |  <code>None</code> |
+| <a id="java_test_suite-deps"></a>deps |  A list of <code>java_*</code> dependencies.   |  <code>None</code> |
+| <a id="java_test_suite-runtime_deps"></a>runtime_deps |  A list of <code>java_*</code> dependencies needed at runtime.   |  <code>[]</code> |
+| <a id="java_test_suite-size"></a>size |  The size of the test, passed to <code>java_test</code>   |  <code>None</code> |
+| <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
 <a id="pmd_binary"></a>
