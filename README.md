@@ -376,7 +376,7 @@ Adds linting tests to Bazel's own `java_test`
 ## java_test_suite
 
 <pre>
-java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-include_engines">include_engines</a>, <a href="#java_test_suite-exclude_engines">exclude_engines</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
+java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -408,8 +408,6 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-deps"></a>deps | A list of <code>java_*</code> dependencies.                                                           |  <code>None</code> |
 | <a id="java_test_suite-runtime_deps"></a>runtime_deps | A list of <code>java_*</code> dependencies needed at runtime.                                         |  <code>[]</code> |
 | <a  id="java_test_suite-size"></a>size | The size of the test, passed to <code>java_test</code>                                                |  <code>None</code> |
-| <a id="java_junit5_test-include_engines"></a>include_engines | A list of JUnit Platform test engine IDs to include (only relevant for <code>junit5</code> runner).   |  <code>[]</code> |
-| <a id="java_junit5_test-exclude_engines"></a>exclude_engines | A list of JUnit Platform test engine IDs to exclude (only relevant for <code>junit5</code> runner).                                                  |  <code>[]</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs | <p align="center"> - </p>                                                                             |  none |
 
 
