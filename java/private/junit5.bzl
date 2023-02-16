@@ -84,10 +84,10 @@ def java_junit5_test(
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_TAGS=" + ",".join(exclude_tags)]
 
     if include_engines:
-        jvm_flags = jvm_flags + ["-Dbazel.include_engines=%s" % ",".join(include_engines)]
+        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_ENGINES=%s" % ",".join(include_engines)]
 
     if exclude_engines:
-        jvm_flags = jvm_flags + ["-Dbazel.exclude_engines=%s" % ",".join(exclude_engines)]
+        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
 
     security_manager_flag_seen = False
     for flag in jvm_flags:

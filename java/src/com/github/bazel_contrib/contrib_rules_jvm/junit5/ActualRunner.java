@@ -64,8 +64,8 @@ public class ActualRunner implements RunsTest {
         request.filters(TagFilter.excludeTags(excludeTags.split(",")));
       }
 
-      List<String> includeEngines = System.getProperty("bazel.include_engines") == null ? null : List.of(System.getProperty("bazel.include_engines").split(","));
-      List<String> excludeEngines = System.getProperty("bazel.exclude_engines") == null ? null : List.of(System.getProperty("bazel.exclude_engines").split(","));
+      List<String> includeEngines = System.getProperty("JUNIT5_INCLUDE_ENGINES") == null ? null : List.of(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
+      List<String> excludeEngines = System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null ? null : List.of(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
       if (includeEngines != null) {
         request.filters(includeEngines(includeEngines));
       }
