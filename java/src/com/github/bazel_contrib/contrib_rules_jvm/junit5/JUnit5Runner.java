@@ -1,7 +1,5 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import java.util.List;
-
 /**
  * Test bootstrapper. This class only depends on the JRE (java 11+) and will ensure that the
  * required dependencies for a junit5 test are on the classpath before creating the actual runner.
