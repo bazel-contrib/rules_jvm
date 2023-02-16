@@ -34,7 +34,7 @@ public class PatternFilter implements PostDiscoveryFilter {
 
   @Override
   public FilterResult apply(TestDescriptor object) {
-    if (!object.isTest()) {
+    if (!object.isTest() && !object.mayRegisterTests()) {
       return FilterResult.included("Including container: " + object.getDisplayName());
     }
 

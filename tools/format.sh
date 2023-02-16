@@ -25,3 +25,7 @@ echo "    gazelle" >&2
 bazel run //:gazelle
 echo "    buildifier" >&2
 bazel run //:buildifier
+
+section "Docs"
+echo "    readme" >&2
+bazel run //tools:update-docs

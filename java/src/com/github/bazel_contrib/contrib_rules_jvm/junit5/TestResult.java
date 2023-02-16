@@ -4,16 +4,19 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 import java.util.Optional;
 import javax.xml.stream.XMLStreamWriter;
-import org.junit.AssumptionViolatedException;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.reporting.legacy.LegacyReportingUtils;
-import org.opentest4j.TestAbortedException;
 
 class TestResult extends BaseResult {
+  private static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS =
+      new DecimalFormatSymbols(Locale.ROOT);
+
   private final TestPlan testPlan;
   private final boolean isDynamic;
 
@@ -41,18 +44,20 @@ class TestResult extends BaseResult {
     return result.getThrowable().map(thr -> (!(thr instanceof AssertionError))).orElse(false);
   }
 
+  public boolean isDisabled() {
+    return getResult() == null;
+  }
+
   public boolean isSkipped() {
-    return getResult()
-        .getThrowable()
-        .map(
-            thr ->
-                (thr instanceof TestAbortedException || thr instanceof AssumptionViolatedException))
-        .orElse(false);
+    if (getResult() == null) {
+      return false;
+    }
+    return getResult().getThrowable().map(JUnit4Utils::isReasonToSkipTest).orElse(false);
   }
 
   @Override
   public void toXml(XMLStreamWriter xml) {
-    DecimalFormat decimalFormat = new DecimalFormat("#.##");
+    DecimalFormat decimalFormat = new DecimalFormat("#.##", DECIMAL_FORMAT_SYMBOLS);
     decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
 
     write(
@@ -74,8 +79,9 @@ class TestResult extends BaseResult {
           xml.writeAttribute("classname", LegacyReportingUtils.getClassName(testPlan, getTestId()));
           xml.writeAttribute("time", decimalFormat.format(getDuration().toMillis() / 1000f));
 
-          if (isSkipped()) {
+          if (isDisabled() || isSkipped()) {
             xml.writeStartElement("skipped");
+            xml.writeEndElement();
           }
           if (isFailure() || isError()) {
             Throwable throwable = getResult().getThrowable().orElse(null);
@@ -89,14 +95,14 @@ class TestResult extends BaseResult {
               return;
             }
 
-            xml.writeAttribute("message", String.valueOf(throwable.getMessage())); // or "null"
+            xml.writeAttribute(
+                "message", escapeIllegalCharacters(String.valueOf(throwable.getMessage())));
             xml.writeAttribute("type", throwable.getClass().getName());
 
             StringWriter stringWriter = new StringWriter();
             throwable.printStackTrace(new PrintWriter(stringWriter));
 
-            xml.writeCData(stringWriter.toString());
-
+            xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
             xml.writeEndElement();
           }
 
@@ -121,5 +127,34 @@ class TestResult extends BaseResult {
   @Override
   protected Optional<BaseResult> get(TestIdentifier id) {
     return getTestId().equals(id) ? Optional.of(this) : Optional.empty();
+  }
+
+  private static String escapeIllegalCharacters(String text) {
+    StringBuilder result = new StringBuilder();
+    text.codePoints()
+        .forEach(
+            codePoint -> {
+              if (isLegalCharacter(codePoint)) {
+                result.appendCodePoint(codePoint);
+              } else {
+                result.append("&#").append(codePoint).append(';');
+              }
+            });
+    return result.toString();
+  }
+
+  /**
+   * Returns whether the given code point denotes a legal XML character.
+   *
+   * @see <a href="https://www.w3.org/TR/xml/#charsets">any Unicode character, excluding the
+   *     surrogate blocks, FFFE, and FFFF. </a>
+   */
+  private static boolean isLegalCharacter(int codePoint) {
+    return codePoint == 0x9
+        || codePoint == 0xA
+        || codePoint == 0xD
+        || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+        || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+        || (codePoint >= 0x10000 && codePoint <= 0x10FFFF);
   }
 }

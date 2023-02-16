@@ -1,10 +1,11 @@
 load("@apple_rules_lint//lint:defs.bzl", "get_lint_config")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@rules_jvm_external//:defs.bzl", _java_export = "java_export")
 load("//java/private:checkstyle.bzl", "checkstyle_test")
 load("//java/private:pmd.bzl", "pmd_test")
 load("//java/private:spotbugs.bzl", "spotbugs_test")
 
-def _create_lint_tests(name, **kwargs):
+def create_lint_tests(name, **kwargs):
     srcs = kwargs.get("srcs", [])
 
     if len(srcs) == 0:
@@ -14,7 +15,8 @@ def _create_lint_tests(name, **kwargs):
 
     checkstyle = get_lint_config("java-checkstyle", tags)
     if checkstyle != None:
-        checkstyle_test(
+        maybe(
+            checkstyle_test,
             name = "%s-checkstyle" % name,
             srcs = srcs,
             config = checkstyle,
@@ -26,7 +28,8 @@ def _create_lint_tests(name, **kwargs):
 
     pmd = get_lint_config("java-pmd", tags)
     if pmd != None:
-        pmd_test(
+        maybe(
+            pmd_test,
             name = "%s-pmd" % name,
             srcs = srcs,
             target = ":%s" % name,
@@ -38,7 +41,8 @@ def _create_lint_tests(name, **kwargs):
 
     spotbugs = get_lint_config("java-spotbugs", tags)
     if spotbugs != None:
-        spotbugs_test(
+        maybe(
+            spotbugs_test,
             name = "%s-spotbugs" % name,
             config = spotbugs,
             only_output_jars = True,
@@ -52,22 +56,22 @@ def _create_lint_tests(name, **kwargs):
 
 def java_binary(name, **kwargs):
     """Adds linting tests to Bazel's own `java_binary`"""
-    _create_lint_tests(name, **kwargs)
+    create_lint_tests(name, **kwargs)
     native.java_binary(name = name, **kwargs)
 
 def java_library(name, **kwargs):
     """Adds linting tests to Bazel's own `java_library`"""
-    _create_lint_tests(name, **kwargs)
+    create_lint_tests(name, **kwargs)
     native.java_library(name = name, **kwargs)
 
 def java_test(name, **kwargs):
     """Adds linting tests to Bazel's own `java_test`"""
-    _create_lint_tests(name, **kwargs)
+    create_lint_tests(name, **kwargs)
     native.java_test(name = name, **kwargs)
 
 def java_export(name, maven_coordinates, pom_template = None, deploy_env = None, visibility = None, **kwargs):
     """Adds linting tests to `rules_jvm_external`'s `java_export`"""
-    _create_lint_tests(name, **kwargs)
+    create_lint_tests(name, **kwargs)
     _java_export(
         name = name,
         maven_coordinates = maven_coordinates,

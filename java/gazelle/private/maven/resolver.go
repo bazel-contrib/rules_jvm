@@ -21,7 +21,7 @@ type resolver struct {
 	logger zerolog.Logger
 }
 
-func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
+func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
 		data:   multiset.NewStringMultiSet(),
 		logger: logger.With().Str("_c", "maven-resolver").Logger(),
@@ -33,16 +33,20 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 		return &r, nil
 	}
 
-	r.logger.Debug().Int("count", len(c.DependencyTree.Dependencies)).Msg("Dependency count")
-	r.logger.Debug().Str("conflicts", fmt.Sprintf("%#v", c.DependencyTree.ConflictResolution)).Msg("Maven install conflict")
+	dependencies := c.ListDependencies()
 
-	for _, dep := range c.DependencyTree.Dependencies {
-		for _, pkg := range dep.Packages {
-			c, err := ParseCoordinate(dep.Coord)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse coordinate %v: %w", dep.Coord, err)
-			}
-			l := label.New("maven", "", bazel.CleanupLabel(c.ArtifactString()))
+	r.logger.Debug().Int("count", len(dependencies)).Msg("Dependency count")
+
+	for _, depName := range dependencies {
+		coords, err := ParseCoordinate(c.GetDependencyCoordinates(depName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse coordinate %v: %w", coords, err)
+		}
+		l := label.New("maven", "", bazel.CleanupLabel(coords.ArtifactString()))
+		if _, found := excludedArtifacts[l.String()]; found {
+			continue
+		}
+		for _, pkg := range c.ListDependencyPackages(depName) {
 			r.data.Add(pkg, l.String())
 		}
 	}

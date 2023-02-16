@@ -19,6 +19,7 @@ genrule(
     ],
     outs = ["README.md"],
     cmd = """cat $(location preamble.md) $(location :java-docs) $(location postfix.md) >$@""",
+    visibility = ["//tools:__pkg__"],
 )
 
 bzl_library(

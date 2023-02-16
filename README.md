@@ -62,7 +62,7 @@ The gazelle plugin requires Go 1.18 or above.
 
 
 
-<a id="#checkstyle_config"></a>
+<a id="checkstyle_config"></a>
 
 ## checkstyle_config
 
@@ -79,35 +79,14 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="checkstyle_config-checkstyle_binary"></a>checkstyle_binary |  Checkstyle binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle_cli |
-| <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
-| <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | "plain" |
+| <a id="checkstyle_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="checkstyle_config-checkstyle_binary"></a>checkstyle_binary |  Checkstyle binary to use.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:checkstyle_cli</code> |
+| <a id="checkstyle_config-config_file"></a>config_file |  The config file to use for all checkstyle tests   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="checkstyle_config-data"></a>data |  Additional files to make available to Checkstyle such as any included XML files   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="checkstyle_config-output_format"></a>output_format |  Output format to use. Defaults to plain   | String | optional | <code>"plain"</code> |
 
 
-<a id="#checkstyle_test"></a>
-
-## checkstyle_test
-
-<pre>
-checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-config">config</a>, <a href="#checkstyle_test-output_format">output_format</a>, <a href="#checkstyle_test-srcs">srcs</a>)
-</pre>
-
-Use checkstyle to lint the `srcs`.
-
-**ATTRIBUTES**
-
-
-| Name  | Description | Type | Mandatory | Default |
-| :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="checkstyle_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="checkstyle_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:checkstyle-default-config |
-| <a id="checkstyle_test-output_format"></a>output_format |  Output Format can be plain or xml. Defaults to plain   | String | optional | "plain" |
-| <a id="checkstyle_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
-
-
-<a id="#pmd_ruleset"></a>
+<a id="pmd_ruleset"></a>
 
 ## pmd_ruleset
 
@@ -122,14 +101,14 @@ Select a rule set for PMD tests.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | "xml" |
-| <a id="pmd_ruleset-pmd_binary"></a>pmd_binary |  PMD binary to use.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:pmd |
-| <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | True |
+| <a id="pmd_ruleset-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="pmd_ruleset-format"></a>format |  Generate report in the given format. One of html, text, or xml (default is xml)   | String | optional | <code>"xml"</code> |
+| <a id="pmd_ruleset-pmd_binary"></a>pmd_binary |  PMD binary to use.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>//java:pmd</code> |
+| <a id="pmd_ruleset-rulesets"></a>rulesets |  Use these rulesets.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="pmd_ruleset-shallow"></a>shallow |  Use the targetted output to increase PMD's depth of processing   | Boolean | optional | <code>True</code> |
 
 
-<a id="#pmd_test"></a>
+<a id="pmd_test"></a>
 
 ## pmd_test
 
@@ -144,13 +123,13 @@ Use PMD to lint the `srcs`.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="pmd_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="pmd_test-ruleset"></a>ruleset |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | required |  |
-| <a id="pmd_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | optional | [] |
-| <a id="pmd_test-target"></a>target |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
+| <a id="pmd_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="pmd_test-ruleset"></a>ruleset |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="pmd_test-srcs"></a>srcs |  -   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
+| <a id="pmd_test-target"></a>target |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
 
 
-<a id="#spotbugs_config"></a>
+<a id="spotbugs_config"></a>
 
 ## spotbugs_config
 
@@ -165,14 +144,14 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | "default" |
-| <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | None |
-| <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | True |
-| <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | @contrib_rules_jvm//java:spotbugs_cli |
+| <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | <code>"default"</code> |
+| <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
+| <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | <code>True</code> |
+| <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:spotbugs_cli</code> |
 
 
-<a id="#spotbugs_test"></a>
+<a id="spotbugs_test"></a>
 
 ## spotbugs_test
 
@@ -187,13 +166,13 @@ Use spotbugs to lint the `srcs`.
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">Label</a> | optional | //java:spotbugs-default-config |
-| <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
-| <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | True |
+| <a id="spotbugs_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="spotbugs_test-config"></a>config |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>//java:spotbugs-default-config</code> |
+| <a id="spotbugs_test-deps"></a>deps |  -   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
+| <a id="spotbugs_test-only_output_jars"></a>only_output_jars |  If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed   | Boolean | optional | <code>True</code> |
 
 
-<a id="#checkstyle_binary"></a>
+<a id="checkstyle_binary"></a>
 
 ## checkstyle_binary
 
@@ -235,7 +214,28 @@ checkstyle_binary(
 | <a id="checkstyle_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_binary"></a>
+<a id="checkstyle_test"></a>
+
+## checkstyle_test
+
+<pre>
+checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-size">size</a>, <a href="#checkstyle_test-timeout">timeout</a>, <a href="#checkstyle_test-kwargs">kwargs</a>)
+</pre>
+
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="checkstyle_test-name"></a>name |  <p align="center"> - </p>   |  none |
+| <a id="checkstyle_test-size"></a>size |  <p align="center"> - </p>   |  <code>"medium"</code> |
+| <a id="checkstyle_test-timeout"></a>timeout |  <p align="center"> - </p>   |  <code>"short"</code> |
+| <a id="checkstyle_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
+
+
+<a id="java_binary"></a>
 
 ## java_binary
 
@@ -254,7 +254,7 @@ Adds linting tests to Bazel's own `java_binary`
 | <a id="java_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_export"></a>
+<a id="java_export"></a>
 
 ## java_export
 
@@ -277,12 +277,13 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 | <a id="java_export-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_junit5_test"></a>
+<a id="java_junit5_test"></a>
 
 ## java_junit5_test
 
 <pre>
-java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-include_engines">include_engines</a>, <a href="#java_junit5_test-exclude_engines">exclude_engines</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
+java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-package_prefixes">package_prefixes</a>, <a href="#java_junit5_test-jvm_flags">jvm_flags</a>, <a href="#java_junit5_test-include_tags">include_tags</a>,
+                 <a href="#java_junit5_test-exclude_tags">exclude_tags</a>, <a href="#java_junit5_test-include_engines">include_engines</a>, <a href="#java_junit5_test-exclude_engines">exclude_engines</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
 </pre>
 
 Run junit5 tests using Bazel.
@@ -291,10 +292,20 @@ This is designed to be a drop-in replacement for `java_test`, but
 rather than using a JUnit4 runner it provides support for using
 JUnit5 directly. The arguments are the same as used by `java_test`.
 
+By default Bazel, and by extension this rule, assumes you want to
+always run all of the tests in a class file.  The `include_tags`
+and `exclude_tags` allows for selectively running specific tests
+within a single class file based on your use of the `@Tag` Junit5
+annotations. Please see [the JUnit 5
+docs](https://junit.org/junit5/docs/current/user-guide/#running-tests-tags)
+for more information about using JUnit5 tag annotation to control
+test execution.
+
 The generated target does not include any JUnit5 dependencies. If
 you are using the standard `@maven` namespace for your
-`maven_install` you can add these to your `deps` using `JUNIT5_DEPS`
-or `JUNIT5_VINTAGE_DEPS` loaded from `//java:defs.bzl`
+`maven_install` you can add these to your `deps` using
+`JUNIT5_DEPS` or `JUNIT5_VINTAGE_DEPS` loaded from
+`//java:defs.bzl`
 
 **Note**: The junit5 runner prevents `System.exit` being called
 using a `SecurityManager`, which means that one test can't
@@ -313,12 +324,16 @@ its goals, but this is not complete or available yet.
 | <a id="java_junit5_test-name"></a>name |  The name of the test.   |  none |
 | <a id="java_junit5_test-test_class"></a>test_class |  The Java class to be loaded by the test runner. If not specified, the class name will be inferred from a combination of the current bazel package and the <code>name</code> attribute.   |  <code>None</code> |
 | <a id="java_junit5_test-runtime_deps"></a>runtime_deps |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-package_prefixes"></a>package_prefixes |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-jvm_flags"></a>jvm_flags |  <p align="center"> - </p>   |  <code>[]</code> |
+| <a id="java_junit5_test-include_tags"></a>include_tags |  Junit5 tag expressions to include execution of tagged tests.   |  <code>[]</code> |
+| <a id="java_junit5_test-exclude_tags"></a>exclude_tags |  Junit tag expressions to exclude execution of tagged tests.   |  <code>[]</code> |
 | <a id="java_junit5_test-include_engines"></a>include_engines |  A list of JUnit Platform test engine IDs to include.   |  <code>[]</code> |
 | <a id="java_junit5_test-exclude_engines"></a>exclude_engines |  A list of JUnit Platform test engine IDs to exclude.   |  <code>[]</code> |
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_library"></a>
+<a id="java_library"></a>
 
 ## java_library
 
@@ -337,7 +352,7 @@ Adds linting tests to Bazel's own `java_library`
 | <a id="java_library-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_test"></a>
+<a id="java_test"></a>
 
 ## java_test
 
@@ -356,13 +371,12 @@ Adds linting tests to Bazel's own `java_test`
 | <a id="java_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#java_test_suite"></a>
+<a id="java_test_suite"></a>
 
 ## java_test_suite
 
 <pre>
-java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-tags">tags</a>, <a href="#java_test_suite-visibility">visibility</a>,
-                <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-include_engines">include_engines</a>, <a href="#java_test_suite-exclude_engines">exclude_engines</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
+java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-include_engines">include_engines</a>, <a href="#java_test_suite-exclude_engines">exclude_engines</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -393,15 +407,13 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-package"></a>package | The package name used by the tests. If not set, this is inferred from the current bazel package name. |  <code>None</code> |
 | <a id="java_test_suite-deps"></a>deps | A list of <code>java_*</code> dependencies.                                                           |  <code>None</code> |
 | <a id="java_test_suite-runtime_deps"></a>runtime_deps | A list of <code>java_*</code> dependencies needed at runtime.                                         |  <code>[]</code> |
-| <a id="java_test_suite-tags"></a>tags | <p align="center"> - </p>                                                                             |  <code>[]</code> |
-| <a id="java_test_suite-visibility"></a>visibility | <p align="center"> - </p>                                                                             |  <code>None</code> |
-| <a id="java_test_suite-size"></a>size | The size of the test, passed to <code>java_test</code>                                                |  <code>None</code> |
+| <a  id="java_test_suite-size"></a>size | The size of the test, passed to <code>java_test</code>                                                |  <code>None</code> |
 | <a id="java_junit5_test-include_engines"></a>include_engines | A list of JUnit Platform test engine IDs to include (only relevant for <code>junit5</code> runner).   |  <code>[]</code> |
 | <a id="java_junit5_test-exclude_engines"></a>exclude_engines | A list of JUnit Platform test engine IDs to exclude (only relevant for <code>junit5</code> runner).                                                  |  <code>[]</code> |
 | <a id="java_test_suite-kwargs"></a>kwargs | <p align="center"> - </p>                                                                             |  none |
 
 
-<a id="#pmd_binary"></a>
+<a id="pmd_binary"></a>
 
 ## pmd_binary
 
@@ -443,7 +455,7 @@ pmd_binary(
 | <a id="pmd_binary-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
-<a id="#spotbugs_binary"></a>
+<a id="spotbugs_binary"></a>
 
 ## spotbugs_binary
 

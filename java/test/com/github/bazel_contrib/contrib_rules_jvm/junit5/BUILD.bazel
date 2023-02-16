@@ -1,5 +1,5 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "JUNIT5_DEPS", "JUNIT5_VINTAGE_DEPS", "java_test_suite")
+load("//java:defs.bzl", "java_test_suite", "junit5_deps", "junit5_vintage_deps")
 
 # Ignore this directory because of the wrong package name.
 # gazelle:ignore
@@ -20,10 +20,12 @@ java_test_suite(
     runner = "junit5",
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
-        artifact("com.github.spotbugs:spotbugs-annotations", "frozen_deps"),
-        artifact("org.junit.jupiter:junit-jupiter-api", "frozen_deps"),
-        artifact("org.junit.platform:junit-platform-engine", "frozen_deps"),
-    ] + JUNIT5_VINTAGE_DEPS,
+        artifact("com.github.spotbugs:spotbugs-annotations", "contrib_rules_jvm_deps"),
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+        artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
+        artifact("org.mockito:mockito-core", "contrib_rules_jvm_tests"),
+        artifact("org.opentest4j:opentest4j", "contrib_rules_jvm_tests"),
+    ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
 )
 
 # Test that we can set the package name properly. We do this by
@@ -36,6 +38,6 @@ java_test_suite(
     package = "com.github.bazel_contrib.contrib_rules_jvm.custom",
     runner = "junit5",
     deps = [
-        artifact("org.junit.jupiter:junit-jupiter-api", "frozen_deps"),
-    ] + JUNIT5_DEPS,
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
 )

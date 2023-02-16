@@ -3,7 +3,6 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,8 +21,7 @@ public class Main {
     line = commandLineOptions(args);
     Main main = new Main();
 
-    TimeoutHandler timeoutHander =
-        new TimeoutHandler(new ScheduledThreadPoolExecutor(1), main.idleTimeout());
+    TimeoutHandler timeoutHander = new TimeoutHandler(main.idleTimeout());
     main.runServer(timeoutHander);
   }
 

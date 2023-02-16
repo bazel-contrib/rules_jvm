@@ -4,9 +4,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_python",
-    sha256 = "cdf6b84084aad8f10bf20b46b77cb48d83c319ebe6458a18e9d2cebf57807cdd",
-    strip_prefix = "rules_python-0.8.1",
-    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.8.1.tar.gz",
+    sha256 = "497ca47374f48c8b067d786b512ac10a276211810f4a580178ee9b9ad139323a",
+    strip_prefix = "rules_python-0.16.1",
+    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.16.1.tar.gz",
 )
 
 load("//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
@@ -107,6 +107,7 @@ frozen_deps_pmi()
 
 # These are used for our own tests.
 maven_install(
+    name = "contrib_rules_jvm_tests",
     artifacts = [
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
@@ -115,16 +116,17 @@ maven_install(
         "org.junit.platform:junit-platform-launcher:1.8.2",
         "org.junit.platform:junit-platform-reporting:1.8.2",
         "org.junit.vintage:junit-vintage-engine:5.8.2",
+        "org.mockito:mockito-core:4.8.1",
     ],
     fail_if_repin_required = True,
     fetch_sources = True,
-    maven_install_json = "@//:maven_install.json",
+    maven_install_json = "@//:contrib_rules_jvm_tests_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )
 
-load("@maven//:defs.bzl", maven_pmi = "pinned_maven_install")
+load("@contrib_rules_jvm_tests//:defs.bzl", maven_pmi = "pinned_maven_install")
 
 maven_pmi()
 

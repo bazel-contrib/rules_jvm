@@ -4,12 +4,15 @@ load(
     _checkstyle_binary = "checkstyle_binary",
     _checkstyle_config = "checkstyle_config",
 )
+load("//java/private:create_jvm_test_suite.bzl", _create_jvm_test_suite = "create_jvm_test_suite")
 load("//java/private:java_test_suite.bzl", _java_test_suite = "java_test_suite")
 load(
     "//java/private:junit5.bzl",
     _JUNIT5_DEPS = "JUNIT5_DEPS",
     _JUNIT5_VINTAGE_DEPS = "JUNIT5_VINTAGE_DEPS",
     _java_junit5_test = "java_junit5_test",
+    _junit5_deps = "junit5_deps",
+    _junit5_vintage_deps = "junit5_vintage_deps",
 )
 load(
     "//java/private:library.bzl",
@@ -30,12 +33,15 @@ load(
 checkstyle_binary = _checkstyle_binary
 checkstyle_config = _checkstyle_config
 checkstyle_test = _checkstyle_test
+create_jvm_test_suite = _create_jvm_test_suite
 java_binary = _java_binary
 java_export = _java_export
 java_library = _java_library
 java_junit5_test = _java_junit5_test
 java_test = _java_test
 java_test_suite = _java_test_suite
+junit5_deps = _junit5_deps
+junit5_vintage_deps = _junit5_vintage_deps
 JUNIT5_DEPS = _JUNIT5_DEPS
 JUNIT5_VINTAGE_DEPS = _JUNIT5_VINTAGE_DEPS
 pmd_binary = _pmd_binary
