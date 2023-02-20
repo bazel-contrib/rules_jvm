@@ -229,12 +229,13 @@ public class ClasspathParserTest {
   @Test
   public void testFullyQualifieds() throws IOException {
     List<? extends JavaFileObject> files =
-            List.of(
-                    testFiles.get(
-                            "/workspace/com/gazelle/java/javaparser/generators/FullyQualifieds.java"));
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/FullyQualifieds.java"));
     parser.parseClasses(files);
 
-    Set<String> expected = Set.of(
+    Set<String> expected =
+        Set.of(
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
             "workspace.com.gazelle.java.javaparser.utils.Printer",
