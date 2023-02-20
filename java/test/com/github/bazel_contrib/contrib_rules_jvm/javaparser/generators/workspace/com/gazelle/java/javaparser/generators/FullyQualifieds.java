@@ -12,5 +12,8 @@ public class FullyQualifieds {
 
         // Anonymous variables in lambdas shouldn't be picked up as variable names - visitVariable sees them as variables with null types.
         someList.map(x -> x.toString());
+
+        this.BLAH = "beep";
+        this.BEEP_BOOP = "baz";
     }
 }

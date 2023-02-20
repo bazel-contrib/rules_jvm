@@ -239,7 +239,22 @@ public class ClasspathParser {
     }
 
     private boolean looksLikeClassName(String identifier) {
-      return identifier.length() > 0 && Character.isUpperCase(identifier.charAt(0));
+      if (identifier.isEmpty()) {
+        return false;
+      }
+      // Classes start with UpperCase.
+      if (!Character.isUpperCase(identifier.charAt(0))) {
+        return false;
+      }
+      // Single-char upper-case may well be a class-name.
+      if (identifier.length() == 1) {
+        return true;
+      }
+      // SNAKE_CASE is for constants not classes.
+      if (identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
+        return false;
+      }
+      return true;
     }
 
     @Override
