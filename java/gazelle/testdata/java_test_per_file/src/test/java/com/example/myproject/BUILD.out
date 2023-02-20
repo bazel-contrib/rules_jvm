@@ -6,6 +6,7 @@ java_test(
     test_class = "com.example.myproject.AppTest",
     deps = [
         "//src/main/java/com/example/myproject",
+        "//src/test/java/com/example/justhelpers",
         "@maven//:junit_junit",
         "@maven//:org_hamcrest_hamcrest_all",
     ],
@@ -17,6 +18,7 @@ java_test(
     test_class = "com.example.myproject.OtherAppTest",
     deps = [
         "//src/main/java/com/example/myproject",
+        "//src/test/java/com/example/justhelpers",
         "@maven//:junit_junit",
         "@maven//:org_hamcrest_hamcrest_all",
     ],

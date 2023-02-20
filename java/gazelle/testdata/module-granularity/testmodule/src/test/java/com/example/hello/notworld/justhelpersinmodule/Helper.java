@@ -1,4 +1,4 @@
-package com.example.hello.notworld.justhelpers;
+package com.example.hello.notworld.justhelpersinmodule;
 
 public class Helper {
   public String getExpectation() {

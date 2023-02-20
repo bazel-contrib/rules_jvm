@@ -97,7 +97,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		rjl.SetAttr("exports", append(exports, ":"+jplName))
 		packageName := types.NewPackageName(protoPackage.Options["java_package"])
 		log.Debug().Str("pkg", packageName.Name).Msg("adding the proto import statement")
-		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(packageName, false)})
+		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(packageName, false, false)})
 		res.Gen = append(res.Gen, rjl)
 		res.Imports = append(res.Imports, types.ResolveInput{
 			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
@@ -289,6 +289,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					packageNames,
 					testJavaImportsWithHelpers,
 					cfg.GetCustomJavaTestFileSuffixes(),
+					testHelperJavaFiles.Len() > 0,
 					&res,
 				)
 			}
@@ -412,7 +413,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 
 	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
 	for _, pkg := range packages.SortedSlice() {
-		resolvablePackages = append(resolvablePackages, types.NewResolvableJavaPackage(pkg, testonly))
+		resolvablePackages = append(resolvablePackages, *types.NewResolvableJavaPackage(pkg, testonly, false))
 	}
 	r.SetPrivateAttr(packagesKey, resolvablePackages)
 	res.Gen = append(res.Gen, r)
@@ -470,7 +471,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
-	r.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(f.pkg, true)})
+	r.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(f.pkg, true, false)})
 
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -514,13 +515,15 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
 	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packageNames.Len())
-	for _, packageName := range packageNames.SortedSlice() {
-		resolvablePackages = append(resolvablePackages, types.NewResolvableJavaPackage(packageName, true))
+	if hasHelpers {
+		for _, packageName := range packageNames.SortedSlice() {
+			resolvablePackages = append(resolvablePackages, *types.NewResolvableJavaPackage(packageName, true, true))
+		}
 	}
 	r.SetPrivateAttr(packagesKey, resolvablePackages)
 
