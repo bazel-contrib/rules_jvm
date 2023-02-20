@@ -101,12 +101,14 @@ type ResolveInput struct {
 type ResolvableJavaPackage struct {
 	packageName PackageName
 	isTestOnly  bool
+	isTestSuite bool
 }
 
-func NewResolvableJavaPackage(packageName PackageName, isTestOnly bool) ResolvableJavaPackage {
-	return ResolvableJavaPackage{
+func NewResolvableJavaPackage(packageName PackageName, isTestOnly, isTestSuite bool) *ResolvableJavaPackage {
+	return &ResolvableJavaPackage{
 		packageName: packageName,
 		isTestOnly:  isTestOnly,
+		isTestSuite: isTestSuite,
 	}
 }
 
@@ -119,6 +121,9 @@ func (r *ResolvableJavaPackage) String() string {
 	if r.isTestOnly {
 		s += "!testonly"
 	}
+	if r.isTestSuite {
+		s += "!testsuite"
+	}
 	return s
 }
 
@@ -129,9 +134,12 @@ func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
 	}
 	packageName := NewPackageName(parts[0])
 	isTestOnly := false
+	isTestSuite := false
 	for _, part := range parts[1:] {
 		if part == "testonly" {
 			isTestOnly = true
+		} else if part == "testsuite" {
+			isTestSuite = true
 		} else {
 			return nil, fmt.Errorf("saw unrecognized tag %s", part)
 		}
@@ -139,5 +147,6 @@ func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
 	return &ResolvableJavaPackage{
 		packageName: packageName,
 		isTestOnly:  isTestOnly,
+		isTestSuite: isTestSuite,
 	}, nil
 }

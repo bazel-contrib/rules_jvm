@@ -1,4 +1,4 @@
-package com.example.hello.notworld.justhelpers.withdirectory;
+package com.example.hello.notworld.justhelpersinmodule.withdirectory;
 
 public class Helper {
   public String toUpperCase(String input) {

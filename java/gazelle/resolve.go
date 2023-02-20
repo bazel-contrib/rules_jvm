@@ -46,18 +46,18 @@ func (Resolver) Name() string {
 func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJavaLibrary(r.Kind()) {
+	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
 		return nil
 	}
 
 	var out []resolve.ImportSpec
 	if pkgs := r.PrivateAttr(packagesKey); pkgs != nil {
 		for _, pkg := range pkgs.([]types.ResolvableJavaPackage) {
-			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.PackageName().Name})
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
 
-	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Msg("return")
+	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return")
 	return out
 }
 
@@ -149,7 +149,8 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 }
 
 func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
-	importSpec := resolve.ImportSpec{Lang: languageName, Imp: imp.Name}
+	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
+	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
 		return ol, nil
 	}
@@ -172,15 +173,15 @@ func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *r
 			Msg("convertImport found MULTIPLE results in rule index")
 	}
 
-	if v, ok := jr.internalCache.Get(imp); ok {
-		return v.(label.Label), nil
+	if v, ok := jr.internalCache.Get(cacheKey); ok {
+		return simplifyLabel(c.RepoName, v.(label.Label), from), nil
 	}
 
 	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
 
 	defer func() {
-		if err == nil {
-			jr.internalCache.Add(imp, out)
+		if err == nil && out != label.NoLabel {
+			jr.internalCache.Add(cacheKey, out)
 		}
 	}()
 
@@ -190,6 +191,30 @@ func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *r
 
 	if l, err := jr.lang.mavenResolver.Resolve(imp); err == nil {
 		return l, nil
+	}
+
+	if isTestRule {
+		// If there's exactly one testonly match, use it
+		testonlyCacheKey := types.NewResolvableJavaPackage(imp, true, false)
+		testonlyImportSpec := resolve.ImportSpec{Lang: languageName, Imp: testonlyCacheKey.String()}
+		testonlyMatches := ix.FindRulesByImportWithConfig(c, testonlyImportSpec, languageName)
+		if len(testonlyMatches) == 1 {
+			cacheKey = testonlyCacheKey
+			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from), nil
+		}
+
+		// If there's exactly one testonly match, use it
+		testsuiteCacheKey := types.NewResolvableJavaPackage(imp, true, true)
+		testsuiteImportSpec := resolve.ImportSpec{Lang: languageName, Imp: testsuiteCacheKey.String()}
+		testsuiteMatches := ix.FindRulesByImportWithConfig(c, testsuiteImportSpec, languageName)
+		if len(testsuiteMatches) == 1 {
+			cacheKey = testsuiteCacheKey
+			l := testsuiteMatches[0].Label
+			if l != from {
+				l.Name += "-test-lib"
+				return simplifyLabel(c.RepoName, l, from), nil
+			}
+		}
 	}
 
 	if isTestRule && ownPackageNames.Contains(imp) {

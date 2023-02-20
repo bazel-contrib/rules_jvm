@@ -34,6 +34,7 @@ java_test_suite(
     ],
     deps = [
         ":module1",
+        "//testmodule/src/test/java/com/example/hello/notworld/justhelpersinmodule:justhelpersinmodule-tests-test-lib",
         "@maven//:org_hamcrest_hamcrest_all",
         "@maven//:org_junit_jupiter_junit_jupiter_api",
     ],
