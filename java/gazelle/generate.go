@@ -78,14 +78,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		rjpl := rule.NewRule("java_proto_library", jplName)
 		rjpl.SetAttr("deps", []string{":" + protoRuleName})
 		res.Gen = append(res.Gen, rjpl)
-		res.Imports = append(res.Imports, []types.PackageName{})
+		res.Imports = append(res.Imports, types.ResolveInput{})
 
 		if protoPackage.HasServices {
 			r := rule.NewRule("java_grpc_library", jglName)
 			r.SetAttr("srcs", []string{":" + protoRuleName})
 			r.SetAttr("deps", []string{":" + jplName})
 			res.Gen = append(res.Gen, r)
-			res.Imports = append(res.Imports, []types.PackageName{})
+			res.Imports = append(res.Imports, types.ResolveInput{})
 		}
 
 		rjl := rule.NewRule("java_library", jlName)
@@ -95,10 +95,13 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			exports = append(exports, ":"+jglName)
 		}
 		rjl.SetAttr("exports", append(exports, ":"+jplName))
-		log.Debug().Str("pkg", protoPackage.Options["java_package"]).Msg("adding the proto import statement")
-		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(types.NewPackageName(protoPackage.Options["java_package"]), false)})
+		packageName := types.NewPackageName(protoPackage.Options["java_package"])
+		log.Debug().Str("pkg", packageName.Name).Msg("adding the proto import statement")
+		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(packageName, false)})
 		res.Gen = append(res.Gen, rjl)
-		res.Imports = append(res.Imports, []types.PackageName{})
+		res.Imports = append(res.Imports, types.ResolveInput{
+			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
+		})
 	}
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
@@ -224,7 +227,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	})
 
 	if productionJavaFiles.Len() > 0 {
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, false, &res)
 	}
 
 	for _, m := range allMains.SortedSlice() {
@@ -246,7 +249,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages.SortedSlice(), testJavaImports.SortedSlice(), true, &res)
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, true, &res)
 		}
 	}
 
@@ -385,7 +388,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []types.PackageName, imports []types.PackageName, testonly bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], testonly bool, res *language.GenerateResult) {
 	const ruleKind = "java_library"
 	r := rule.NewRule(ruleKind, name)
 
@@ -407,13 +410,18 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 		r.SetAttr("visibility", []string{"//:__subpackages__"})
 	}
 
-	resolvablePackages := make([]types.ResolvableJavaPackage, 0, len(packages))
-	for _, pkg := range packages {
+	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
+	for _, pkg := range packages.SortedSlice() {
 		resolvablePackages = append(resolvablePackages, types.NewResolvableJavaPackage(pkg, testonly))
 	}
 	r.SetPrivateAttr(packagesKey, resolvablePackages)
 	res.Gen = append(res.Gen, r)
-	res.Imports = append(res.Imports, imports)
+
+	resolveInput := types.ResolveInput{
+		PackageNames:         packages,
+		ImportedPackageNames: imports,
+	}
+	res.Imports = append(res.Imports, resolveInput)
 }
 
 func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName string, res *language.GenerateResult) {
@@ -427,7 +435,9 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	res.Gen = append(res.Gen, r)
-	res.Imports = append(res.Imports, []types.PackageName{})
+	res.Imports = append(res.Imports, types.ResolveInput{
+		PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{m.PackageName()}, types.PackageNameLess),
+	})
 }
 
 func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
@@ -473,7 +483,12 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	res.Gen = append(res.Gen, r)
 	testImports := imports.Clone()
 	testImports.Add(f.pkg)
-	res.Imports = append(res.Imports, testImports.SortedSlice())
+
+	resolveInput := types.ResolveInput{
+		PackageNames:         sorted_set.NewSortedSetFn([]types.PackageName{f.pkg}, types.PackageNameLess),
+		ImportedPackageNames: testImports,
+	}
+	res.Imports = append(res.Imports, resolveInput)
 }
 
 func importsJunit4(imports *sorted_set.SortedSet[types.PackageName]) bool {
@@ -532,7 +547,11 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	res.Gen = append(res.Gen, r)
 	suiteImports := imports.Clone()
 	suiteImports.AddAll(packageNames)
-	res.Imports = append(res.Imports, suiteImports.SortedSlice())
+	resolveInput := types.ResolveInput{
+		PackageNames:         packageNames,
+		ImportedPackageNames: suiteImports,
+	}
+	res.Imports = append(res.Imports, resolveInput)
 }
 
 func filterStrSlice(elts []string, f func(string) bool) []string {

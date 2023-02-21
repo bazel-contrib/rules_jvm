@@ -86,6 +86,10 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 	}
 }
 
+func isTestRule(kind string) bool {
+	return kind == "java_junit5_test" || kind == "java_test" || kind == "java_test_suite"
+}
+
 var javaLoads = []rule.LoadInfo{
 	{
 		Name: "@io_grpc_grpc_java//:java_grpc_library.bzl",

@@ -5,6 +5,9 @@ go_library(
     srcs = ["types.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/types",
     visibility = ["//visibility:public"],
+    deps = [
+        "//java/gazelle/private/sorted_set",
+    ],
 )
 
 go_test(

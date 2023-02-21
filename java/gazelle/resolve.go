@@ -79,8 +79,9 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 }
 
 func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
-	javaImports := imports.([]types.PackageName)
-	if len(javaImports) == 0 {
+	resolveInput := imports.(types.ResolveInput)
+	javaImports := resolveInput.ImportedPackageNames
+	if javaImports.Len() == 0 {
 		return
 	}
 
@@ -94,8 +95,10 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 		deps.Add(l)
 	}
 
-	for _, imp := range javaImports {
-		dep, err := jr.convertImport(c, imp, ix, c.RepoName, from)
+	isTestRule := isTestRule(r.Kind())
+
+	for _, imp := range javaImports.SortedSlice() {
+		dep, err := jr.convertImport(c, imp, ix, from, isTestRule, resolveInput.PackageNames)
 		if err != nil {
 			jr.lang.logger.Error().Str("import", dep.String()).Err(err).Msg("error converting import")
 			panic(fmt.Sprintf("error converting import: %s", err))
@@ -145,8 +148,7 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, repo string, from label.Label) (out label.Label, err error) {
-	//parsedImport := java.NewImport(imp)
+func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: imp.Name}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
 		return ol, nil
@@ -188,6 +190,11 @@ func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *r
 
 	if l, err := jr.lang.mavenResolver.Resolve(imp); err == nil {
 		return l, nil
+	}
+
+	if isTestRule && ownPackageNames.Contains(imp) {
+		// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
+		return label.NoLabel, nil
 	}
 
 	jr.lang.logger.Warn().
