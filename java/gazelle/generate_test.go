@@ -160,7 +160,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 			for _, wi := range tc.wantImports {
 				wantImports.Add(types.NewPackageName(wi))
 			}
-			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0])
+			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0].(types.ResolveInput).ImportedPackageNames.SortedSlice())
 
 			if len(tc.wantRuntimeDeps) > 0 {
 				require.ElementsMatch(t, tc.wantRuntimeDeps, rule.AttrStrings("runtime_deps"))
@@ -250,7 +250,7 @@ func TestSuite(t *testing.T) {
 			for _, wi := range tc.wantImports {
 				wantImports.Add(types.NewPackageName(wi))
 			}
-			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0])
+			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0].(types.ResolveInput).ImportedPackageNames.SortedSlice())
 
 			if len(tc.wantRuntimeDeps) > 0 {
 				require.ElementsMatch(t, tc.wantRuntimeDeps, rule.AttrStrings("runtime_deps"))

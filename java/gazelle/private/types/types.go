@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 )
 
 type PackageName struct {
@@ -89,6 +91,11 @@ func ParseClassName(fullyQualified string) (*ClassName, error) {
 
 func ClassNameLess(l, r ClassName) bool {
 	return l.FullyQualifiedClassName() < r.FullyQualifiedClassName()
+}
+
+type ResolveInput struct {
+	PackageNames         *sorted_set.SortedSet[PackageName]
+	ImportedPackageNames *sorted_set.SortedSet[PackageName]
 }
 
 type ResolvableJavaPackage struct {

@@ -44,6 +44,7 @@ java_library(
     name = "hello",
     srcs = ["Hello.java"],
     _imported_packages = ["java.lang"],
+    _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
 )
 `,
@@ -70,6 +71,7 @@ java_library(
         "java.lang",
         "java.lang",
     ],
+    _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
 )			
 `,
@@ -176,14 +178,21 @@ func stubModInfo(importPath string) (string, error) {
 	return "", fmt.Errorf("could not find module for import path: %q", importPath)
 }
 
-func convertImportsAttr(r *rule.Rule) []types.PackageName {
-	value := r.AttrStrings("_imported_packages")
-	r.DelAttr("_imported_packages")
+func convertImportsAttr(r *rule.Rule) types.ResolveInput {
+	return types.ResolveInput{
+		PackageNames:         packageAttrToSortedSet(r, "_packages"),
+		ImportedPackageNames: packageAttrToSortedSet(r, "_imported_packages"),
+	}
+}
+
+func packageAttrToSortedSet(r *rule.Rule, name string) *sorted_set.SortedSet[types.PackageName] {
+	attrValues := r.AttrStrings(name)
+	r.DelAttr(name)
 	packages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
-	for _, v := range value {
+	for _, v := range attrValues {
 		packages.Add(types.NewPackageName(v))
 	}
-	return packages.SortedSlice()
+	return packages
 }
 
 func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
