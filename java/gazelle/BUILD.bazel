@@ -41,6 +41,7 @@ go_test(
     name = "gazelle_test",
     size = "medium",
     srcs = [
+        "configure_test.go",
         "generate_test.go",
         "resolve_test.go",
     ],

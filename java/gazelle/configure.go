@@ -30,9 +30,9 @@ func NewConfigurer(lang *javaLang) *Configurer {
 	}
 }
 
-func (jc Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+func (jc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.Var(&jc.annotationToAttribute, "java-annotation-to-attribute", "Mapping of annotations (on test classes) to attributes which should be set for that test rule. Examples: com.example.annotations.FlakyTest=flaky=True com.example.annotations.SlowTest=timeout=\"long\"")
-	fs.StringVar(&jc.mavenInstallFile, "java-maven-install-file", "", "Represents the directive that controls where the maven_install.json file is located. Defaults to \"maven_install.json\".")
+	fs.StringVar(&jc.mavenInstallFile, "java-maven-install-file", "", "Path of the maven_install.json file. Defaults to \"maven_install.json\".")
 }
 
 func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
