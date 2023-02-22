@@ -143,11 +143,16 @@ public class GrpcServer {
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
       logger.debug("Got used types: {}", parser.getUsedTypes());
+      logger.debug(
+          "Got used packages without specific types: {}",
+          parser.getUsedPackagesWithoutSpecificTypes());
 
       Builder packageBuilder =
           Package.newBuilder()
               .setName(Iterables.getOnlyElement(packages))
-              .addAllImports(parser.getUsedTypes())
+              .addAllImportedClasses(parser.getUsedTypes())
+              .addAllImportedPackagesWithoutSpecificClasses(
+                  parser.getUsedPackagesWithoutSpecificTypes())
               .addAllMains(parser.getMainClasses());
       for (Map.Entry<String, SortedSet<String>> annotations :
           parser.getAnnotatedClasses().entrySet()) {

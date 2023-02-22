@@ -140,8 +140,8 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Wildcards.java"));
     parser.parseClasses(files);
-    assertEquals(
-        Set.of("org.junit.jupiter.api", "org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
+    assertEquals(Set.of("org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
+    assertEquals(Set.of("org.junit.jupiter.api"), parser.getUsedPackagesWithoutSpecificTypes());
   }
 
   @Test
@@ -175,7 +175,9 @@ public class ClasspathParserTest {
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/WildcardImport.java"));
     parser.parseClasses(files);
 
-    assertEquals(Set.of("com.google.common.primitives"), parser.getUsedTypes());
+    assertEquals(Set.of(), parser.getUsedTypes());
+    assertEquals(
+        Set.of("com.google.common.primitives"), parser.getUsedPackagesWithoutSpecificTypes());
   }
 
   @Test
@@ -240,7 +242,8 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
             "workspace.com.gazelle.java.javaparser.utils.Printer",
-            "workspace.com.gazelle.java.javaparser.factories.Factory");
+            "workspace.com.gazelle.java.javaparser.factories.Factory",
+            "java.util.ArrayList");
     assertEquals(expected, parser.getUsedTypes());
   }
 

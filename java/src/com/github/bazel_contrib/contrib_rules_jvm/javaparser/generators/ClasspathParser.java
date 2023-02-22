@@ -44,6 +44,7 @@ public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
 
   private final Set<String> usedTypes = new TreeSet<>();
+  private final Set<String> usedPackagesWithoutSpecificTypes = new TreeSet<>();
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
 
@@ -61,6 +62,10 @@ public class ClasspathParser {
 
   public Set<String> getUsedTypes() {
     return usedTypes;
+  }
+
+  public Set<String> getUsedPackagesWithoutSpecificTypes() {
+    return usedPackagesWithoutSpecificTypes;
   }
 
   public Set<String> getPackages() {
@@ -160,9 +165,9 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         usedTypes.add(staticPackage);
-      } else if (name.endsWith("*")) {
+      } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
-        usedTypes.add(wildcardPackage);
+        usedPackagesWithoutSpecificTypes.add(wildcardPackage);
       } else {
         String[] parts = i.getQualifiedIdentifier().toString().split("\\.");
         currentFileImports.put(parts[parts.length - 1], i.getQualifiedIdentifier().toString());
