@@ -226,6 +226,23 @@ public class ClasspathParserTest {
         parser.getAnnotatedClasses());
   }
 
+  @Test
+  public void testFullyQualifieds() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/FullyQualifieds.java"));
+    parser.parseClasses(files);
+
+    Set<String> expected =
+        Set.of(
+            "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
+            "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
+            "workspace.com.gazelle.java.javaparser.utils.Printer",
+            "workspace.com.gazelle.java.javaparser.factories.Factory");
+    assertEquals(expected, parser.getUsedTypes());
+  }
+
   private <T> TreeSet<T> treeSet(T... values) {
     TreeSet<T> set = new TreeSet<>();
     for (T value : values) {

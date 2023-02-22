@@ -8,7 +8,11 @@ import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.PackageTree;
 import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.PrimitiveTypeTree;
@@ -218,6 +222,53 @@ public class ClasspathParser {
         checkFullyQualifiedType(param.getType());
       }
       return super.visitMethod(m, v);
+    }
+
+    @Override
+    public Void visitMethodInvocation(MethodInvocationTree node, Void v) {
+      if (node.getMethodSelect() instanceof MemberSelectTree) {
+        ExpressionTree container = ((MemberSelectTree) node.getMethodSelect()).getExpression();
+        if (container instanceof MemberSelectTree) {
+          MemberSelectTree containerMST = (MemberSelectTree) container;
+          if (looksLikeClassName(containerMST.getIdentifier().toString())) {
+            checkFullyQualifiedType(container);
+          }
+        }
+      }
+      return super.visitMethodInvocation(node, v);
+    }
+
+    private boolean looksLikeClassName(String identifier) {
+      if (identifier.isEmpty()) {
+        return false;
+      }
+      // Classes start with UpperCase.
+      if (!Character.isUpperCase(identifier.charAt(0))) {
+        return false;
+      }
+      // Single-char upper-case may well be a class-name.
+      if (identifier.length() == 1) {
+        return true;
+      }
+      // SNAKE_CASE is for constants not classes.
+      if (identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
+        return false;
+      }
+      return true;
+    }
+
+    @Override
+    public Void visitNewClass(NewClassTree node, Void v) {
+      checkFullyQualifiedType(node.getIdentifier());
+      return super.visitNewClass(node, v);
+    }
+
+    @Override
+    public Void visitVariable(VariableTree node, Void unused) {
+      if (node.getType() != null) {
+        checkFullyQualifiedType(node.getType());
+      }
+      return super.visitVariable(node, unused);
     }
 
     private void checkFullyQualifiedType(Tree identifier) {
