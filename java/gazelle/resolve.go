@@ -211,7 +211,6 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 
 	jr.lang.logger.Warn().
 		Str("package", parsedImport.Pkg).
-		Str("import", imp).
 		Str("from rule", from.String()).
 		Msg("Unable to find package for import in any dependency")
 

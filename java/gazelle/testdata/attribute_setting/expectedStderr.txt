@@ -1,1 +1,1 @@
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/myproject [36mimport=[0mcom.example.myproject [36mpackage=[0mcom.example.myproject
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/myproject [36mpackage=[0mcom.example.myproject
