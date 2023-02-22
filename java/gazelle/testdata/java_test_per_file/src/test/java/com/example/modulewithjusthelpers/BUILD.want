@@ -9,7 +9,7 @@ java_library(
     ],
     _gazelle_imports = ["com.google.common.math.IntMath"],
     _java_packages = [
-        "_TESTONLY!com.example.modulewithjusthelpers",
-        "_TESTONLY!com.example.modulewithjusthelpers.withdirectory",
+        "com.example.modulewithjusthelpers",
+        "com.example.modulewithjusthelpers.withdirectory",
     ],
 )

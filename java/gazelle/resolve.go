@@ -52,8 +52,8 @@ func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resol
 
 	var out []resolve.ImportSpec
 	if pkgs := r.PrivateAttr(packagesKey); pkgs != nil {
-		for _, pkg := range pkgs.([]types.PackageName) {
-			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.Name})
+		for _, pkg := range pkgs.([]types.ResolvableJavaPackage) {
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.PackageName().Name})
 		}
 	}
 

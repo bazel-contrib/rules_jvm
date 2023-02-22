@@ -90,3 +90,47 @@ func ParseClassName(fullyQualified string) (*ClassName, error) {
 func ClassNameLess(l, r ClassName) bool {
 	return l.FullyQualifiedClassName() < r.FullyQualifiedClassName()
 }
+
+type ResolvableJavaPackage struct {
+	packageName PackageName
+	isTestOnly  bool
+}
+
+func NewResolvableJavaPackage(packageName PackageName, isTestOnly bool) ResolvableJavaPackage {
+	return ResolvableJavaPackage{
+		packageName: packageName,
+		isTestOnly:  isTestOnly,
+	}
+}
+
+func (r *ResolvableJavaPackage) PackageName() PackageName {
+	return r.packageName
+}
+
+func (r *ResolvableJavaPackage) String() string {
+	s := r.packageName.Name
+	if r.isTestOnly {
+		s += "!testonly"
+	}
+	return s
+}
+
+func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
+	parts := strings.Split(s, "!")
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("want 1 or 2 parts separated by !, got: %q", s)
+	}
+	packageName := NewPackageName(parts[0])
+	isTestOnly := false
+	for _, part := range parts[1:] {
+		if part == "testonly" {
+			isTestOnly = true
+		} else {
+			return nil, fmt.Errorf("saw unrecognized tag %s", part)
+		}
+	}
+	return &ResolvableJavaPackage{
+		packageName: packageName,
+		isTestOnly:  isTestOnly,
+	}, nil
+}
