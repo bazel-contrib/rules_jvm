@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "types",
+    srcs = ["types.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/types",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "types_test",
+    srcs = ["types_test.go"],
+    embed = [
+        ":types",
+    ],
+)
