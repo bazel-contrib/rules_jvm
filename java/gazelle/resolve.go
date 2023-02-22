@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
@@ -82,17 +83,14 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 		return
 	}
 
-	deps := make(map[string][]string)
-
-	addDep := func(dep, imp string) {
-		if _, found := deps[dep]; !found {
-			deps[dep] = []string{}
-		}
-		deps[dep] = append(deps[dep], imp)
-	}
+	deps := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
 
 	for _, implicitDep := range r.AttrStrings("deps") {
-		addDep(implicitDep, "__implicit__")
+		l, err := label.Parse(implicitDep)
+		if err != nil {
+			panic(fmt.Sprintf("error converting implicit dep %q to label: %v", implicitDep, err))
+		}
+		deps.Add(l)
 	}
 
 	for _, imp := range javaImports {
@@ -105,46 +103,34 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 			continue
 		}
 
-		addDep(simplifyLabel(c.RepoName, dep, from).String(), imp)
+		deps.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
-	if len(deps) > 0 {
-		var labels []label.Label
-		for key := range deps {
-			l, err := label.Parse(key)
-			if err != nil {
-				jr.lang.logger.Fatal().Str("key", key).Err(err).Msg("cannot parse label")
-			}
-
+	if deps.Len() > 0 {
+		var exprs []build.Expr
+		for _, l := range deps.SortedSlice() {
 			if l.Relative && l.Name == from.Name {
 				continue
 			}
-
-			labels = append(labels, l)
-		}
-
-		sort.Slice(labels, func(i, j int) bool {
-			if labels[i].Relative {
-				if labels[j].Relative {
-					return labels[i].String() < labels[j].String()
-				}
-
-				return true
-			}
-
-			if labels[j].Relative {
-				return false
-			}
-
-			return labels[i].String() < labels[j].String()
-		})
-
-		var exprs []build.Expr
-		for _, l := range labels {
 			exprs = append(exprs, &build.StringExpr{Value: l.String()})
 		}
 		r.SetAttr("deps", exprs)
 	}
+}
+
+func labelLess(l, r label.Label) bool {
+	// In UTF-8, / sorts before :
+	// We want relative labels to come before absolute ones, so explicitly sort relative before absolute.
+	if l.Relative {
+		if r.Relative {
+			return l.String() < r.String()
+		}
+		return true
+	}
+	if r.Relative {
+		return false
+	}
+	return l.String() < r.String()
 }
 
 func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label {
