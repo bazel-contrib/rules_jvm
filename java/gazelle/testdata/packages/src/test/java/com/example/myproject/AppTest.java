@@ -1,6 +1,6 @@
 package com.example.myproject;
 
-import static com.example.library.Library;
+import com.example.library.Library;
 
 import static org.junit.Assert.assertEquals;
 
