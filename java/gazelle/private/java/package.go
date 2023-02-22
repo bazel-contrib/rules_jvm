@@ -1,13 +1,16 @@
 package java
 
-import "github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+import (
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
+)
 
 type Package struct {
-	Name string
+	Name types.PackageName
 
-	ImportedClasses                        *sorted_set.SortedSet[string]
-	ImportedPackagesWithoutSpecificClasses *sorted_set.SortedSet[string]
-	Mains                                  *sorted_set.SortedSet[string]
+	ImportedClasses                        *sorted_set.SortedSet[types.ClassName]
+	ImportedPackagesWithoutSpecificClasses *sorted_set.SortedSet[types.PackageName]
+	Mains                                  *sorted_set.SortedSet[types.ClassName]
 
 	// Especially useful for module mode
 	Files       *sorted_set.SortedSet[string]

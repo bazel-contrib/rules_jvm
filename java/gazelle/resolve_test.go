@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -41,7 +43,7 @@ func TestResolve(t *testing.T) {
 java_library(
     name = "hello",
     srcs = ["Hello.java"],
-    _imports = ["java.lang.String"],
+    _imported_packages = ["java.lang"],
     visibility = ["//:__subpackages__"],
 )
 `,
@@ -63,10 +65,10 @@ java_library(
 java_library(
     name = "myproject",
     srcs = ["App.java"],
-    _imports = [
-        "com.google.common.primitives.Ints",
-        "java.lang.Exception",
-        "java.lang.String",
+    _imported_packages = [
+        "com.google.common.primitives",
+        "java.lang",
+        "java.lang",
     ],
     visibility = ["//:__subpackages__"],
 )			
@@ -174,10 +176,14 @@ func stubModInfo(importPath string) (string, error) {
 	return "", fmt.Errorf("could not find module for import path: %q", importPath)
 }
 
-func convertImportsAttr(r *rule.Rule) interface{} {
-	value := r.AttrStrings("_imports")
-	r.DelAttr("_imports")
-	return value
+func convertImportsAttr(r *rule.Rule) []types.PackageName {
+	value := r.AttrStrings("_imported_packages")
+	r.DelAttr("_imported_packages")
+	packages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	for _, v := range value {
+		packages.Add(types.NewPackageName(v))
+	}
+	return packages.SortedSlice()
 }
 
 func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
@@ -226,7 +232,7 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 
 type testResolver struct{}
 
-func (*testResolver) Resolve(pkg string) (label.Label, error) {
+func (*testResolver) Resolve(pkg types.PackageName) (label.Label, error) {
 	return label.NoLabel, errors.New("not implemented")
 }
 
@@ -254,19 +260,19 @@ func InitTestResolversAndExtensions(langs []language.Language) (mapResolver, []i
 }
 
 type TestMavenResolver struct {
-	data map[string]label.Label
+	data map[types.PackageName]label.Label
 }
 
 func NewTestMavenResolver() *TestMavenResolver {
 	return &TestMavenResolver{
-		data: map[string]label.Label{
-			"com.google.common.primitives": label.New("maven", "", "com_google_guava_guava"),
-			"org.junit":                    label.New("maven", "", "junit_junit"),
+		data: map[types.PackageName]label.Label{
+			types.NewPackageName("com.google.common.primitives"): label.New("maven", "", "com_google_guava_guava"),
+			types.NewPackageName("org.junit"):                    label.New("maven", "", "junit_junit"),
 		},
 	}
 }
 
-func (r *TestMavenResolver) Resolve(pkg string) (label.Label, error) {
+func (r *TestMavenResolver) Resolve(pkg types.PackageName) (label.Label, error) {
 	l, found := r.data[pkg]
 	if !found {
 		return label.NoLabel, fmt.Errorf("unexpected import: %s", pkg)

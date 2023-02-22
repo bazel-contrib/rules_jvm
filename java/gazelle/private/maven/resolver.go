@@ -6,12 +6,13 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/rs/zerolog"
 )
 
 type Resolver interface {
-	Resolve(pkg string) (label.Label, error)
+	Resolve(pkg types.PackageName) (label.Label, error)
 }
 
 // resolver finds Maven provided packages by reading the maven_install.json
@@ -54,8 +55,8 @@ func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logg
 	return &r, nil
 }
 
-func (r *resolver) Resolve(pkg string) (label.Label, error) {
-	v, found := r.data.Get(pkg)
+func (r *resolver) Resolve(pkg types.PackageName) (label.Label, error) {
+	v, found := r.data.Get(pkg.Name)
 	if !found {
 		return label.NoLabel, fmt.Errorf("package not found: %s", pkg)
 	}

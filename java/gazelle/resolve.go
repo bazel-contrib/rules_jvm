@@ -6,6 +6,7 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
@@ -51,8 +52,8 @@ func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resol
 
 	var out []resolve.ImportSpec
 	if pkgs := r.PrivateAttr(packagesKey); pkgs != nil {
-		for _, pkg := range pkgs.([]string) {
-			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg})
+		for _, pkg := range pkgs.([]types.PackageName) {
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.Name})
 		}
 	}
 
@@ -78,7 +79,7 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 }
 
 func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
-	javaImports := imports.([]string)
+	javaImports := imports.([]types.PackageName)
 	if len(javaImports) == 0 {
 		return
 	}
@@ -144,9 +145,9 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.RuleIndex, repo string, from label.Label) (out label.Label, err error) {
-	parsedImport := java.NewImport(imp)
-	importSpec := resolve.ImportSpec{Lang: languageName, Imp: parsedImport.Pkg}
+func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, repo string, from label.Label) (out label.Label, err error) {
+	//parsedImport := java.NewImport(imp)
+	importSpec := resolve.ImportSpec{Lang: languageName, Imp: imp.Name}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
 		return ol, nil
 	}
@@ -164,20 +165,20 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 		sort.Strings(labels)
 
 		jr.lang.logger.Error().
-			Str("pkg", parsedImport.Pkg).
+			Str("pkg", imp.Name).
 			Strs("targets", labels).
 			Msg("convertImport found MULTIPLE results in rule index")
 	}
 
-	if v, ok := jr.internalCache.Get(parsedImport.Pkg); ok {
+	if v, ok := jr.internalCache.Get(imp); ok {
 		return v.(label.Label), nil
 	}
 
-	jr.lang.logger.Debug().Str("parsedImport", parsedImport.Pkg).Stringer("from", from).Msg("not found yet")
+	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
 
 	defer func() {
 		if err == nil {
-			jr.internalCache.Add(parsedImport.Pkg, out)
+			jr.internalCache.Add(imp, out)
 		}
 	}()
 
@@ -185,12 +186,12 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 		return label.NoLabel, nil
 	}
 
-	if l, err := jr.lang.mavenResolver.Resolve(parsedImport.Pkg); err == nil {
+	if l, err := jr.lang.mavenResolver.Resolve(imp); err == nil {
 		return l, nil
 	}
 
 	jr.lang.logger.Warn().
-		Str("package", parsedImport.Pkg).
+		Str("package", imp.Name).
 		Str("from rule", from.String()).
 		Msg("Unable to find package for import in any dependency")
 

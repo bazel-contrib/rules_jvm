@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/rs/zerolog"
 )
@@ -24,11 +25,11 @@ func TestResolver(t *testing.T) {
 
 	assertResolves(t, r, "com.google.common.collect", "@maven//:com_google_guava_guava")
 	assertResolves(t, r, "javax.annotation", "@maven//:com_google_code_findbugs_jsr305")
-	got, err := r.Resolve("unknown.package")
+	got, err := r.Resolve(types.NewPackageName("unknown.package"))
 	if err == nil {
 		t.Errorf("Want error finding label for unknown.package, got %v", got)
 	}
-	got, err = r.Resolve("com.google.j2objc.annotations")
+	got, err = r.Resolve(types.NewPackageName("com.google.j2objc.annotations"))
 	if err == nil {
 		t.Errorf("Want error finding label for excluded artifact, got %v", got)
 	}
@@ -36,7 +37,7 @@ func TestResolver(t *testing.T) {
 }
 
 func assertResolves(t *testing.T, r Resolver, pkg, wantLabelStr string) {
-	got, err := r.Resolve(pkg)
+	got, err := r.Resolve(types.NewPackageName(pkg))
 	if err != nil {
 		t.Errorf("Error finding label for %v: %v", pkg, err)
 	}

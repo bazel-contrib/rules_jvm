@@ -20,6 +20,10 @@ func PackageNameLess(l, r PackageName) bool {
 	return l.Name < r.Name
 }
 
+func PackageNamesHasPrefix(whole, prefix PackageName) bool {
+	return whole.Name == prefix.Name || strings.HasPrefix(whole.Name, prefix.Name+".")
+}
+
 type ClassName struct {
 	packageName PackageName
 	/// bareOuterClassName is the top-most class. i.e. for `com.example.OuterClass.InnerClass.EvenMoreInnerClass`, this will be `OuterClass`.
