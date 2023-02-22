@@ -203,12 +203,6 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 		return simplifyLabel(c.RepoName, l, from), nil
 	}
 
-	labels := make([]string, 0, len(matches))
-	for _, match := range matches {
-		labels = append(labels, match.Label.String())
-	}
-	sort.Strings(labels)
-
 	jr.lang.logger.Warn().
 		Str("package", parsedImport.Pkg).
 		Str("import", imp).
