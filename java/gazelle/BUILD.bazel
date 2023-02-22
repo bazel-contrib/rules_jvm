@@ -24,6 +24,7 @@ go_library(
         "//java/gazelle/private/logconfig",
         "//java/gazelle/private/maven",
         "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",
@@ -51,6 +52,7 @@ go_test(
     deps = [
         "//java/gazelle/javaconfig",
         "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",

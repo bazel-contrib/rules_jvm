@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//java/gazelle/private/bazel",
         "//java/gazelle/private/maven/multiset",
+        "//java/gazelle/private/types",
         "@bazel_gazelle//label:go_default_library",
         "@com_github_rs_zerolog//:zerolog",
     ],
@@ -28,6 +29,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":maven"],
     deps = [
+        "//java/gazelle/private/types",
         "@bazel_gazelle//label:go_default_library",
         "@com_github_rs_zerolog//:zerolog",
         "@com_github_stretchr_testify//require",

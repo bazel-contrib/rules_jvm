@@ -9,6 +9,7 @@ import (
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/rs/zerolog"
 )
 
@@ -63,11 +64,29 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		perClassMetadata[k] = metadata
 	}
 
+	packageName := types.NewPackageName(resp.GetName())
+	importedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for _, import_ := range resp.GetImportedClasses() {
+		className, err := types.ParseClassName(import_)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse imports: %w", err)
+		}
+		importedClasses.Add(*className)
+	}
+	importedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	for _, pkg := range resp.GetImportedPackagesWithoutSpecificClasses() {
+		importedPackages.Add(types.NewPackageName(pkg))
+	}
+	mains := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for _, main := range resp.GetMains() {
+		mains.Add(types.NewClassName(packageName, main))
+	}
+
 	return &java.Package{
-		Name:                                   resp.GetName(),
-		ImportedClasses:                        sorted_set.NewSortedSet(resp.GetImportedClasses()),
-		ImportedPackagesWithoutSpecificClasses: sorted_set.NewSortedSet(resp.GetImportedPackagesWithoutSpecificClasses()),
-		Mains:                                  sorted_set.NewSortedSet(resp.GetMains()),
+		Name:                                   packageName,
+		ImportedClasses:                        importedClasses,
+		ImportedPackagesWithoutSpecificClasses: importedPackages,
+		Mains:                                  mains,
 		Files:                                  sorted_set.NewSortedSet(in.Files),
 		TestPackage:                            java.IsTestPath(in.Rel),
 		PerClassMetadata:                       perClassMetadata,

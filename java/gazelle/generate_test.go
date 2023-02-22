@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/google/go-cmp/cmp"
 	"github.com/rs/zerolog"
@@ -11,9 +12,13 @@ import (
 )
 
 func TestSingleJavaTestFile(t *testing.T) {
+	f := javaFile{
+		pathRelativeToBazelWorkspaceRoot: "FooTest.java",
+		pkg:                              types.NewPackageName("com.example"),
+	}
 	type testCase struct {
 		includePackageInName bool
-		imports              []string
+		importedPackages     []string
 		wantRuleKind         string
 		wantImports          []string
 		wantDeps             []string
@@ -21,71 +26,71 @@ func TestSingleJavaTestFile(t *testing.T) {
 	}
 
 	for name, tc := range map[string]testCase{
-		"no imports no helpers no package": {
+		"no imported packages no helpers no package": {
 			includePackageInName: false,
-			imports:              nil,
+			importedPackages:     nil,
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"com.example"},
 			wantDeps:             nil,
 		},
-		"some imports no helpers no package": {
+		"some imported packages no helpers no package": {
 			includePackageInName: false,
-			imports:              []string{"io.netty"},
+			importedPackages:     []string{"io.netty"},
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"io.netty", "com.example"},
 			wantDeps:             nil,
 		},
-		"no imports some helpers no package": {
+		"no imported packages some helpers no package": {
 			includePackageInName: false,
-			imports:              nil,
+			importedPackages:     nil,
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"com.example"},
 			wantDeps:             []string{":helper"},
 		},
-		"some imports some helpers no package": {
+		"some imported packages some helpers no package": {
 			includePackageInName: false,
-			imports:              []string{"io.netty"},
+			importedPackages:     []string{"io.netty"},
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"io.netty", "com.example"},
 		},
-		"no imports no helpers yes package": {
+		"no imported packages no helpers yes package": {
 			includePackageInName: true,
-			imports:              nil,
+			importedPackages:     nil,
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"com.example"},
 			wantDeps:             nil,
 		},
-		"some imports no helpers yes package": {
+		"some imported packages no helpers yes package": {
 			includePackageInName: true,
-			imports:              []string{"io.netty"},
+			importedPackages:     []string{"io.netty"},
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"io.netty", "com.example"},
 			wantDeps:             nil,
 		},
-		"no imports some helpers yes package": {
+		"no imported packages some helpers yes package": {
 			includePackageInName: true,
-			imports:              nil,
+			importedPackages:     nil,
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"com.example"},
 			wantDeps:             []string{":helper"},
 		},
-		"some imports some helpers yes package": {
+		"some imported packages some helpers yes package": {
 			includePackageInName: true,
-			imports:              []string{"io.netty"},
+			importedPackages:     []string{"io.netty"},
 			wantRuleKind:         "java_test",
 			wantImports:          []string{"io.netty", "com.example"},
 		},
 		"explicit junit4": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.Test"},
+			importedPackages:     []string{"org.junit"},
 			wantRuleKind:         "java_test",
-			wantImports:          []string{"com.example", "org.junit.Test"},
+			wantImports:          []string{"com.example", "org.junit"},
 		},
 		"explicit junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.jupiter.api.Test"},
+			importedPackages:     []string{"org.junit.jupiter.api"},
 			wantRuleKind:         "java_junit5_test",
-			wantImports:          []string{"com.example", "org.junit.jupiter.api.Test"},
+			wantImports:          []string{"com.example", "org.junit.jupiter.api"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -94,9 +99,9 @@ func TestSingleJavaTestFile(t *testing.T) {
 		},
 		"parameterized junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.jupiter.params.ParameterizedTest"},
+			importedPackages:     []string{"org.junit.jupiter.params"},
 			wantRuleKind:         "java_junit5_test",
-			wantImports:          []string{"com.example", "org.junit.jupiter.params.ParameterizedTest"},
+			wantImports:          []string{"com.example", "org.junit.jupiter.params"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -105,9 +110,9 @@ func TestSingleJavaTestFile(t *testing.T) {
 		},
 		"junitpioneer junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junitpioneer.jupiter.cartesian.CartesianTest"},
+			importedPackages:     []string{"org.junitpioneer.jupiter.cartesian"},
 			wantRuleKind:         "java_junit5_test",
-			wantImports:          []string{"com.example", "org.junitpioneer.jupiter.cartesian.CartesianTest"},
+			wantImports:          []string{"com.example", "org.junitpioneer.jupiter.cartesian"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -116,9 +121,9 @@ func TestSingleJavaTestFile(t *testing.T) {
 		},
 		"explicit both junit4 and junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.Test", "org.junit.jupiter.api.Test"},
+			importedPackages:     []string{"org.junit", "org.junit.jupiter.api"},
 			wantRuleKind:         "java_junit5_test",
-			wantImports:          []string{"com.example", "org.junit.Test", "org.junit.jupiter.api.Test"},
+			wantImports:          []string{"com.example", "org.junit", "org.junit.jupiter.api"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -129,13 +134,8 @@ func TestSingleJavaTestFile(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			f := javaFile{
-				pathRelativeToBazelWorkspaceRoot: "FooTest.java",
-				pkg:                              "com.example",
-			}
-
 			l := newTestJavaLang(t)
-			l.generateJavaTest(nil, "", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), nil, &res)
+			l.generateJavaTest(nil, "", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -155,8 +155,12 @@ func TestSingleJavaTestFile(t *testing.T) {
 			}
 			require.ElementsMatch(t, wantAttrs, rule.AttrKeys())
 
-			require.Len(t, res.Imports, 1, "want 1 generated imports")
-			require.ElementsMatch(t, tc.wantImports, res.Imports[0])
+			require.Len(t, res.Imports, 1, "want 1 generated importedPackages")
+			wantImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+			for _, wi := range tc.wantImports {
+				wantImports.Add(types.NewPackageName(wi))
+			}
+			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0])
 
 			if len(tc.wantRuntimeDeps) > 0 {
 				require.ElementsMatch(t, tc.wantRuntimeDeps, rule.AttrStrings("runtime_deps"))
@@ -171,7 +175,7 @@ func TestSuite(t *testing.T) {
 
 	type testCase struct {
 		includePackageInName bool
-		imports              []string
+		importedPackages     []string
 		wantImports          []string
 		wantDeps             []string
 		wantRuntimeDeps      []string
@@ -181,13 +185,13 @@ func TestSuite(t *testing.T) {
 	for name, tc := range map[string]testCase{
 		"explicit junit4": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.Test"},
-			wantImports:          []string{"com.example", "org.junit.Test"},
+			importedPackages:     []string{"org.junit"},
+			wantImports:          []string{"com.example", "org.junit"},
 		},
 		"explicit junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.jupiter.api.Test"},
-			wantImports:          []string{"com.example", "org.junit.jupiter.api.Test"},
+			importedPackages:     []string{"org.junit.jupiter.api"},
+			wantImports:          []string{"com.example", "org.junit.jupiter.api"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -197,8 +201,8 @@ func TestSuite(t *testing.T) {
 		},
 		"parameterized junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.jupiter.params.ParameterizedTest"},
-			wantImports:          []string{"com.example", "org.junit.jupiter.params.ParameterizedTest"},
+			importedPackages:     []string{"org.junit.jupiter.params"},
+			wantImports:          []string{"com.example", "org.junit.jupiter.params"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -208,8 +212,8 @@ func TestSuite(t *testing.T) {
 		},
 		"explicit both junit4 and junit5": {
 			includePackageInName: false,
-			imports:              []string{"org.junit.Test", "org.junit.jupiter.api.Test"},
-			wantImports:          []string{"com.example", "org.junit.Test", "org.junit.jupiter.api.Test"},
+			importedPackages:     []string{"org.junit", "org.junit.jupiter.api"},
+			wantImports:          []string{"com.example", "org.junit", "org.junit.jupiter.api"},
 			wantRuntimeDeps: []string{
 				"@maven//:org_junit_jupiter_junit_jupiter_engine",
 				"@maven//:org_junit_platform_junit_platform_launcher",
@@ -223,7 +227,7 @@ func TestSuite(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTestSuite(nil, "blah", []string{src}, sorted_set.NewSortedSet([]string{pkg}), sorted_set.NewSortedSet(tc.imports), nil, &res)
+			l.generateJavaTestSuite(nil, "blah", []string{src}, stringsToPackageNames([]string{pkg}), stringsToPackageNames(tc.importedPackages), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -241,8 +245,12 @@ func TestSuite(t *testing.T) {
 			}
 			require.ElementsMatch(t, wantAttrs, rule.AttrKeys())
 
-			require.Len(t, res.Imports, 1, "want 1 generated imports")
-			require.ElementsMatch(t, tc.wantImports, res.Imports[0])
+			require.Len(t, res.Imports, 1, "want 1 generated importedPackages")
+			wantImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+			for _, wi := range tc.wantImports {
+				wantImports.Add(types.NewPackageName(wi))
+			}
+			require.ElementsMatch(t, wantImports.SortedSlice(), res.Imports[0])
 
 			if len(tc.wantRuntimeDeps) > 0 {
 				require.ElementsMatch(t, tc.wantRuntimeDeps, rule.AttrStrings("runtime_deps"))
@@ -256,7 +264,8 @@ func TestSuite(t *testing.T) {
 }
 
 func TestAddNonLocalImports(t *testing.T) {
-	src := sorted_set.NewSortedSet([]string{
+	src := sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
+	for _, s := range []string{
 		"com.example.a.b.Foo",        // same pkg, included class name: delete
 		"com.example.a.b.Bar",        // same pkg, included class name: delete
 		"com.example.a.b.Bar.SubBar", // same pkg, nested class, included class name: delete
@@ -265,19 +274,23 @@ func TestAddNonLocalImports(t *testing.T) {
 		"com.example.a.b.c.Foo",      // different pkg: keep
 		"com.example.a.Foo",          // different pkg: keep
 		"com.another.a.b.Foo",        // different pkg: keep
-
-	})
-
-	dst := sorted_set.NewSortedSet([]string{})
-	addNonLocalImports(dst, src, "com.example.a.b", sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
-
-	want := []string{
-		"com.another.a.b.Foo",
-		"com.example.a.Foo",
-		"com.example.a.b.Baz",
-		"com.example.a.b.Baz.SubBaz",
-		"com.example.a.b.c.Foo",
+	} {
+		name, err := types.ParseClassName(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src.Add(*name)
 	}
+
+	dst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	addNonLocalImports(dst, src, sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess), types.NewPackageName("com.example.a.b"), sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
+
+	want := stringsToPackageNames([]string{
+		"com.another.a.b",
+		"com.example.a",
+		"com.example.a.b",
+		"com.example.a.b.c",
+	}).SortedSlice()
 
 	if diff := cmp.Diff(want, dst.SortedSlice()); diff != "" {
 		t.Errorf("filterImports() mismatch (-want +got):\n%s", diff)
@@ -289,4 +302,12 @@ func newTestJavaLang(t *testing.T) javaLang {
 	return javaLang{
 		logger: zerolog.New(zerolog.NewTestWriter(t)),
 	}
+}
+
+func stringsToPackageNames(strs []string) *sorted_set.SortedSet[types.PackageName] {
+	ret := sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess)
+	for _, s := range strs {
+		ret.Add(types.NewPackageName(s))
+	}
+	return ret
 }

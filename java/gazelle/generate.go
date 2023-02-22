@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
@@ -22,28 +22,14 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type main struct {
-	pkg       string
-	className string
-}
-
 type javaFile struct {
 	pathRelativeToBazelWorkspaceRoot string
-	pkg                              string
+	pkg                              types.PackageName
 }
 
-func (jf *javaFile) ClassName() string {
-	return strings.TrimSuffix(filepath.Base(jf.pathRelativeToBazelWorkspaceRoot), ".java")
-}
-
-func (jf *javaFile) FullyQualifiedClassName() string {
-	className := ""
-	if jf.pkg != "" {
-		className += jf.pkg
-		className += "."
-	}
-	className += jf.ClassName()
-	return className
+func (jf *javaFile) ClassName() *types.ClassName {
+	className := types.NewClassName(jf.pkg, strings.TrimSuffix(filepath.Base(jf.pathRelativeToBazelWorkspaceRoot), ".java"))
+	return &className
 }
 
 func javaFileLess(l, r javaFile) bool {
@@ -92,14 +78,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		rjpl := rule.NewRule("java_proto_library", jplName)
 		rjpl.SetAttr("deps", []string{":" + protoRuleName})
 		res.Gen = append(res.Gen, rjpl)
-		res.Imports = append(res.Imports, []string{})
+		res.Imports = append(res.Imports, []types.PackageName{})
 
 		if protoPackage.HasServices {
 			r := rule.NewRule("java_grpc_library", jglName)
 			r.SetAttr("srcs", []string{":" + protoRuleName})
 			r.SetAttr("deps", []string{":" + jplName})
 			res.Gen = append(res.Gen, r)
-			res.Imports = append(res.Imports, []string{})
+			res.Imports = append(res.Imports, []types.PackageName{})
 		}
 
 		rjl := rule.NewRule("java_library", jlName)
@@ -110,9 +96,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		rjl.SetAttr("exports", append(exports, ":"+jplName))
 		log.Debug().Str("pkg", protoPackage.Options["java_package"]).Msg("adding the proto import statement")
-		rjl.SetPrivateAttr(packagesKey, []string{protoPackage.Options["java_package"]})
+		rjl.SetPrivateAttr(packagesKey, []types.PackageName{types.NewPackageName(protoPackage.Options["java_package"])})
 		res.Gen = append(res.Gen, rjl)
-		res.Imports = append(res.Imports, []string{})
+		res.Imports = append(res.Imports, []types.PackageName{})
 	}
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
@@ -161,15 +147,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	var allMains []main
+	allMains := sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
 
 	// Files and imports for code which isn't tests, and isn't used as helpers in tests.
 	productionJavaFiles := sorted_set.NewSortedSet([]string{})
-	productionJavaImports := sorted_set.NewSortedSet([]string{})
+	productionJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	// Files and imports for actual test classes.
 	testJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
-	testJavaImports := sorted_set.NewSortedSet([]string{})
+	testJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	// Java Test files which need to be generated separately from any others because they have explicit attribute overrides.
 	separateTestJavaFiles := make(map[javaFile]map[string]bzl.Expr)
@@ -178,7 +164,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	testHelperJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
 
 	// All java packages present in this bazel package.
-	allPackageNames := sorted_set.NewSortedSet([]string{})
+	allPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	if isModule {
 		for mRel, mJavaPkg := range l.javaPackageCache {
@@ -188,20 +174,13 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
-				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
-				for _, className := range mJavaPkg.Mains.SortedSlice() {
-					allMains = append(allMains, main{
-						pkg:       mJavaPkg.Name,
-						className: className,
-					})
-				}
+				allMains.AddAll(mJavaPkg.Mains)
 			} else {
-				addNonLocalImports(testJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
-				addNonLocalImports(testJavaImports, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(testJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -215,18 +194,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	} else {
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
-			addNonLocalImports(testJavaImports, javaPkg.ImportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
-			addNonLocalImports(testJavaImports, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(testJavaImports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		} else {
-			addNonLocalImports(productionJavaImports, javaPkg.ImportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
-			addNonLocalImports(productionJavaImports, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(productionJavaImports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		}
-		for _, mainClassName := range javaPkg.Mains.SortedSlice() {
-			allMains = append(allMains, main{
-				pkg:       javaPkg.Name,
-				className: mainClassName,
-			})
-		}
+		allMains.AddAll(javaPkg.Mains)
 		for _, f := range javaFilenamesRelativeToPackage {
 			path := filepath.Join(args.Rel, f)
 			if javaPkg.TestPackage {
@@ -242,17 +214,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	allPackageNamesSlice := allPackageNames.SortedSlice()
-	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i string) bool {
+	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
 		for _, n := range allPackageNamesSlice {
-			if strings.HasPrefix(i, n) {
-				// Assume the standard java convention of class names starting with upper case
-				// and package components starting with lower case.
-				// Without this check, one module with dependencies on a subpackage which _isn't_
-				// in the module won't be detected.
-				suffixRunes := []rune(i[len(n):])
-				if len(suffixRunes) >= 2 && suffixRunes[0] == '.' && unicode.IsUpper(suffixRunes[1]) {
-					return false
-				}
+			if i.Name == n.Name {
+				return false
 			}
 		}
 		return true
@@ -262,7 +227,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
 	}
 
-	for _, m := range allMains {
+	for _, m := range allMains.SortedSlice() {
 		l.generateJavaBinary(args.File, m, filepath.Base(args.Rel), &res)
 	}
 
@@ -274,11 +239,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// Suites generate their own helper library.
 		if cfg.TestMode() == "file" {
 			srcs := make([]string, 0, testHelperJavaFiles.Len())
-			packages := sorted_set.NewSortedSet([]string{})
+			packages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 			for _, tf := range testHelperJavaFiles.SortedSlice() {
 				// Add a _TESTONLY! prefix to the package name so that we resolve to the test-helper library rather than the production library, if both are present.
-				testonlyPackage := "_TESTONLY!" + tf.pkg
+				// TODO: Store this information in a structured way in the PackageName struct, rather than through string manipulation
+				testonlyPackage := types.NewPackageName("_TESTONLY!" + tf.pkg.Name)
 				packages.Add(testonlyPackage)
 				testJavaImportsWithHelpers.Add(testonlyPackage)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
@@ -299,7 +265,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 
 		case "suite":
-			packageNames := sorted_set.NewSortedSet([]string{})
+			packageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 			for _, tf := range allTestRelatedSrcs.SortedSlice() {
 				packageNames.Add(tf.pkg)
 			}
@@ -382,25 +348,26 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 }
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
-func addNonLocalImports(to *sorted_set.SortedSet[string], from *sorted_set.SortedSet[string], pkg string, localClasses *sorted_set.SortedSet[string]) {
-	for _, impString := range from.SortedSlice() {
-		imp := java.NewImport(impString)
-		if pkg == imp.Pkg {
-			if localClasses.Contains(imp.Classes[0]) {
+func addNonLocalImports(to *sorted_set.SortedSet[types.PackageName], fromClasses *sorted_set.SortedSet[types.ClassName], fromPackages *sorted_set.SortedSet[types.PackageName], pkg types.PackageName, localClasses *sorted_set.SortedSet[string]) {
+	for _, imp := range fromClasses.SortedSlice() {
+		if pkg == imp.PackageName() {
+			if localClasses.Contains(imp.BareOuterClassName()) {
 				continue
 			}
 		}
-		if imp.Pkg == "" {
+
+		if imp.PackageName().Name == "" {
 			continue
 		}
 
-		to.Add(impString)
+		to.Add(imp.PackageName())
 	}
+	to.AddAll(fromPackages)
 }
 
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]map[string]bzl.Expr, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
 	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
-		annotationClassNames := perClassMetadata[file.FullyQualifiedClassName()].AnnotationClassNames
+		annotationClassNames := perClassMetadata[file.ClassName().FullyQualifiedClassName()].AnnotationClassNames
 		perFileAttrs := make(map[string]bzl.Expr)
 		for _, annotationClassName := range annotationClassNames.SortedSlice() {
 			if attrs, ok := cfg.AttributesForAnnotation(annotationClassName); ok {
@@ -421,7 +388,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []string, imports []string, testonly bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []types.PackageName, imports []types.PackageName, testonly bool, res *language.GenerateResult) {
 	const ruleKind = "java_library"
 	r := rule.NewRule(ruleKind, name)
 
@@ -447,28 +414,28 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	res.Imports = append(res.Imports, imports)
 }
 
-func (l javaLang) generateJavaBinary(file *rule.File, m main, libName string, res *language.GenerateResult) {
+func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName string, res *language.GenerateResult) {
 	const ruleKind = "java_binary"
-	name := m.className
-	r := rule.NewRule(ruleKind, name) // FIXME check collision on name
-	r.SetAttr("main_class", m.pkg+"."+m.className)
+	name := m.BareOuterClassName()
+	r := rule.NewRule("java_binary", name) // FIXME check collision on name
+	r.SetAttr("main_class", m.FullyQualifiedClassName())
 
 	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
 	runtimeDeps.Add(label.Label{Name: libName, Relative: true})
 	r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
-
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	res.Gen = append(res.Gen, r)
-	res.Imports = append(res.Imports, []string{})
+	res.Imports = append(res.Imports, []types.PackageName{})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[string], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
-	fullyQualifiedTestClass := f.FullyQualifiedClassName()
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+	className := f.ClassName()
+	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
 	if includePackageInName {
 		testName = strings.ReplaceAll(fullyQualifiedTestClass, ".", "_")
 	} else {
-		testName = f.ClassName()
+		testName = className.BareOuterClassName()
 	}
 
 	ruleKind := "java_test"
@@ -491,7 +458,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
-	r.SetPrivateAttr(packagesKey, []string{f.pkg})
+	r.SetPrivateAttr(packagesKey, []types.PackageName{f.pkg})
 
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -507,22 +474,20 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	res.Imports = append(res.Imports, testImports.SortedSlice())
 }
 
-func importsJunit4(imports *sorted_set.SortedSet[string]) bool {
-	return imports.Contains("org.junit.Test") || imports.Contains("org.junit")
+func importsJunit4(imports *sorted_set.SortedSet[types.PackageName]) bool {
+	return imports.Contains(types.NewPackageName("org.junit"))
 }
 
 // Determines whether the given import is part of the JUnit Pioneer extension pack for JUnit 5. Only the beginning of
 // the string is considered here to cover classes imported from different sub-packages: org.junitpioneer.vintage.Test,
 // org.junitpioneer.jupiter.RetryingTest, org.junitpioneer.jupiter.cartesian.CartesianTest, etc.
-func importsJunitPioneer(import_ string) bool {
-	return strings.HasPrefix(import_, "org.junitpioneer.")
+func importsJunitPioneer(import_ types.PackageName) bool {
+	return strings.HasPrefix(import_.Name, "org.junitpioneer.")
 }
 
-func importsJunit5(imports *sorted_set.SortedSet[string]) bool {
-	return imports.Contains("org.junit.jupiter.api.Test") ||
-		imports.Contains("org.junit.jupiter.api") ||
-		imports.Contains("org.junit.jupiter.params.ParameterizedTest") ||
-		imports.Contains("org.junit.jupiter.params") ||
+func importsJunit5(imports *sorted_set.SortedSet[types.PackageName]) bool {
+	return imports.Contains(types.NewPackageName("org.junit.jupiter.api")) ||
+		imports.Contains(types.NewPackageName("org.junit.jupiter.params")) ||
 		imports.Filter(importsJunitPioneer).Len() != 0
 }
 
@@ -532,7 +497,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], customTestSuffixes *[]string, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
