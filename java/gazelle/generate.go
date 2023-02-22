@@ -96,7 +96,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		rjl.SetAttr("exports", append(exports, ":"+jplName))
 		log.Debug().Str("pkg", protoPackage.Options["java_package"]).Msg("adding the proto import statement")
-		rjl.SetPrivateAttr(packagesKey, []types.PackageName{types.NewPackageName(protoPackage.Options["java_package"])})
+		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(types.NewPackageName(protoPackage.Options["java_package"]), false)})
 		res.Gen = append(res.Gen, rjl)
 		res.Imports = append(res.Imports, []types.PackageName{})
 	}
@@ -242,11 +242,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			packages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 			for _, tf := range testHelperJavaFiles.SortedSlice() {
-				// Add a _TESTONLY! prefix to the package name so that we resolve to the test-helper library rather than the production library, if both are present.
-				// TODO: Store this information in a structured way in the PackageName struct, rather than through string manipulation
-				testonlyPackage := types.NewPackageName("_TESTONLY!" + tf.pkg.Name)
-				packages.Add(testonlyPackage)
-				testJavaImportsWithHelpers.Add(testonlyPackage)
+				packages.Add(tf.pkg)
+				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
 			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages.SortedSlice(), testJavaImports.SortedSlice(), true, &res)
@@ -409,7 +406,12 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	} else {
 		r.SetAttr("visibility", []string{"//:__subpackages__"})
 	}
-	r.SetPrivateAttr(packagesKey, packages)
+
+	resolvablePackages := make([]types.ResolvableJavaPackage, 0, len(packages))
+	for _, pkg := range packages {
+		resolvablePackages = append(resolvablePackages, types.NewResolvableJavaPackage(pkg, testonly))
+	}
+	r.SetPrivateAttr(packagesKey, resolvablePackages)
 	res.Gen = append(res.Gen, r)
 	res.Imports = append(res.Imports, imports)
 }
@@ -458,7 +460,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
-	r.SetPrivateAttr(packagesKey, []types.PackageName{f.pkg})
+	r.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{types.NewResolvableJavaPackage(f.pkg, true)})
 
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -501,7 +503,11 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
-	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
+	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packageNames.Len())
+	for _, packageName := range packageNames.SortedSlice() {
+		resolvablePackages = append(resolvablePackages, types.NewResolvableJavaPackage(packageName, true))
+	}
+	r.SetPrivateAttr(packagesKey, resolvablePackages)
 
 	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
 	if importsJunit5(imports) {
