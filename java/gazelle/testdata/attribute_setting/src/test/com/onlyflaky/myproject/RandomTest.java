@@ -1,4 +1,4 @@
-package com.example.myproject;
+package com.example.onlyflaky.myproject;
 
 import com.example.annotation.FlakyTest;
 import org.junit.jupiter.api.Test;
