@@ -7,6 +7,8 @@ import com.gazelle.java.javaparser.v0.Package;
 import com.gazelle.java.javaparser.v0.Package.Builder;
 import com.gazelle.java.javaparser.v0.ParsePackageRequest;
 import com.gazelle.java.javaparser.v0.PerClassMetadata;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -23,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +140,7 @@ public class GrpcServer {
       } else if (packages.isEmpty()) {
         logger.info(
             "Set of classes in {} has no package", Paths.get(request.getRel()).toAbsolutePath());
-        packages.add("");
+        packages = ImmutableSet.of("");
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
       logger.debug("Got used types: {}", parser.getUsedTypes());
@@ -154,7 +155,7 @@ public class GrpcServer {
               .addAllImportedPackagesWithoutSpecificClasses(
                   parser.getUsedPackagesWithoutSpecificTypes())
               .addAllMains(parser.getMainClasses());
-      for (Map.Entry<String, SortedSet<String>> annotations :
+      for (Map.Entry<String, ImmutableSortedSet<String>> annotations :
           parser.getAnnotatedClasses().entrySet()) {
         packageBuilder.putPerClassMetadata(
             annotations.getKey(),
