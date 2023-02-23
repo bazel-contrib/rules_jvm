@@ -48,6 +48,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":gazelle"],
     deps = [
+        "//java/gazelle/javaconfig",
         "//java/gazelle/private/sorted_set",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
