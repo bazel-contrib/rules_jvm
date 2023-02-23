@@ -28,6 +28,8 @@ def _define_junit4_test(name, **kwargs):
 def _define_junit5_test(name, **kwargs):
     java_junit5_test(
         name = name,
+        include_engines = kwargs.pop("include_engines", None),
+        exclude_engines = kwargs.pop("exclude_engines", None),
         **kwargs
     )
 

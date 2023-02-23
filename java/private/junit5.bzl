@@ -30,6 +30,8 @@ def java_junit5_test(
         jvm_flags = [],
         include_tags = [],
         exclude_tags = [],
+        include_engines = [],
+        exclude_engines = [],
         **kwargs):
     """Run junit5 tests using Bazel.
 
@@ -67,6 +69,8 @@ def java_junit5_test(
         the current bazel package and the `name` attribute.
       include_tags: Junit5 tag expressions to include execution of tagged tests.
       exclude_tags: Junit tag expressions to exclude execution of tagged tests.
+      include_engines: A list of JUnit Platform test engine IDs to include.
+      exclude_engines: A list of JUnit Platform test engine IDs to exclude.
     """
     if test_class:
         clazz = test_class
@@ -78,6 +82,12 @@ def java_junit5_test(
 
     if exclude_tags:
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_TAGS=" + ",".join(exclude_tags)]
+
+    if include_engines:
+        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_ENGINES=%s" % ",".join(include_engines)]
+
+    if exclude_engines:
+        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
 
     security_manager_flag_seen = False
     for flag in jvm_flags:

@@ -4,6 +4,7 @@ import static java.nio.file.StandardOpenOption.DELETE_ON_CLOSE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.platform.launcher.EngineFilter.includeEngines;
+import static org.junit.platform.launcher.EngineFilter.excludeEngines;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,16 +45,9 @@ public class ActualRunner implements RunsTest {
 
       var classSelector = DiscoverySelectors.selectClass(testClassName);
 
-      List<String> discoveredEngines =
-          ServiceLoader.load(TestEngine.class).stream()
-              .map(ServiceLoader.Provider::get)
-              .map(TestEngine::getId)
-              .collect(Collectors.toList());
-
       var request =
           LauncherDiscoveryRequestBuilder.request()
               .selectors(List.of(classSelector))
-              .filters(includeEngines(discoveredEngines))
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
@@ -68,6 +62,15 @@ public class ActualRunner implements RunsTest {
       String excludeTags = System.getProperty("JUNIT5_EXCLUDE_TAGS");
       if (excludeTags != null && !excludeTags.isEmpty()) {
         request.filters(TagFilter.excludeTags(excludeTags.split(",")));
+      }
+
+      List<String> includeEngines = System.getProperty("JUNIT5_INCLUDE_ENGINES") == null ? null : List.of(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
+      List<String> excludeEngines = System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null ? null : List.of(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
+      if (includeEngines != null) {
+        request.filters(includeEngines(includeEngines));
+      }
+      if (excludeEngines != null) {
+        request.filters(excludeEngines(excludeEngines));
       }
 
       File exitFile = getExitFile();

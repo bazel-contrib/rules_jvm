@@ -283,7 +283,7 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 
 <pre>
 java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-package_prefixes">package_prefixes</a>, <a href="#java_junit5_test-jvm_flags">jvm_flags</a>, <a href="#java_junit5_test-include_tags">include_tags</a>,
-                 <a href="#java_junit5_test-exclude_tags">exclude_tags</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
+                 <a href="#java_junit5_test-exclude_tags">exclude_tags</a>, <a href="#java_junit5_test-include_engines">include_engines</a>, <a href="#java_junit5_test-exclude_engines">exclude_engines</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
 </pre>
 
 Run junit5 tests using Bazel.
@@ -328,6 +328,8 @@ its goals, but this is not complete or available yet.
 | <a id="java_junit5_test-jvm_flags"></a>jvm_flags |  <p align="center"> - </p>   |  <code>[]</code> |
 | <a id="java_junit5_test-include_tags"></a>include_tags |  Junit5 tag expressions to include execution of tagged tests.   |  <code>[]</code> |
 | <a id="java_junit5_test-exclude_tags"></a>exclude_tags |  Junit tag expressions to exclude execution of tagged tests.   |  <code>[]</code> |
+| <a id="java_junit5_test-include_engines"></a>include_engines |  A list of JUnit Platform test engine IDs to include.   |  <code>[]</code> |
+| <a id="java_junit5_test-exclude_engines"></a>exclude_engines |  A list of JUnit Platform test engine IDs to exclude.   |  <code>[]</code> |
 | <a id="java_junit5_test-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
