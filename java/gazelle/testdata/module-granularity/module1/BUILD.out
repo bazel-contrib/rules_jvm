@@ -34,7 +34,6 @@ java_test_suite(
     ],
     deps = [
         ":module1",
-        "@maven//:junit_junit",
         "@maven//:org_hamcrest_hamcrest_all",
         "@maven//:org_junit_jupiter_junit_jupiter_api",
     ],

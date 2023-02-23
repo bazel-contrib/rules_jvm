@@ -11,7 +11,6 @@ java_test_suite(
     ],
     deps = [
         "//notmodule/src/main/java/com/example/hello/notworld",
-        "@maven//:junit_junit",
         "@maven//:org_junit_jupiter_junit_jupiter_api",
     ],
 )

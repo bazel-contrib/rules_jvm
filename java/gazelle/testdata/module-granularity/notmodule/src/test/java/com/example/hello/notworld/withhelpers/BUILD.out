@@ -12,8 +12,5 @@ java_test_suite(
         "@maven//:org_junit_platform_junit_platform_launcher",
         "@maven//:org_junit_platform_junit_platform_reporting",
     ],
-    deps = [
-        "@maven//:junit_junit",
-        "@maven//:org_junit_jupiter_junit_jupiter_api",
-    ],
+    deps = ["@maven//:org_junit_jupiter_junit_jupiter_api"],
 )
