@@ -29,13 +29,15 @@ message Package {
   // Example: "com.a.b"
   string name = 1;
 
-  // The list of imported class/functions in the requests files.
+  // The list of classes in the request's files which are either imported or referenced by fully-qualified type.
   //
   // Deduplicated on the import string.
-  // Java standard library imports are filtered out.
   //
-  // Example: ["org.junit.Assert.assertEquals", "org.junit.Test"]
-  repeated string imports = 2;
+  // Example: ["java.util.ArrayList", "org.junit.Test"]
+  repeated string imported_classes = 2;
+
+  // As imports except with imported package names which didn't have specific classes imported (i.e. that were wildcard imports).
+  repeated string imported_packages_without_specific_classes = 5;
 
   // Class names in the package with a main function.
   //

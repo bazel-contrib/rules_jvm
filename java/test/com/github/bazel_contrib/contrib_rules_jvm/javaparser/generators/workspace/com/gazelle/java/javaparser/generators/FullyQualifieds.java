@@ -15,6 +15,8 @@ public class FullyQualifieds {
     // them as variables with null types.
     someList.map(x -> x.toString());
 
+    new java.util.ArrayList<String>().stream().map(y -> y.toString());
+
     this.BLAH = "beep";
     this.BEEP_BOOP = "baz";
   }

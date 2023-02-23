@@ -187,7 +187,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImports(productionJavaImports, mJavaPkg.Imports, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
@@ -198,7 +199,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					})
 				}
 			} else {
-				addNonLocalImports(testJavaImports, mJavaPkg.Imports, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(testJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImports(testJavaImports, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -212,9 +214,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	} else {
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
-			addNonLocalImports(testJavaImports, javaPkg.Imports, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(testJavaImports, javaPkg.ImportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(testJavaImports, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		} else {
-			addNonLocalImports(productionJavaImports, javaPkg.Imports, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(productionJavaImports, javaPkg.ImportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImports(productionJavaImports, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		}
 		for _, mainClassName := range javaPkg.Mains.SortedSlice() {
 			allMains = append(allMains, main{

@@ -3,6 +3,9 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -44,6 +47,7 @@ public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
 
   private final Set<String> usedTypes = new TreeSet<>();
+  private final Set<String> usedPackagesWithoutSpecificTypes = new TreeSet<>();
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
 
@@ -59,20 +63,29 @@ public class ClasspathParser {
     // Doesn't need to do anything currently
   }
 
-  public Set<String> getUsedTypes() {
-    return usedTypes;
+  public ImmutableSet<String> getUsedTypes() {
+    return ImmutableSet.copyOf(usedTypes);
   }
 
-  public Set<String> getPackages() {
-    return packages;
+  public ImmutableSet<String> getUsedPackagesWithoutSpecificTypes() {
+    return ImmutableSet.copyOf(usedPackagesWithoutSpecificTypes);
   }
 
-  public Set<String> getMainClasses() {
-    return mainClasses;
+  public ImmutableSet<String> getPackages() {
+    return ImmutableSet.copyOf(packages);
   }
 
-  public Map<String, SortedSet<String>> getAnnotatedClasses() {
-    return annotatedClasses;
+  public ImmutableSet<String> getMainClasses() {
+    return ImmutableSet.copyOf(mainClasses);
+  }
+
+  public ImmutableMap<String, ImmutableSortedSet<String>> getAnnotatedClasses() {
+    ImmutableMap.Builder<String, ImmutableSortedSet<String>> builder =
+        ImmutableMap.builderWithExpectedSize(annotatedClasses.size());
+    for (Map.Entry<String, SortedSet<String>> entry : annotatedClasses.entrySet()) {
+      builder.put(entry.getKey(), ImmutableSortedSet.copyOf(entry.getValue()));
+    }
+    return builder.build();
   }
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
@@ -160,9 +173,9 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         usedTypes.add(staticPackage);
-      } else if (name.endsWith("*")) {
+      } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
-        usedTypes.add(wildcardPackage);
+        usedPackagesWithoutSpecificTypes.add(wildcardPackage);
       } else {
         String[] parts = i.getQualifiedIdentifier().toString().split("\\.");
         currentFileImports.put(parts[parts.length - 1], i.getQualifiedIdentifier().toString());

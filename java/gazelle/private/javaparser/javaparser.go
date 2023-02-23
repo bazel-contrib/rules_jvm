@@ -64,11 +64,12 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 	}
 
 	return &java.Package{
-		Name:             resp.GetName(),
-		Imports:          sorted_set.NewSortedSet(resp.GetImports()),
-		Mains:            sorted_set.NewSortedSet(resp.GetMains()),
-		Files:            sorted_set.NewSortedSet(in.Files),
-		TestPackage:      java.IsTestPath(in.Rel),
-		PerClassMetadata: perClassMetadata,
+		Name:                                   resp.GetName(),
+		ImportedClasses:                        sorted_set.NewSortedSet(resp.GetImportedClasses()),
+		ImportedPackagesWithoutSpecificClasses: sorted_set.NewSortedSet(resp.GetImportedPackagesWithoutSpecificClasses()),
+		Mains:                                  sorted_set.NewSortedSet(resp.GetMains()),
+		Files:                                  sorted_set.NewSortedSet(in.Files),
+		TestPackage:                            java.IsTestPath(in.Rel),
+		PerClassMetadata:                       perClassMetadata,
 	}, nil
 }
