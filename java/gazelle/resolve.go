@@ -105,7 +105,7 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 			continue
 		}
 
-		addDep(dep.String(), imp)
+		addDep(simplifyLabel(c.RepoName, dep, from).String(), imp)
 	}
 
 	if len(deps) > 0 {
@@ -162,12 +162,12 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 	parsedImport := java.NewImport(imp)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: parsedImport.Pkg}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
-		return simplifyLabel(c.RepoName, ol, from), nil
+		return ol, nil
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
 	if len(matches) == 1 {
-		return simplifyLabel(c.RepoName, matches[0].Label, from), nil
+		return matches[0].Label, nil
 	}
 
 	if len(matches) > 1 {
@@ -200,7 +200,7 @@ func (jr *Resolver) convertImport(c *config.Config, imp string, ix *resolve.Rule
 	}
 
 	if l, err := jr.lang.mavenResolver.Resolve(parsedImport.Pkg); err == nil {
-		return simplifyLabel(c.RepoName, l, from), nil
+		return l, nil
 	}
 
 	jr.lang.logger.Warn().
