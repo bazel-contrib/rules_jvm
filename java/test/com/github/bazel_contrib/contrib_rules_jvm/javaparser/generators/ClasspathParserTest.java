@@ -140,7 +140,7 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Wildcards.java"));
     parser.parseClasses(files);
-    assertEquals(Set.of("org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
+    assertEquals(Set.of("org.junit.jupiter.api", "org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
   }
 
   @Test

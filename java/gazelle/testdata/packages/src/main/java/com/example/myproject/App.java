@@ -1,6 +1,6 @@
 package com.example.myproject;
 
-import static com.example.library.Library;
+import com.example.library.Library;
 
 /** This application compares two numbers, using the Ints.compare method from Guava. */
 public class App {
