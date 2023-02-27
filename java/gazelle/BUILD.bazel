@@ -41,12 +41,14 @@ go_test(
     name = "gazelle_test",
     size = "medium",
     srcs = [
+        "configure_test.go",
         "generate_test.go",
         "resolve_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":gazelle"],
     deps = [
+        "//java/gazelle/javaconfig",
         "//java/gazelle/private/sorted_set",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
