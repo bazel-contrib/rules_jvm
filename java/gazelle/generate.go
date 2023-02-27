@@ -349,16 +349,16 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 func addNonLocalImports(to *sorted_set.SortedSet[string], from *sorted_set.SortedSet[string], pkg string, localClasses *sorted_set.SortedSet[string]) {
 	for _, impString := range from.SortedSlice() {
 		imp := java.NewImport(impString)
-		doAdd := true
 		if pkg == imp.Pkg {
 			if localClasses.Contains(imp.Classes[0]) {
-				doAdd = false
+				continue
 			}
 		}
-
-		if doAdd {
-			to.Add(impString)
+		if imp.Pkg == "" {
+			continue
 		}
+
+		to.Add(impString)
 	}
 }
 
