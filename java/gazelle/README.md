@@ -72,6 +72,21 @@ Additionally, some configuration can only be done by flag. See the
 `RegisterFlags` function in [configure.go](configure.go) for a list of these
 options.
 
+## Source code restrictions and limitations
+
+Currently, the gazelle plugin makes the following assumptions about the code it's generating BUILD files for:
+1. All code lives in a non-empty package. Source files must have a `package` declaration, and classes depended on all themselves have a `package` declaration.
+1. Packages only exist in one place. Two different directories or dependencies may not contain classes which belong in the same package. The exception to this is that for each package, there may be a single test directory which uses the same package as that package's non-test directory.
+1. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be removed, you may want to set `# gazelle:java_module_granularity module` in the BUILD file containing the parent-most class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
+1. Non-test code doesn't depend on test code.
+1. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory.
+1. All test code packages also have a corresponding non-test code directory with the same package name.
+
+If these assumptions are violated, the rest of the generation should still function properly, but the specific files which violate the assumptions (or depend on files which violate the assumptions) will not get complete results. We strive to emit warnings when this happens.
+
+We are also aware of the following limitations. This list is not exhaustive, and is not intentional (i.e. if we can fix these limitations, we would like to):
+1. Runtime dependencies are not detected (e.g. loading classes by reflection).
+
 ## Troubleshooting
 
 If one forgets to run `bazel fetch @maven//...`, the code will complain and tell
