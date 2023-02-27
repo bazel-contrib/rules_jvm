@@ -80,6 +80,7 @@ Currently, the gazelle plugin makes the following assumptions about the code it'
 1. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be removed, you may want to set `# gazelle:java_module_granularity module` in the BUILD file containing the parent-most class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
 1. Non-test code doesn't depend on test code.
 1. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on target, because this is an unexpected set-up.
+1. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case, and class and interface names start with Upper Case letters.
 
 If these assumptions are violated, the rest of the generation should still function properly, but the specific files which violate the assumptions (or depend on files which violate the assumptions) will not get complete results. We strive to emit warnings when this happens.
 
