@@ -4,7 +4,7 @@ java_junit5_test(
     name = "RandomTest",
     srcs = ["RandomTest.java"],
     flaky = True,
-    test_class = "com.example.myproject.RandomTest",
+    test_class = "com.example.onlyflaky.myproject.RandomTest",
     runtime_deps = [
         "@maven//:org_junit_jupiter_junit_jupiter_engine",
         "@maven//:org_junit_platform_junit_platform_launcher",
