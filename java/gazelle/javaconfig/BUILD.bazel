@@ -1,11 +1,28 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "javaconfig",
-    srcs = ["config.go"],
+    srcs = [
+        "config.go",
+        "default_test_patterns.go",
+    ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
+)
+
+genrule(
+    name = "generate_default_java_test_patterns_src",
+    srcs = ["//java/private:java_test_suite_shared_constants.bzl"],
+    outs = ["default_test_patterns.go"],
+    cmd = "$(execpath //java/gazelle/javaconfig/codegen) $< $@",
+    tools = ["//java/gazelle/javaconfig/codegen"],
+)
+
+go_test(
+    name = "javaconfig_test",
+    srcs = ["config_test.go"],
+    deps = [":javaconfig"],
 )
