@@ -11,5 +11,5 @@ go_library(
 go_binary(
     name = "codegen",
     embed = [":codegen_lib"],
-    visibility = ["//visibility:public"],
+    visibility = ["//java/gazelle/javaconfig:__pkg__"],
 )
