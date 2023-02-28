@@ -4,7 +4,7 @@ go_library(
     name = "javaconfig",
     srcs = [
         "config.go",
-        "default_test_patterns.go",
+        "default_test_suffixes.go",
     ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig",
     visibility = ["//visibility:public"],
@@ -16,7 +16,7 @@ go_library(
 genrule(
     name = "generate_default_java_test_patterns_src",
     srcs = ["//java/private:java_test_suite_shared_constants.bzl"],
-    outs = ["default_test_patterns.go"],
+    outs = ["default_test_suffixes.go"],
     cmd = "$(execpath //java/gazelle/javaconfig/codegen) $< $@",
     tools = ["//java/gazelle/javaconfig/codegen"],
 )

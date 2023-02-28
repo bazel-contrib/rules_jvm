@@ -5,7 +5,7 @@ go_library(
     srcs = ["codegen.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig/codegen",
     visibility = ["//visibility:private"],
-    deps = ["@com_github_bazelbuild_buildtools//build:go_default_library"],
+    deps = ["@net_starlark_go//starlark"],
 )
 
 go_binary(

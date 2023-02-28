@@ -14,6 +14,7 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/sergi/go-diff v1.2.0
 	github.com/stretchr/testify v1.7.0
+	go.starlark.net v0.0.0-20210223155950-e043a3d3c984
 	golang.org/x/tools v0.1.10
 	google.golang.org/grpc v1.45.0
 )

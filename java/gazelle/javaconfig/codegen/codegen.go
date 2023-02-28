@@ -1,72 +1,82 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
-	"reflect"
+	"text/template"
 
-	bzl "github.com/bazelbuild/buildtools/build"
+	"go.starlark.net/starlark"
 )
 
+const tpl = `package javaconfig
+
+var defaultTestFileSuffixes = []string{
+{{- range .TestFileSuffixes }}
+	"{{.}}",
+{{- end }}
+}
+`
+
+type tplData struct {
+	TestFileSuffixes []string
+}
+
 func main() {
-	if len(os.Args) != 3 {
+	var inputPath, outputPath string
+	switch len(os.Args) {
+	case 2:
+		inputPath = os.Args[1]
+		outputPath = ""
+
+	case 3:
+		inputPath = os.Args[1]
+		outputPath = os.Args[2]
+
+	default:
 		log.Fatalf("Want 2 args, got: %d: %v", len(os.Args)-1, os.Args[1:])
 	}
-	inputPath := os.Args[1]
-	outputPath := os.Args[2]
 
-	contents, err := os.ReadFile(inputPath)
+	src, err := os.ReadFile(inputPath)
 	if err != nil {
 		log.Fatalf("Failed to read %v: %v", inputPath, err)
 	}
-	file, err := bzl.ParseBzl(inputPath, contents)
+
+	globals, err := starlark.ExecFile(new(starlark.Thread), inputPath, src, nil)
 	if err != nil {
-		log.Fatalf("Failed to parse %v: %v", inputPath, err)
+		log.Fatalf("starlark error: %s", err)
 	}
 
-	var defaultTestSuffixes []string
-
-	for _, expr := range file.Stmt {
-		assign, ok := expr.(*bzl.AssignExpr)
-		if !ok {
-			continue
-		}
-		ident, ok := assign.LHS.(*bzl.Ident)
-		if !ok {
-			continue
-		}
-		if ident.Name != "DEFAULT_TEST_SUFFIXES" {
-			continue
-		}
-		if len(defaultTestSuffixes) > 0 {
-			log.Fatal("Expected only one DEFAULT_TEST_SUFFIXES assignment but saw multiple")
-		}
-		rhs, ok := assign.RHS.(*bzl.ListExpr)
-		if !ok {
-			log.Fatalf("DEFAULT_TEST_SUFFIXES must be a list but got %v", reflect.TypeOf(assign.RHS).Name())
-		}
-		for _, expr := range rhs.List {
-			lit, ok := expr.(*bzl.StringExpr)
-			if !ok {
-				log.Fatalf("DEFAULT_TEST_SUFFIXES values must be string literals but got %v", reflect.TypeOf(expr))
-			}
-			defaultTestSuffixes = append(defaultTestSuffixes, lit.Value)
-		}
+	var data tplData
+	iter := globals["DEFAULT_TEST_SUFFIXES"].(*starlark.List).Iterate()
+	defer iter.Done()
+	var x starlark.Value
+	for iter.Next(&x) {
+		data.TestFileSuffixes = append(data.TestFileSuffixes, x.(starlark.String).GoString())
 	}
-	if len(defaultTestSuffixes) == 0 {
+
+	if len(data.TestFileSuffixes) == 0 {
 		log.Fatalf("Didn't find any DEFAULT_TEST_SUFFIXES values")
 	}
-	output := `package javaconfig
 
-var defaultTestFileSuffixes = []string{
-`
-
-	for _, dts := range defaultTestSuffixes {
-		output += "\t\"" + dts + "\",\n"
+	t, err := template.New("").Parse(tpl)
+	if err != nil {
+		log.Fatalf("template parse error: %s", err)
 	}
 
-	output += "}\n"
-	if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
-		log.Fatal(err)
+	var out io.Writer
+	if outputPath == "" {
+		out = os.Stdout
+	} else {
+		f, err := os.Create(outputPath)
+		if err != nil {
+			log.Fatalf("file create error: %s", err)
+		}
+		defer f.Close()
+		out = f
+	}
+
+	if err := t.Execute(out, data); err != nil {
+		log.Fatalf("template parse error: %s", err)
 	}
 }
