@@ -219,7 +219,7 @@ func TestSuite(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			generateJavaTestSuite("blah", []string{src}, sorted_set.NewSortedSet([]string{pkg}), sorted_set.NewSortedSet(tc.imports), &res)
+			generateJavaTestSuite("blah", []string{src}, sorted_set.NewSortedSet([]string{pkg}), sorted_set.NewSortedSet(tc.imports), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 

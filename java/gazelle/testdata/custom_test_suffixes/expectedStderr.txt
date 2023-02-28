@@ -1,0 +1,5 @@
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/private/maven/resolver.go:XXX[0m[36m >[0m not loading maven dependencies [36merror=[0m[31m"open %WORKSPACEPATH%/maven_install.json: no such file or directory"[0m [36m_c=[0mmaven-resolver
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/child/grandchild [36mpackage=[0mcom.example.child.grandchild
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/child/grandchild [36mpackage=[0morg.junit
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/child [36mpackage=[0mcom.example.child
+[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example [36mpackage=[0mcom.example

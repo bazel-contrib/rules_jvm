@@ -320,6 +320,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					srcs,
 					packageNames,
 					testJavaImportsWithHelpers,
+					cfg.GetCustomJavaTestFileSuffixes(),
 					&res,
 				)
 			}
@@ -363,7 +364,7 @@ func addNonLocalImports(to *sorted_set.SortedSet[string], from *sorted_set.Sorte
 }
 
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]map[string]bzl.Expr, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
-	if maven.IsTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
+	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
 		annotationClassNames := perClassMetadata[file.FullyQualifiedClassName()].AnnotationClassNames
 		perFileAttrs := make(map[string]bzl.Expr)
 		for _, annotationClassName := range annotationClassNames.SortedSlice() {
@@ -479,7 +480,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func generateJavaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], res *language.GenerateResult) {
+func generateJavaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], customTestSuffixes *[]string, res *language.GenerateResult) {
 	r := rule.NewRule("java_test_suite", name)
 	r.SetAttr("srcs", srcs)
 	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
@@ -495,6 +496,10 @@ func generateJavaTestSuite(name string, srcs []string, packageNames, imports *so
 		// We probably should.
 		// In the mean time, hard-code some labels.
 		r.SetAttr("runtime_deps", runtimeDeps.SortedSlice())
+	}
+
+	if customTestSuffixes != nil {
+		r.SetAttr("test_suffixes", *customTestSuffixes)
 	}
 
 	res.Gen = append(res.Gen, r)

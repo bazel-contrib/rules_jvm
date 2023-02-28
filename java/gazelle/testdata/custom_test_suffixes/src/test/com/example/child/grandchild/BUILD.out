@@ -1,0 +1,8 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+# gazelle:java_test_file_suffixes Test.java
+
+java_test_suite(
+    name = "grandchild",
+    srcs = ["FooTest.java"],
+)

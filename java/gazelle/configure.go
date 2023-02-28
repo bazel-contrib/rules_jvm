@@ -50,11 +50,12 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (jc *Configurer) KnownDirectives() []string {
 	return []string{
+		javaconfig.JavaExcludeArtifact,
 		javaconfig.JavaExtensionDirective,
-		javaconfig.MavenInstallFile,
-		javaconfig.ModuleGranularityDirective,
-		javaconfig.TestMode,
-		javaconfig.ExcludeArtifact,
+		javaconfig.JavaMavenInstallFile,
+		javaconfig.JavaModuleGranularityDirective,
+		javaconfig.JavaTestFileSuffixes,
+		javaconfig.JavaTestMode,
 	}
 }
 
@@ -79,6 +80,9 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {
+			case javaconfig.JavaExcludeArtifact:
+				cfg.AddExcludedArtifact(d.Value)
+
 			case javaconfig.JavaExtensionDirective:
 				switch d.Value {
 				case "enabled":
@@ -90,18 +94,19 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 						javaconfig.JavaExtensionDirective, d.Value)
 				}
 
-			case javaconfig.MavenInstallFile:
+			case javaconfig.JavaMavenInstallFile:
 				cfg.SetMavenInstallFile(d.Value)
 
-			case javaconfig.ModuleGranularityDirective:
+			case javaconfig.JavaModuleGranularityDirective:
 				if err := cfg.SetModuleGranularity(d.Value); err != nil {
-					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.ModuleGranularityDirective)
+					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.JavaModuleGranularityDirective)
 				}
 
-			case javaconfig.TestMode:
+			case javaconfig.JavaTestFileSuffixes:
+				cfg.SetJavaTestFileSuffixes(d.Value)
+
+			case javaconfig.JavaTestMode:
 				cfg.SetTestMode(d.Value)
-			case javaconfig.ExcludeArtifact:
-				cfg.AddExcludedArtifact(d.Value)
 			}
 		}
 	}

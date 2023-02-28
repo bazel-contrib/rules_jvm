@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "codegen_lib",
+    srcs = ["codegen.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig/codegen",
+    visibility = ["//visibility:private"],
+    deps = ["@net_starlark_go//starlark"],
+)
+
+go_binary(
+    name = "codegen",
+    embed = [":codegen_lib"],
+    visibility = ["//java/gazelle/javaconfig:__pkg__"],
+)

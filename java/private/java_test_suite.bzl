@@ -1,4 +1,5 @@
 load("//java/private:create_jvm_test_suite.bzl", "create_jvm_test_suite")
+load("//java/private:java_test_suite_shared_constants.bzl", "DEFAULT_TEST_SUFFIXES")
 load("//java/private:library.bzl", "java_library", "java_test")
 load(":junit5.bzl", "java_junit5_test")
 
@@ -44,7 +45,7 @@ def java_test_suite(
         name,
         srcs,
         runner = "junit4",
-        test_suffixes = ["Test.java"],
+        test_suffixes = DEFAULT_TEST_SUFFIXES,
         package = None,
         deps = None,
         runtime_deps = [],

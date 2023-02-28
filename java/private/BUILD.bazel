@@ -1,5 +1,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
+exports_files(["java_test_suite_shared_constants.bzl"])
+
 bzl_library(
     name = "artifact",
     srcs = ["artifact.bzl"],
@@ -27,6 +29,7 @@ bzl_library(
     visibility = ["//java:__subpackages__"],
     deps = [
         ":create_jvm_test_suite",
+        ":java_test_suite_shared_constants",
         ":library",
     ],
 )
@@ -80,6 +83,12 @@ bzl_library(
 bzl_library(
     name = "checkstyle_config",
     srcs = ["checkstyle_config.bzl"],
+    visibility = ["//java:__subpackages__"],
+)
+
+bzl_library(
+    name = "java_test_suite_shared_constants",
+    srcs = ["java_test_suite_shared_constants.bzl"],
     visibility = ["//java:__subpackages__"],
 )
 
