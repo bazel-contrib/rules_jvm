@@ -360,6 +360,9 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 		}
 
 		// This does not support non string list values from runtime_deps.
+		// Currently, that means if a target has a runtime_deps of a different
+		// kind (e.g. a select), we will remove it. Hopefully in the future we
+		// can be less destructive.
 		for _, dep := range r.AttrStrings("runtime_deps") {
 			parsedLabel, err := label.Parse(dep)
 			if err != nil {
