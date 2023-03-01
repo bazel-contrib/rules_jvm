@@ -14,6 +14,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -258,11 +259,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	})
 
 	if productionJavaFiles.Len() > 0 {
-		generateJavaLibrary(args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNamesSlice, nonLocalProductionJavaImports.SortedSlice(), false, &res)
 	}
 
 	for _, m := range allMains {
-		generateJavaBinary(m, filepath.Base(args.Rel), &res)
+		l.generateJavaBinary(args.File, m, filepath.Base(args.Rel), &res)
 	}
 
 	// We add special packages to point to testonly libraries which - this accumulates them,
@@ -282,7 +283,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(testonlyPackage)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-			generateJavaLibrary(args.Rel, filepath.Base(args.Rel), srcs, packages.SortedSlice(), testJavaImports.SortedSlice(), true, &res)
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages.SortedSlice(), testJavaImports.SortedSlice(), true, &res)
 		}
 	}
 
@@ -294,7 +295,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				extraAttributes := separateTestJavaFiles[tf]
-				generateJavaTest(args.Rel, tf, isModule, testJavaImportsWithHelpers, extraAttributes, &res)
+				l.generateJavaTest(args.File, args.Rel, tf, isModule, testJavaImportsWithHelpers, extraAttributes, &res)
 			}
 
 		case "suite":
@@ -315,7 +316,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				}
 			}
 			if len(srcs) > 0 {
-				generateJavaTestSuite(
+				l.generateJavaTestSuite(
+					args.File,
 					suiteName,
 					srcs,
 					packageNames,
@@ -330,7 +332,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				sortedSeparateTestJavaFiles.Add(src)
 			}
 			for _, src := range sortedSeparateTestJavaFiles.SortedSlice() {
-				generateJavaTest(args.Rel, src, isModule, testJavaImportsWithHelpers, separateTestJavaFiles[src], &res)
+				l.generateJavaTest(args.File, args.Rel, src, isModule, testJavaImportsWithHelpers, separateTestJavaFiles[src], &res)
 			}
 		}
 	}
@@ -344,6 +346,36 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	return res
+}
+
+func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted_set.SortedSet[label.Label] {
+	runtimeDeps := sorted_set.NewSortedSetFn([]label.Label{}, labelLess)
+	if file == nil {
+		return runtimeDeps
+	}
+
+	for _, r := range file.Rules {
+		if r.Kind() != kind || r.Name() != name {
+			continue
+		}
+
+		// This does not support non string list values from runtime_deps.
+		for _, dep := range r.AttrStrings("runtime_deps") {
+			parsedLabel, err := label.Parse(dep)
+			if err != nil {
+				l.logger.Fatal().
+					Str("file.Pkg", file.Pkg).
+					Str("name", name).
+					Str("dep", dep).
+					Err(err).
+					Msg("label parse error")
+			}
+			runtimeDeps.Add(parsedLabel)
+		}
+		break
+	}
+
+	return runtimeDeps
 }
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
@@ -386,14 +418,20 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func generateJavaLibrary(pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []string, imports []string, testonly bool, res *language.GenerateResult) {
-	r := rule.NewRule("java_library", name)
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages []string, imports []string, testonly bool, res *language.GenerateResult) {
+	const ruleKind = "java_library"
+	r := rule.NewRule(ruleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
 	for _, src := range srcsRelativeToBazelWorkspace {
 		srcs = append(srcs, strings.TrimPrefix(src, pathToPackageRelativeToBazelWorkspace+"/"))
 	}
 	sort.Strings(srcs)
+
+	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
+	if runtimeDeps.Len() > 0 {
+		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
+	}
 
 	r.SetAttr("srcs", srcs)
 	if testonly {
@@ -406,16 +444,22 @@ func generateJavaLibrary(pathToPackageRelativeToBazelWorkspace string, name stri
 	res.Imports = append(res.Imports, imports)
 }
 
-func generateJavaBinary(m main, libName string, res *language.GenerateResult) {
-	r := rule.NewRule("java_binary", m.className) // FIXME check collision on name
+func (l javaLang) generateJavaBinary(file *rule.File, m main, libName string, res *language.GenerateResult) {
+	const ruleKind = "java_binary"
+	name := m.className
+	r := rule.NewRule(ruleKind, name) // FIXME check collision on name
 	r.SetAttr("main_class", m.pkg+"."+m.className)
-	r.SetAttr("runtime_deps", []string{":" + libName})
+
+	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
+	runtimeDeps.Add(label.Label{Name: libName, Relative: true})
+	r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
+
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	res.Gen = append(res.Gen, r)
 	res.Imports = append(res.Imports, []string{})
 }
 
-func generateJavaTest(pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[string], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[string], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	fullyQualifiedTestClass := f.FullyQualifiedClassName()
 	var testName string
 	if includePackageInName {
@@ -425,10 +469,19 @@ func generateJavaTest(pathToPackageRelativeToBazelWorkspace string, f javaFile, 
 	}
 
 	ruleKind := "java_test"
-	var runtimeDeps []string
 	if importsJunit5(imports) {
 		ruleKind = "java_junit5_test"
-		runtimeDeps = append(runtimeDeps, mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact)...)
+	}
+
+	runtimeDeps := l.collectRuntimeDeps(ruleKind, testName, file)
+	if importsJunit5(imports) {
+		// This should probably register imports here, and then allow the
+		// resolver to resolve this to an artifact, but we don't currently wire
+		// up the resolver to do this. We probably should.
+		// In the mean time, hard-code some labels.
+		for _, artifact := range junit5RuntimeDeps {
+			runtimeDeps.Add(maven.LabelFromArtifact(artifact))
+		}
 	}
 
 	r := rule.NewRule(ruleKind, testName)
@@ -437,12 +490,8 @@ func generateJavaTest(pathToPackageRelativeToBazelWorkspace string, f javaFile, 
 	r.SetAttr("test_class", fullyQualifiedTestClass)
 	r.SetPrivateAttr(packagesKey, []string{f.pkg})
 
-	if len(runtimeDeps) != 0 {
-		// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
-		// but we don't currently wire up the resolver to do this.
-		// We probably should.
-		// In the mean time, hard-code some labels.
-		r.SetAttr("runtime_deps", runtimeDeps)
+	if runtimeDeps.Len() != 0 {
+		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
 
 	for k, v := range extraAttributes {
@@ -480,14 +529,18 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func generateJavaTestSuite(name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], customTestSuffixes *[]string, res *language.GenerateResult) {
-	r := rule.NewRule("java_test_suite", name)
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[string], customTestSuffixes *[]string, res *language.GenerateResult) {
+	const ruleKind = "java_test_suite"
+	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
 	r.SetPrivateAttr(packagesKey, packageNames.SortedSlice())
 
+	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
 	if importsJunit5(imports) {
 		r.SetAttr("runner", "junit5")
-		runtimeDeps := sorted_set.NewSortedSet(mapStringSlice(junit5RuntimeDeps, maven.LabelFromArtifact))
+		for _, artifact := range junit5RuntimeDeps {
+			runtimeDeps.Add(maven.LabelFromArtifact(artifact))
+		}
 		if importsJunit4(imports) {
 			runtimeDeps.Add(maven.LabelFromArtifact("org.junit.vintage:junit-vintage-engine"))
 		}
@@ -495,7 +548,7 @@ func generateJavaTestSuite(name string, srcs []string, packageNames, imports *so
 		// but we don't currently wire up the resolver to do this.
 		// We probably should.
 		// In the mean time, hard-code some labels.
-		r.SetAttr("runtime_deps", runtimeDeps.SortedSlice())
+		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
 
 	if customTestSuffixes != nil {
@@ -519,10 +572,10 @@ func filterStrSlice(elts []string, f func(string) bool) []string {
 	return out
 }
 
-func mapStringSlice(elts []string, f func(string) string) []string {
-	var out []string
-	for _, elt := range elts {
-		out = append(out, f(elt))
+func labelsToStrings(labels []label.Label) []string {
+	out := make([]string, len(labels))
+	for idx, l := range labels {
+		out[idx] = l.String()
 	}
 	return out
 }

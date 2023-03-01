@@ -7,7 +7,7 @@ java_junit5_test(
     srcs = ["ExampleTest.java"],
     test_class = "com.example.separate.ExampleTest",
     runtime_deps = [
-        "@maven//:keep",  # keep
+        "@maven//:keep_me",
         "@maven//:org_junit_jupiter_junit_jupiter_engine",
         "@maven//:org_junit_platform_junit_platform_launcher",
         "@maven//:org_junit_platform_junit_platform_reporting",
