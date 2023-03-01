@@ -82,6 +82,6 @@ func (r *resolver) Resolve(pkg string) (label.Label, error) {
 	}
 }
 
-func LabelFromArtifact(artifact string) string {
-	return label.New("maven", "", bazel.CleanupLabel(artifact)).String()
+func LabelFromArtifact(artifact string) label.Label {
+	return label.New("maven", "", bazel.CleanupLabel(artifact))
 }

@@ -40,6 +40,7 @@ go_library(
 go_test(
     name = "gazelle_test",
     size = "medium",
+    timeout = "short",
     srcs = [
         "configure_test.go",
         "generate_test.go",
@@ -62,6 +63,7 @@ go_test(
         "@bazel_gazelle//walk:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_google_go_cmp//cmp",
+        "@com_github_rs_zerolog//:zerolog",
         "@com_github_sergi_go_diff//diffmatchpatch",
         "@com_github_stretchr_testify//require",
         "@org_golang_x_tools//go/vcs",

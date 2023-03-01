@@ -6,14 +6,11 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/google/go-cmp/cmp"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSingleJavaTestFile(t *testing.T) {
-	f := javaFile{
-		pathRelativeToBazelWorkspaceRoot: "FooTest.java",
-		pkg:                              "com.example",
-	}
 	type testCase struct {
 		includePackageInName bool
 		imports              []string
@@ -132,7 +129,13 @@ func TestSingleJavaTestFile(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			generateJavaTest("", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), nil, &res)
+			f := javaFile{
+				pathRelativeToBazelWorkspaceRoot: "FooTest.java",
+				pkg:                              "com.example",
+			}
+
+			l := newTestJavaLang(t)
+			l.generateJavaTest(nil, "", f, tc.includePackageInName, sorted_set.NewSortedSet(tc.imports), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -219,7 +222,8 @@ func TestSuite(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res language.GenerateResult
 
-			generateJavaTestSuite("blah", []string{src}, sorted_set.NewSortedSet([]string{pkg}), sorted_set.NewSortedSet(tc.imports), nil, &res)
+			l := newTestJavaLang(t)
+			l.generateJavaTestSuite(nil, "blah", []string{src}, sorted_set.NewSortedSet([]string{pkg}), sorted_set.NewSortedSet(tc.imports), nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -277,5 +281,12 @@ func TestAddNonLocalImports(t *testing.T) {
 
 	if diff := cmp.Diff(want, dst.SortedSlice()); diff != "" {
 		t.Errorf("filterImports() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func newTestJavaLang(t *testing.T) javaLang {
+	t.Helper()
+	return javaLang{
+		logger: zerolog.New(zerolog.NewTestWriter(t)),
 	}
 }

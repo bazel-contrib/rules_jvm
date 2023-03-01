@@ -10,7 +10,7 @@ java_test_suite(
     ],
     runner = "junit5",
     runtime_deps = [
-        "@maven//:keep",  # keep
+        "@maven//:keep_me",
         "@maven//:org_junit_jupiter_junit_jupiter_engine",
     ],
     deps = [

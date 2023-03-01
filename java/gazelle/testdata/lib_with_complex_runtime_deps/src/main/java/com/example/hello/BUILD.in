@@ -1,0 +1,13 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "hello",
+    srcs = ["Hello.java"],
+    visibility = ["//:__subpackages__"],
+    runtime_deps = select({
+        "@bazel_tools//src/conditions:darwin_arm64": ["//things:darwin_darwin_arm64"],
+        "@bazel_tools//src/conditions:darwin_x86_64": ["//things:darwin_darwin_arm64"],
+        "@bazel_tools//src/conditions:linux_x86_64": ["//things:linux_x86_64"],
+        "//conditions:default": [],
+    }),
+)
