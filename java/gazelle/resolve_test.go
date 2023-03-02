@@ -69,7 +69,6 @@ java_library(
     _imported_packages = [
         "com.google.common.primitives",
         "java.lang",
-        "java.lang",
     ],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
