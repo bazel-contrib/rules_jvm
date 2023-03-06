@@ -261,6 +261,49 @@ public class ClasspathParserTest {
     assertEquals(expected, parser.getUsedTypes());
   }
 
+  @Test
+  public void testMethodWithImportedType() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/MethodWithImportedType.java"));
+    parser.parseClasses(files);
+
+    Set<String> expected =
+        Set.of(
+            "com.example.OuterReturnType",
+            "com.example.OtherOuterReturnType",
+            "com.example.Outer.InnerReturnType");
+    assertEquals(expected, parser.getUsedTypes());
+  }
+
+  @Test
+  public void testInterfaceExports() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ExportingInterface.java"));
+    parser.parseClasses(files);
+
+    Set<String> expected = Set.of("example.external.NeedsExporting", "example.external.Outer");
+    assertEquals(expected, parser.getExportedTypes());
+  }
+
+  @Test
+  public void testClassExports() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/ExportingClass.java"));
+    parser.parseClasses(files);
+
+    Set<String> expected =
+        Set.of(
+            "example.external.PackageReturn",
+            "example.external.ProtectedReturn",
+            "example.external.PublicReturn");
+    assertEquals(expected, parser.getExportedTypes());
+  }
+
   private <T> TreeSet<T> treeSet(T... values) {
     TreeSet<T> set = new TreeSet<>();
     for (T value : values) {

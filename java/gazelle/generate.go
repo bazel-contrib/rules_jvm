@@ -155,6 +155,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// Files and imports for code which isn't tests, and isn't used as helpers in tests.
 	productionJavaFiles := sorted_set.NewSortedSet([]string{})
 	productionJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	nonLocalJavaExports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	// Files and imports for actual test classes.
 	testJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
@@ -177,13 +178,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImports(productionJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
 				allMains.AddAll(mJavaPkg.Mains)
 			} else {
-				addNonLocalImports(testJavaImports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				// Tests don't get to export things, as things shouldn't depend on them.
+				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -197,9 +199,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	} else {
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
-			addNonLocalImports(testJavaImports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			// Tests don't get to export things, as things shouldn't depend on them.
+			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		} else {
-			addNonLocalImports(productionJavaImports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
 		for _, f := range javaFilenamesRelativeToPackage {
@@ -227,7 +230,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	})
 
 	if productionJavaFiles.Len() > 0 {
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, false, &res)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, false, &res)
 	}
 
 	for _, m := range allMains.SortedSlice() {
@@ -249,7 +252,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, true, &res)
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, nonLocalJavaExports, true, &res)
 		}
 	}
 
@@ -349,21 +352,29 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 }
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
-func addNonLocalImports(to *sorted_set.SortedSet[types.PackageName], fromClasses *sorted_set.SortedSet[types.ClassName], fromPackages *sorted_set.SortedSet[types.PackageName], pkg types.PackageName, localClasses *sorted_set.SortedSet[string]) {
-	for _, imp := range fromClasses.SortedSlice() {
-		if pkg == imp.PackageName() {
-			if localClasses.Contains(imp.BareOuterClassName()) {
+// toExports is optional and may be nil. All other parameters are required and must be non-nil.
+func addNonLocalImportsAndExports(toImports *sorted_set.SortedSet[types.PackageName], toExports *sorted_set.SortedSet[types.PackageName], fromImportedClasses *sorted_set.SortedSet[types.ClassName], fromPackages *sorted_set.SortedSet[types.PackageName], fromExportedClasses *sorted_set.SortedSet[types.ClassName], pkg types.PackageName, localClasses *sorted_set.SortedSet[string]) {
+	toImports.AddAll(fromPackages)
+	addFilteringOutOwnPackage(toImports, fromImportedClasses, pkg, localClasses)
+	if toExports != nil {
+		addFilteringOutOwnPackage(toExports, fromExportedClasses, pkg, localClasses)
+	}
+}
+
+func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from *sorted_set.SortedSet[types.ClassName], ownPackage types.PackageName, localOuterClassNames *sorted_set.SortedSet[string]) {
+	for _, fromPackage := range from.SortedSlice() {
+		if ownPackage == fromPackage.PackageName() {
+			if localOuterClassNames.Contains(fromPackage.BareOuterClassName()) {
 				continue
 			}
 		}
 
-		if imp.PackageName().Name == "" {
+		if fromPackage.PackageName().Name == "" {
 			continue
 		}
 
-		to.Add(imp.PackageName())
+		to.Add(fromPackage.PackageName())
 	}
-	to.AddAll(fromPackages)
 }
 
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]map[string]bzl.Expr, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
@@ -389,7 +400,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], testonly bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], exports *sorted_set.SortedSet[types.PackageName], testonly bool, res *language.GenerateResult) {
 	const ruleKind = "java_library"
 	r := rule.NewRule(ruleKind, name)
 
@@ -421,6 +432,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	resolveInput := types.ResolveInput{
 		PackageNames:         packages,
 		ImportedPackageNames: imports,
+		ExportedPackageNames: exports,
 	}
 	res.Imports = append(res.Imports, resolveInput)
 }

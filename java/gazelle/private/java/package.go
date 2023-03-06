@@ -9,6 +9,7 @@ type Package struct {
 	Name types.PackageName
 
 	ImportedClasses                        *sorted_set.SortedSet[types.ClassName]
+	ExportedClasses                        *sorted_set.SortedSet[types.ClassName]
 	ImportedPackagesWithoutSpecificClasses *sorted_set.SortedSet[types.PackageName]
 	Mains                                  *sorted_set.SortedSet[types.ClassName]
 

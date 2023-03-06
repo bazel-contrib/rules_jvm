@@ -1,0 +1,9 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "iface",
+    srcs = ["Interface.java"],
+    visibility = ["//:__subpackages__"],
+    exports = ["//src/main/java/com/example/types"],
+    deps = ["//src/main/java/com/example/types"],
+)

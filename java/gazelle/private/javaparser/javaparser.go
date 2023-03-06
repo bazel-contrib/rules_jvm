@@ -73,6 +73,14 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		}
 		importedClasses.Add(*className)
 	}
+	exportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for _, export := range resp.GetExportedClasses() {
+		className, err := types.ParseClassName(export)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse exports: %w", err)
+		}
+		exportedClasses.Add(*className)
+	}
 	importedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 	for _, pkg := range resp.GetImportedPackagesWithoutSpecificClasses() {
 		importedPackages.Add(types.NewPackageName(pkg))
@@ -85,6 +93,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 	return &java.Package{
 		Name:                                   packageName,
 		ImportedClasses:                        importedClasses,
+		ExportedClasses:                        exportedClasses,
 		ImportedPackagesWithoutSpecificClasses: importedPackages,
 		Mains:                                  mains,
 		Files:                                  sorted_set.NewSortedSet(in.Files),

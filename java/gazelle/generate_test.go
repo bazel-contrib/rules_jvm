@@ -282,8 +282,9 @@ func TestAddNonLocalImports(t *testing.T) {
 		src.Add(*name)
 	}
 
-	dst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
-	addNonLocalImports(dst, src, sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess), types.NewPackageName("com.example.a.b"), sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
+	depsDst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	exportsDst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	addNonLocalImportsAndExports(depsDst, exportsDst, src, sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess), sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess), types.NewPackageName("com.example.a.b"), sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
 
 	want := stringsToPackageNames([]string{
 		"com.another.a.b",
@@ -292,7 +293,7 @@ func TestAddNonLocalImports(t *testing.T) {
 		"com.example.a.b.c",
 	}).SortedSlice()
 
-	if diff := cmp.Diff(want, dst.SortedSlice()); diff != "" {
+	if diff := cmp.Diff(want, depsDst.SortedSlice()); diff != "" {
 		t.Errorf("filterImports() mismatch (-want +got):\n%s", diff)
 	}
 }

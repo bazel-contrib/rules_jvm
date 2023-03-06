@@ -152,6 +152,7 @@ public class GrpcServer {
           Package.newBuilder()
               .setName(Iterables.getOnlyElement(packages))
               .addAllImportedClasses(parser.getUsedTypes())
+              .addAllExportedClasses(parser.getExportedTypes())
               .addAllImportedPackagesWithoutSpecificClasses(
                   parser.getUsedPackagesWithoutSpecificTypes())
               .addAllMains(parser.getMainClasses());

@@ -1,8 +1,10 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
@@ -48,6 +50,8 @@ public class ClasspathParser {
 
   private final Set<String> usedTypes = new TreeSet<>();
   private final Set<String> usedPackagesWithoutSpecificTypes = new TreeSet<>();
+
+  private final Set<String> exportedTypes = new TreeSet<>();
   private final Set<String> packages = new TreeSet<>();
   private final Set<String> mainClasses = new TreeSet<>();
 
@@ -69,6 +73,10 @@ public class ClasspathParser {
 
   public ImmutableSet<String> getUsedPackagesWithoutSpecificTypes() {
     return ImmutableSet.copyOf(usedPackagesWithoutSpecificTypes);
+  }
+
+  public ImmutableSet<String> getExportedTypes() {
+    return ImmutableSet.copyOf(exportedTypes);
   }
 
   public ImmutableSet<String> getPackages() {
@@ -216,7 +224,10 @@ public class ClasspathParser {
           && ((PrimitiveTypeTree) m.getReturnType()).getPrimitiveTypeKind() == TypeKind.VOID) {
         isVoidReturn = true;
       } else if (m.getReturnType() != null) {
-        checkFullyQualifiedType(m.getReturnType());
+        Set<String> types = checkFullyQualifiedType(m.getReturnType());
+        if (!m.getModifiers().getFlags().contains(PRIVATE)) {
+          exportedTypes.addAll(types);
+        }
       }
 
       handleAnnotations(m.getModifiers().getAnnotations());
@@ -290,23 +301,39 @@ public class ClasspathParser {
       return super.visitVariable(node, unused);
     }
 
-    private void checkFullyQualifiedType(Tree identifier) {
+    @Nullable
+    private Set<String> checkFullyQualifiedType(Tree identifier) {
+      Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
         String typeName = identifier.toString();
-        if (typeName.contains(".")) {
+        List<String> components = Splitter.on(".").splitToList(typeName);
+        if (currentFileImports.containsKey(components.get(0))) {
+          String importedType = currentFileImports.get(components.get(0));
+          usedTypes.add(importedType);
+          types.add(importedType);
+        } else if (components.size() > 1) {
           usedTypes.add(typeName);
+          types.add(typeName);
+        } else {
+          String expandedImport = currentFileImports.get(typeName);
+          if (expandedImport != null) {
+            usedTypes.add(expandedImport);
+            types.add(expandedImport);
+          }
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
         checkFullyQualifiedType(baseType);
         ((ParameterizedTypeTree) identifier)
-            .getTypeArguments()
-            .forEach(this::checkFullyQualifiedType);
+            .getTypeArguments().stream()
+                .flatMap(t -> checkFullyQualifiedType(t).stream())
+                .forEach(types::add);
       } else if (identifier.getKind() == Tree.Kind.ARRAY_TYPE) {
         Tree baseType = ((ArrayTypeTree) identifier).getType();
-        checkFullyQualifiedType(baseType);
+        types.addAll(checkFullyQualifiedType(baseType));
       }
+      return types;
     }
   }
 

@@ -80,25 +80,26 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 
 func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 	resolveInput := imports.(types.ResolveInput)
-	javaImports := resolveInput.ImportedPackageNames
-	if javaImports.Len() == 0 {
-		return
-	}
-
-	deps := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
-
-	for _, implicitDep := range r.AttrStrings("deps") {
-		l, err := label.Parse(implicitDep)
-		if err != nil {
-			panic(fmt.Sprintf("error converting implicit dep %q to label: %v", implicitDep, err))
-		}
-		deps.Add(l)
-	}
 
 	isTestRule := isTestRule(r.Kind())
 
-	for _, imp := range javaImports.SortedSlice() {
-		dep, err := jr.convertImport(c, imp, ix, from, isTestRule, resolveInput.PackageNames)
+	jr.populateAttr(c, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+}
+
+func (jr Resolver) populateAttr(c *config.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
+	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
+
+	for _, implicitDep := range r.AttrStrings(attrName) {
+		l, err := label.Parse(implicitDep)
+		if err != nil {
+			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, implicitDep, err))
+		}
+		labels.Add(l)
+	}
+
+	for _, imp := range requiredPackageNames.SortedSlice() {
+		dep, err := jr.resolveSinglePackage(c, imp, ix, from, isTestRule, ownPackageNames)
 		if err != nil {
 			jr.lang.logger.Error().Str("import", dep.String()).Err(err).Msg("error converting import")
 			panic(fmt.Sprintf("error converting import: %s", err))
@@ -107,18 +108,20 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 			continue
 		}
 
-		deps.Add(simplifyLabel(c.RepoName, dep, from))
+		labels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
-	if deps.Len() > 0 {
-		var exprs []build.Expr
-		for _, l := range deps.SortedSlice() {
+	var exprs []build.Expr
+	if labels.Len() > 0 {
+		for _, l := range labels.SortedSlice() {
 			if l.Relative && l.Name == from.Name {
 				continue
 			}
 			exprs = append(exprs, &build.StringExpr{Value: l.String()})
 		}
-		r.SetAttr("deps", exprs)
+	}
+	if len(exprs) > 0 {
+		r.SetAttr(attrName, exprs)
 	}
 }
 
@@ -148,7 +151,7 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
+func (jr *Resolver) resolveSinglePackage(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
@@ -170,7 +173,7 @@ func (jr *Resolver) convertImport(c *config.Config, imp types.PackageName, ix *r
 		jr.lang.logger.Error().
 			Str("pkg", imp.Name).
 			Strs("targets", labels).
-			Msg("convertImport found MULTIPLE results in rule index")
+			Msg("resolveSinglePackage found MULTIPLE results in rule index")
 	}
 
 	if v, ok := jr.internalCache.Get(cacheKey); ok {
