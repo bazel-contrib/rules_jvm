@@ -315,12 +315,6 @@ public class ClasspathParser {
         } else if (components.size() > 1) {
           usedTypes.add(typeName);
           types.add(typeName);
-        } else {
-          String expandedImport = currentFileImports.get(typeName);
-          if (expandedImport != null) {
-            usedTypes.add(expandedImport);
-            types.add(expandedImport);
-          }
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
