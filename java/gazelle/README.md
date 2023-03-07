@@ -81,6 +81,11 @@ Currently, the gazelle plugin makes the following assumptions about the code it'
 1. Non-test code doesn't depend on test code.
 1. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on target, because this is an unexpected set-up.
 1. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case, and class and interface names start with Upper Case letters.
+1. Code doesn't use types which it doesn't name _only_ through unnamed means, across multiple calls. For example, if some code calls `x.foo().bar()` where the return type of `foo` is defined in another target, and the calling code explicitly uses a type from that target somewhere else. In the case of `x.foo()`, we add exports so that the caller will have access to the return type of `foo()`, but we assume that if you call a chain of _multiple_ calls, your code will have some other dependency on the return types of the subsequent return types.
+
+   This limitation could be lifted, but would require us to export all _transitively_ used symbols from every function. This would serve to add direct dependencies between lots of targets, which can slow down compilation and reduce cache hits.
+
+   In our experience, this kind of code is rare in Java - most code tends to either introduce intermediate variables (at which point the type gets used and we detect that a dependency needs to be added), or tends to already use the targets containing the intermediate types somewhere else (at which point the dependency will already exist), but we're open to discussion about this heuristic if it poses problems for a real-world codebase.
 
 If these assumptions are violated, the rest of the generation should still function properly, but the specific files which violate the assumptions (or depend on files which violate the assumptions) will not get complete results. We strive to emit warnings when this happens.
 
