@@ -96,6 +96,7 @@ func ClassNameLess(l, r ClassName) bool {
 type ResolveInput struct {
 	PackageNames         *sorted_set.SortedSet[PackageName]
 	ImportedPackageNames *sorted_set.SortedSet[PackageName]
+	ExportedPackageNames *sorted_set.SortedSet[PackageName]
 }
 
 type ResolvableJavaPackage struct {

@@ -74,11 +74,25 @@ var kindWithoutRuntimeDeps = rule.KindInfo{
 	},
 }
 
+var javaLibraryKind = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps":    true,
+		"exports": true,
+		"srcs":    true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"exports":      true,
+		"runtime_deps": true,
+	},
+}
+
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
 		"java_junit5_test":   kindWithRuntimeDeps,
-		"java_library":       kindWithRuntimeDeps,
+		"java_library":       javaLibraryKind,
 		"java_test":          kindWithRuntimeDeps,
 		"java_test_suite":    kindWithRuntimeDeps,
 		"java_proto_library": kindWithoutRuntimeDeps,
