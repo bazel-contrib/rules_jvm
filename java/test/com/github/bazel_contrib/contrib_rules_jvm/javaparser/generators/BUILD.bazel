@@ -14,7 +14,7 @@ java_test_suite(
     ],
     resource_strip_prefix = "java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators",
     resources = [
-        "java-test-workspace",
+        ":java-test-workspace",
     ],
     runner = "junit5",
     runtime_deps = [

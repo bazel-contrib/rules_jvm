@@ -49,7 +49,7 @@ public class ClasspathParserTest {
       testFiles =
           stream
               .filter(file -> !Files.isDirectory(file))
-              .map(name -> new JavaSource(name, name.toString()))
+              .map(JavaSource::new)
               .collect(Collectors.toMap(SimpleJavaFileObject::getName, source -> source));
     }
     logger.info("Got Test Files {}", testFiles);
@@ -255,19 +255,25 @@ public class ClasspathParserTest {
     return set;
   }
 
+  @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+      value = "THROWS",
+      justification = "Just a test, and function is used in stream")
   static class JavaSource extends SimpleJavaFileObject {
     String fileSource;
 
-    public JavaSource(Path directory, String fileName) {
-      super(Path.of(fileName).toUri(), JavaFileObject.Kind.SOURCE);
-      readFileFromSource(directory);
+    public JavaSource(Path path) {
+      // The superclass requires that the path points at a filesystem not a jar, so we make up a
+      // sketchy fake path for it.
+      super(Path.of(path.toString()).toUri(), JavaFileObject.Kind.SOURCE);
+      readFileFromSource(path);
     }
 
-    private void readFileFromSource(Path fileName) {
+    private void readFileFromSource(Path path) {
       try {
-        fileSource = Files.readString(fileName);
+        fileSource = Files.readString(path);
       } catch (IOException ex) {
-        logger.error("Unable to read build file: {} : {}", fileName, ex.getMessage());
+        throw new RuntimeException(
+            String.format("Unable to read java file: %s: %s", path, ex.getMessage()), ex);
       }
     }
 
