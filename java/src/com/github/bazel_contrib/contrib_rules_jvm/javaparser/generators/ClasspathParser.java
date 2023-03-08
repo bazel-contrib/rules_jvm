@@ -219,6 +219,8 @@ public class ClasspathParser {
         checkFullyQualifiedType(m.getReturnType());
       }
 
+      handleAnnotations(m.getModifiers().getAnnotations());
+
       // Check to see if we have a main method
       if (m.getName().toString().equals("main")
           && m.getModifiers().getFlags().containsAll(Set.of(STATIC, PUBLIC))
@@ -228,13 +230,17 @@ public class ClasspathParser {
       }
 
       // Check the parameters for the method
-      // Identifier or Member Select -> May be a fully qualifyed type name
-      // Parameterized Type -> The generics values may be qualified.
-      // Arry -> The array may be a fully qul
       for (VariableTree param : m.getParameters()) {
         checkFullyQualifiedType(param.getType());
+        handleAnnotations(param.getModifiers().getAnnotations());
       }
       return super.visitMethod(m, v);
+    }
+
+    private void handleAnnotations(List<? extends AnnotationTree> annotations) {
+      for (AnnotationTree annotation : annotations) {
+        checkFullyQualifiedType(annotation.getAnnotationType());
+      }
     }
 
     @Override
