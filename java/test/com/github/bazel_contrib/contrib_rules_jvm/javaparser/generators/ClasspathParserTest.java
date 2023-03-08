@@ -247,6 +247,20 @@ public class ClasspathParserTest {
     assertEquals(expected, parser.getUsedTypes());
   }
 
+  @Test
+  public void testAnonymousInnerClass() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/AnonymousInnerClass.java"));
+    parser.parseClasses(files);
+
+    Set<String> expected =
+        Set.of(
+            "java.util.HashMap", "javax.annotation.Nullable", "org.jetbrains.annotations.Nullable");
+    assertEquals(expected, parser.getUsedTypes());
+  }
+
   private <T> TreeSet<T> treeSet(T... values) {
     TreeSet<T> set = new TreeSet<>();
     for (T value : values) {
