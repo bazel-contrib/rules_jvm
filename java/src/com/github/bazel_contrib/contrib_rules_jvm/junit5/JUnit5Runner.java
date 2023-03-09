@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import java.lang.reflect.Constructor;
+
 /**
  * Test bootstrapper. This class only depends on the JRE (java 11+) and will ensure that the
  * required dependencies for a junit5 test are on the classpath before creating the actual runner.
@@ -17,11 +19,11 @@ public class JUnit5Runner {
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.Java17SystemExitToggle";
 
   public static void main(String[] args) {
-    var testSuite = System.getProperty("bazel.test_suite");
+    String testSuite = System.getProperty("bazel.test_suite");
 
-    var systemExitToggle = getSystemExitToggle();
+    SystemExitToggle systemExitToggle = getSystemExitToggle();
 
-    if (testSuite == null || testSuite.isBlank()) {
+    if (testSuite == null || testSuite.chars().allMatch(Character::isWhitespace)) {
       System.err.println("No test suite specified");
       exit(systemExitToggle, 2); // Same error code as Bazel's own test runner
     }
@@ -31,9 +33,9 @@ public class JUnit5Runner {
     systemExitToggle.prevent();
 
     try {
-      var constructor =
+      Constructor<? extends RunsTest> constructor =
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
-      var runsTest = constructor.newInstance();
+      RunsTest runsTest = constructor.newInstance();
       if (!runsTest.run(testSuite)) {
         exit(systemExitToggle, 2);
       }
@@ -49,9 +51,14 @@ public class JUnit5Runner {
   }
 
   private static SystemExitToggle getSystemExitToggle() {
-    var version = Runtime.version();
+    // In Java 8 and lower, the first part of the version is a 1.
+    // In Java 9 and higher, the first part of the version is the feature version.
+    int featureVersion = Integer.parseInt(System.getProperty("java.version").split("\\.")[0]);
+    if (featureVersion == 1) {
+      featureVersion = 8;
+    }
 
-    if (version.feature() < 12) {
+    if (featureVersion < 12) {
       return new Java11SystemExitToggle();
     }
 
@@ -60,9 +67,11 @@ public class JUnit5Runner {
     // of both `sun.misc.Unsafe` and `java.lang.System`: it's a
     // gross hack.
     try {
-      var java17ToggleClazz =
+      Class<? extends SystemExitToggle> java17ToggleClazz =
           Class.forName(JAVA17_SYSTEM_EXIT_TOGGLE).asSubclass(SystemExitToggle.class);
-      return java17ToggleClazz.getDeclaredConstructor().newInstance();
+      return java17ToggleClazz
+          .getDeclaredConstructor(SystemExitToggle.class)
+          .newInstance(new Java11SystemExitToggle());
     } catch (Exception e) {
       // We don't care _why_ we can't load the toggle, but we can't. Ideally
       // this would be a combination of `ReflectiveOperationException` and

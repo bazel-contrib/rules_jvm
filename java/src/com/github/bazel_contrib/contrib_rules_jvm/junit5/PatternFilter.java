@@ -38,7 +38,7 @@ public class PatternFilter implements PostDiscoveryFilter {
       return FilterResult.included("Including container: " + object.getDisplayName());
     }
 
-    if (object.getSource().isEmpty()) {
+    if (!object.getSource().isPresent()) {
       return FilterResult.excluded("Skipping a test without a source: " + object.getDisplayName());
     }
 
@@ -71,15 +71,15 @@ public class PatternFilter implements PostDiscoveryFilter {
    * </ul>
    */
   private static String convertCommaSeparatedSelections(String pattern) {
-    var selections = pattern.split(",");
+    String[] selections = pattern.split(",");
     if (selections.length == 1) {
       return ensureExactMethodName(pattern);
     }
-    var precedingClassSelection = selections[0];
-    var precedingHashIndex = precedingClassSelection.indexOf('#');
+    String precedingClassSelection = selections[0];
+    int precedingHashIndex = precedingClassSelection.indexOf('#');
     for (int i = 1; i < selections.length; i++) {
-      var selection = selections[i];
-      var hashIndex = selection.indexOf('#');
+      String selection = selections[i];
+      int hashIndex = selection.indexOf('#');
       if (hashIndex > -1) { // `class#` or `class#method`
         precedingClassSelection = selection;
         precedingHashIndex = hashIndex;

@@ -34,7 +34,7 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     try {
       Files.createDirectories(xmlOut.getParent());
       BufferedWriter writer = Files.newBufferedWriter(xmlOut, UTF_8);
-      xml = XMLOutputFactory.newDefaultFactory().createXMLStreamWriter(writer);
+      xml = XMLOutputFactory.newFactory().createXMLStreamWriter(writer);
       xml.writeStartDocument("UTF-8", "1.0");
     } catch (IOException | XMLStreamException e) {
       throw new IllegalStateException("Unable to create output file", e);

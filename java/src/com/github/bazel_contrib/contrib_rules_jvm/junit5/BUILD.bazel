@@ -16,16 +16,18 @@ java_import(
     ],
     deps = [
         ":allow",
+        ":system-exit-toggle",
     ],
 )
 
 java_library(
     name = "allow",
     srcs = ["allow.java"],
-    # At some point the SecurityManager class is going to go away
+    # At some point the SecurityManager class is going to go away, so fix a release in which it is
+    # available.
     javacopts = [
         "--release",
-        "11",
+        "8",
     ],
     deps = [
         # There must never be dependencies
@@ -41,15 +43,23 @@ genrule(
 
 java_library(
     name = "junit5-compile",
-    srcs = glob(["*.java"]),
+    srcs = glob(
+        ["*.java"],
+        exclude = [
+            "allow.java",
+            "Java17SystemExitToggle.java",
+            "SystemExitToggle.java",
+        ],
+    ),
     javacopts = [
-        # Target Java 11, no matter which JDK we're on so that we
+        # Target Java 8, no matter which JDK we're on so that we
         # can be sure that `SecurityManager` is present, even if
         # someone rebuilds on a JDK that doesn't have it.
         "--release",
-        "11",
+        "8",
     ],
     deps = [
+        ":system-exit-toggle",
         # The only dependencies here are those required to run
         # a junit5 test. We try not to pollute the classpath, so
         # be very careful when adding new deps here.
@@ -59,6 +69,18 @@ java_library(
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
         artifact("org.opentest4j:opentest4j"),
+    ],
+)
+
+# Do not build with --release 8 to work around https://bugs.openjdk.org/browse/JDK-8214165 (sun.misc
+# is not available with that flag), do not build for a higher release to support Java 8 runtimes.
+# Files in srcs must not reference any # classes that are likely to go away in future Java releases,
+# in particular SecurityManager.
+java_library(
+    name = "system-exit-toggle",
+    srcs = [
+        "Java17SystemExitToggle.java",
+        "SystemExitToggle.java",
     ],
 )
 
