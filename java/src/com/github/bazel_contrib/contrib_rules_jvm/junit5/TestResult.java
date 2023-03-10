@@ -109,14 +109,14 @@ class TestResult extends BaseResult {
           String stdout = getStdOut();
           if (stdout != null) {
             xml.writeStartElement("system-out");
-            xml.writeCData(stdout);
+            xml.writeCData(escapeIllegalCharacters(stdout));
             xml.writeEndElement();
           }
 
           String stderr = getStdErr();
           if (stderr != null) {
             xml.writeStartElement("system-err");
-            xml.writeCData(stderr);
+            xml.writeCData(escapeIllegalCharacters(stderr));
             xml.writeEndElement();
           }
 
