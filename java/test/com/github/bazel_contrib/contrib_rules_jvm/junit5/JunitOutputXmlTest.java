@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.platform.launcher.LauncherConstants.STDERR_REPORT_ENTRY_KEY;
+import static org.junit.platform.launcher.LauncherConstants.STDOUT_REPORT_ENTRY_KEY;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.mockito.Mockito;
@@ -166,6 +169,30 @@ public class JunitOutputXmlTest {
             + " | [&#55296;-&#57343;]"
             + " | [&#65534;-&#65535;]",
         message.getTextContent());
+  }
+
+  @Test
+  public void ensureOutputsAreProperlyEscaped() {
+    var test = new TestResult(Mockito.mock(TestPlan.class), identifier, false);
+    test.addReportEntry(ReportEntry.from(STDOUT_REPORT_ENTRY_KEY, "\u001B[31moh noes!\u001B[0m"));
+    test.addReportEntry(ReportEntry.from(STDERR_REPORT_ENTRY_KEY, "\u001B[31mAlso bad!\u001B[0m"));
+    test.markFinished(TestExecutionResult.successful());
+
+    Document xml = generateTestXml(test);
+
+    Node item = xml.getElementsByTagName("system-out").item(0);
+    Node cdata = item.getFirstChild();
+    assertEquals(Node.CDATA_SECTION_NODE, cdata.getNodeType());
+    String text = cdata.getTextContent();
+    // The escape characters should have been (uh) escaped.
+    assertEquals("&#27;[31moh noes!&#27;[0m", text);
+
+    item = xml.getElementsByTagName("system-err").item(0);
+    cdata = item.getFirstChild();
+    assertEquals(Node.CDATA_SECTION_NODE, cdata.getNodeType());
+    text = cdata.getTextContent();
+    // The escape characters should have been (uh) escaped.
+    assertEquals("&#27;[31mAlso bad!&#27;[0m", text);
   }
 
   private Document generateTestXml(BaseResult result) {
