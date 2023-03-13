@@ -8,12 +8,16 @@ PACKAGE_NAME_TEST = [
     "WrongPackageNameTest.java",
 ]
 
+SHARDING_TEST = [
+    "ShardingTest.java",
+]
+
 java_test_suite(
     name = "small-tests",
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST,
+        exclude = PACKAGE_NAME_TEST + SHARDING_TEST,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -39,5 +43,20 @@ java_test_suite(
     runner = "junit5",
     deps = [
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+# Use a Bazel test runner with a known good test sharding implementation.
+java_test(
+    name = "sharding-test",
+    size = "small",
+    srcs = SHARDING_TEST,
+    shard_count = 4,
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.ShardingTest",
+    deps = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
+        "//java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5/sample:sharding-test-tests",
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+        artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
 )

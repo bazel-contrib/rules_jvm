@@ -42,7 +42,10 @@ public class ActualRunner implements RunsTest {
       CommandLineSummary summary = new CommandLineSummary();
 
       LauncherConfig config =
-          LauncherConfig.builder().addTestExecutionListeners(bazelJunitXml, summary).build();
+          LauncherConfig.builder()
+              .addTestExecutionListeners(bazelJunitXml, summary)
+              .addPostDiscoveryFilters(TestSharding.makeShardFilter())
+              .build();
 
       DiscoverySelector classSelector = DiscoverySelectors.selectClass(testClassName);
 
