@@ -1,0 +1,15 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java:defs.bzl", "junit5_deps")
+
+java_library(
+    name = "sharding-test-tests",
+    srcs = [
+        "ShardingTestMoreTests.java",
+        "ShardingTestTests.java",
+    ],
+    visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5:__pkg__"],
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+        artifact("org.junit.jupiter:junit-jupiter-params", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
