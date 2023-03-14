@@ -13,14 +13,21 @@ _RUNNERS = [
     "junit5",
 ]
 
+_LIBRARY_ATTRS = [
+    "data",
+    "javacopts",
+    "plugins",
+    "resources",
+]
+
 def create_jvm_test_suite(
         name,
         srcs,
         test_suffixes,
         package,
-        library_attributes,
         define_library,
         define_test,
+        library_attributes = _LIBRARY_ATTRS,
         runner = "junit4",
         deps = None,
         runtime_deps = [],
@@ -50,10 +57,11 @@ def create_jvm_test_suite(
         calculated from the bazel package.
       library_attributes: Attributes to pass to `define_library`.
       define_library: A function that creates a `*_library` target.
-      define_test: A function that creates a `*_test` target.
+      define_test: A function that creates a `*_test` target and returns the name of the test.
+        (See java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5/suite_tags for example use)
       runner: The junit runner to use. Either "junit4" or "junit5".
       deps: The list of dependencies to use when compiling.
-      runtime_deps: The list of runtime deps to use when compiling.
+      runtime_deps: The list of runtime deps to use when running tests.
       tags: Tags to use for generated targets.
       size: Bazel test size
     """
@@ -92,10 +100,9 @@ def create_jvm_test_suite(
     for src in test_srcs:
         suffix = src.rfind(".")
         test_name = src[:suffix]
-        tests.append(test_name)
         test_class = get_class_name(package, src, package_prefixes)
 
-        define_test(
+        test_name = define_test(
             name = test_name,
             size = size,
             srcs = [src],
@@ -106,6 +113,7 @@ def create_jvm_test_suite(
             visibility = ["//visibility:private"],
             **kwargs
         )
+        tests.append(test_name)
 
     native.test_suite(
         name = name,
