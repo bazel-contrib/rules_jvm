@@ -7,13 +7,6 @@ load(":junit5.bzl", "java_junit5_test")
 # The key thing that this file adds is the ability to specify a
 # suite of java tests by just globbing the test files.
 
-_LIBRARY_ATTRS = [
-    "data",
-    "javacopts",
-    "plugins",
-    "resources",
-]
-
 def _define_library(name, **kwargs):
     java_library(
         name = name,
@@ -25,6 +18,7 @@ def _define_junit4_test(name, **kwargs):
         name = name,
         **kwargs
     )
+    return name
 
 def _define_junit5_test(name, **kwargs):
     java_junit5_test(
@@ -33,6 +27,7 @@ def _define_junit5_test(name, **kwargs):
         exclude_engines = kwargs.pop("exclude_engines", None),
         **kwargs
     )
+    return name
 
 # Note: the keys in this match the keys in `create_jvm_test_suite.bzl`'s
 # `_RUNNERS` constant
@@ -83,7 +78,6 @@ def java_test_suite(
         srcs = srcs,
         test_suffixes = test_suffixes,
         package = package,
-        library_attributes = _LIBRARY_ATTRS,
         define_library = _define_library,
         # Default to bazel's default test runner if we don't know what people want
         define_test = _TEST_GENERATORS.get(runner, _define_junit4_test),
