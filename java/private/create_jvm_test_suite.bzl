@@ -57,7 +57,7 @@ def create_jvm_test_suite(
         calculated from the bazel package.
       library_attributes: Attributes to pass to `define_library`.
       define_library: A function that creates a `*_library` target.
-      define_test: A function that creates a `*_test` target and returns the name of the test.
+      define_test: A function that creates a `*_test` target and returns the name of the created target.
         (See java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5/suite_tags for example use)
       runner: The junit runner to use. Either "junit4" or "junit5".
       deps: The list of dependencies to use when compiling.
