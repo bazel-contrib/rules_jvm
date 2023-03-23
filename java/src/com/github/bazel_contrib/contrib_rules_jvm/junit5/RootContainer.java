@@ -1,5 +1,9 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toCollection;
+
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -12,14 +16,18 @@ import org.junit.platform.launcher.TestPlan;
 public class RootContainer extends BaseResult {
 
   // Insertion order matters when we come to output the results
-  private final List<TestSuiteResult> suites = new LinkedList<>();
+  private final List<TestSuiteResult> suites;
   private final TestPlan testPlan;
 
   public RootContainer(TestIdentifier rootId, TestPlan testPlan) {
     super(rootId);
     this.testPlan = testPlan;
 
-    testPlan.getChildren(rootId).forEach(child -> suites.add(createSuite(child)));
+    suites =
+        testPlan.getChildren(rootId).stream()
+            .map(this::createSuite)
+            .collect(
+                collectingAndThen(toCollection(LinkedList::new), Collections::unmodifiableList));
   }
 
   public void addDynamicTest(TestIdentifier testIdentifier) {

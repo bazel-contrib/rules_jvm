@@ -1,17 +1,19 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toCollection;
 
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -50,7 +52,8 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     roots =
         testPlan.getRoots().stream()
             .map(root -> new RootContainer(root, testPlan))
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+            .collect(
+                collectingAndThen(toCollection(LinkedHashSet::new), Collections::unmodifiableSet));
   }
 
   @Override

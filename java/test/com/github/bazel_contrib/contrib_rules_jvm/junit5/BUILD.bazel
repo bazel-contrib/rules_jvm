@@ -1,11 +1,15 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "java_test_suite", "junit5_deps", "junit5_vintage_deps")
+load("//java:defs.bzl", "java_junit5_test", "java_test_suite", "junit5_deps", "junit5_vintage_deps")
 
 # Ignore this directory because of the wrong package name.
 # gazelle:ignore
 
 PACKAGE_NAME_TEST = [
     "WrongPackageNameTest.java",
+]
+
+PARALLEL_TEST = [
+    "ParallelTest.java",
 ]
 
 SHARDING_TEST = [
@@ -17,7 +21,7 @@ java_test_suite(
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST + SHARDING_TEST,
+        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -56,6 +60,25 @@ java_test(
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         "//java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5/sample:sharding-test-tests",
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+        artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "parallel-test",
+    size = "small",
+    srcs = PARALLEL_TEST,
+    jvm_flags = [
+        "-Djunit.jupiter.execution.parallel.enabled=true",
+        "-Djunit.jupiter.execution.parallel.mode.default=concurrent",
+        "-Djunit.jupiter.execution.parallel.config.strategy=fixed",
+        "-Djunit.jupiter.execution.parallel.config.fixed.parallelism=2",
+    ],
+    tags = ["cpu:2"],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.ParallelTest",
+    deps = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
