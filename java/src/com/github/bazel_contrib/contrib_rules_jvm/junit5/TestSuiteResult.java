@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import com.github.bazel_contrib.contrib_rules_jvm.junit5.CloseableReadWriteLock.SilentAutoCloseable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import org.junit.platform.launcher.TestIdentifier;
 
 class TestSuiteResult extends BaseResult {
 
+  private final CloseableReadWriteLock lock = new CloseableReadWriteLock();
   private final List<TestResult> results = new LinkedList<>();
   private final List<TestSuiteResult> nestedSuites = new LinkedList<>();
 
@@ -75,23 +77,29 @@ class TestSuiteResult extends BaseResult {
   }
 
   public void add(TestResult testResult) {
-    results.add(testResult);
+    try (SilentAutoCloseable ignored = lock.writeLock()) {
+      results.add(testResult);
+    }
   }
 
   public void add(TestSuiteResult suite) {
-    nestedSuites.add(suite);
+    try (SilentAutoCloseable ignored = lock.writeLock()) {
+      nestedSuites.add(suite);
+    }
   }
 
   @Override
   protected Optional<BaseResult> get(TestIdentifier id) {
-    if (getTestId().equals(id)) {
-      return Optional.of(this);
-    }
+    try (SilentAutoCloseable ignored = lock.readLock()) {
+      if (getTestId().equals(id)) {
+        return Optional.of(this);
+      }
 
-    return Stream.concat(results.stream(), nestedSuites.stream())
-        .map(result -> result.get(id))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .findFirst();
+      return Stream.concat(results.stream(), nestedSuites.stream())
+          .map(result -> result.get(id))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .findFirst();
+    }
   }
 }
