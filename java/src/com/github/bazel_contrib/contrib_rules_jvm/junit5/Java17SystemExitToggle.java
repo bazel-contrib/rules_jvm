@@ -28,7 +28,7 @@ public class Java17SystemExitToggle implements SystemExitToggle {
     if (Map.class.isAssignableFrom(callers.getClass())) {
       @SuppressWarnings("unchecked")
       Map<Class<?>, Boolean> map = Map.class.cast(callers);
-      map.put(getClass().getSuperclass(), true);
+      map.put(toggle.getClass(), true);
     }
   }
 
