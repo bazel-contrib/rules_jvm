@@ -32,7 +32,7 @@ def _pmd_test_impl(ctx):
     if ctx.attr.target != None and not pmd_info.shallow:
         jars = ctx.attr.target[JavaInfo].transitive_runtime_jars.to_list()
         if len(jars) > 0:
-            aux_class_path = ctx.host_configuration.host_path_separator.join([jar.short_path for jar in jars])
+            aux_class_path = ctx.configuration.host_path_separator.join([jar.short_path for jar in jars])
             cmd.extend(["--aux-classpath", aux_class_path])
 
             # runfiles requires the depset to be in `default` order
