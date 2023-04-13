@@ -10,12 +10,12 @@ java_test_suite(
     ],
     runner = "junit5",
     runtime_deps = [
-        "@frozen_deps//:org_junit_jupiter_junit_jupiter_engine",
-        "@frozen_deps//:org_junit_platform_junit_platform_launcher",
-        "@frozen_deps//:org_junit_platform_junit_platform_reporting",
+        "@contrib_rules_jvm_deps//:org_junit_jupiter_junit_jupiter_engine",
+        "@contrib_rules_jvm_deps//:org_junit_platform_junit_platform_launcher",
+        "@contrib_rules_jvm_deps//:org_junit_platform_junit_platform_reporting",
     ],
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/file",
-        "@frozen_deps//:org_junit_jupiter_junit_jupiter_api",
+        "@contrib_rules_jvm_deps//:org_junit_jupiter_junit_jupiter_api",
     ],
 )
