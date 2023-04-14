@@ -27,6 +27,14 @@ def contrib_rules_jvm_deps():
 
     maybe(
         http_archive,
+        name = "bazel_skylib_gazelle_plugin",
+        sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
+        strip_prefix = "bazel-skylib-1.3.0/gazelle",
+        url = "https://github.com/bazelbuild/bazel-skylib/archive/1.3.0.tar.gz",
+    )
+
+    maybe(
+        http_archive,
         name = "com_google_protobuf",
         sha256 = "c6003e1d2e7fefa78a3039f19f383b4f3a61e81be8c19356f85b6461998ad3db",
         strip_prefix = "protobuf-3.17.3",
