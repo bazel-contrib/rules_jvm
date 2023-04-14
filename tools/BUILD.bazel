@@ -37,4 +37,8 @@ sh_binary(
     data = [
         "//docs:readme",
     ],
+    tags = [
+        # Stardoc does not play nicely with bzlmod
+        "manual",
+    ],
 )

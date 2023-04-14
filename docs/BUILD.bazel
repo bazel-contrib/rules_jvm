@@ -8,6 +8,10 @@ stardoc(
     deps = [
         "//java:defs",
     ],
+    tags = [
+        # Stardoc doesn't work with bzlmod
+        "manual",
+    ],
 )
 
 genrule(
@@ -20,6 +24,10 @@ genrule(
     outs = ["README.md"],
     cmd = """cat $(location preamble.md) $(location :java-docs) $(location postfix.md) >$@""",
     visibility = ["//tools:__pkg__"],
+    tags = [
+        # Stardoc doesn't work with bzlmod
+        "manual",
+    ],
 )
 
 bzl_library(
