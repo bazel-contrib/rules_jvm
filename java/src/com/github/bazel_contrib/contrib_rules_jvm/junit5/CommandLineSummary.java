@@ -47,24 +47,32 @@ public class CommandLineSummary implements TestExecutionListener {
       String className = LegacyReportingUtils.getClassName(testPlan, entry.getKey());
 
       writer.printf("%d) %s (%s)%n", count, entry.getKey().getDisplayName(), className);
-
-      Throwable cause = failure.getCause();
-      StackTraceElement[] stackTrace = cause.getStackTrace();
-      // Find the last line in the stacktrace that matches the classname
-
-      int last = stackTrace.length - 1;
-      for (int i = 0; i < stackTrace.length; i++) {
-        if (className.equals(stackTrace[i].getClassName())) {
-          last = i;
-        }
-      }
-
-      writer.println(cause);
-      for (int i = 0; i <= last; i++) {
-        writer.println("\tat " + stackTrace[i]);
-      }
+      writeFilteredStackTrace(writer, failure.getCause(), className);
 
       count++;
+    }
+  }
+
+  private static void writeFilteredStackTrace(
+      PrintWriter writer, Throwable t, String testClassName) {
+    StackTraceElement[] stackTrace = t.getStackTrace();
+    // Find the last line in the stacktrace that matches the classname
+
+    int last = stackTrace.length - 1;
+    for (int i = 0; i < stackTrace.length; i++) {
+      if (testClassName.equals(stackTrace[i].getClassName())) {
+        last = i;
+      }
+    }
+
+    writer.println(t);
+    for (int i = 0; i <= last; i++) {
+      writer.println("\tat " + stackTrace[i]);
+    }
+
+    if (t.getCause() != null) {
+      writer.print("Caused by: ");
+      writeFilteredStackTrace(writer, t.getCause(), testClassName);
     }
   }
 
