@@ -43,7 +43,7 @@ pin_env = {"REPIN": "1"}
 pin_env.update(os.environ)
 
 # Repin our dependencies
-cmd = ["bazel", "run", "@unpinned_%s//:pin" % args.repo]
+cmd = ["bazel", "run", "--noenable_bzlmod", "@unpinned_%s//:pin" % args.repo]
 subprocess.check_call(cmd, env=pin_env, cwd = cwd)
 
 # Now grab the files we need from their output locations

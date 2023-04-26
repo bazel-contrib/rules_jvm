@@ -16,7 +16,7 @@ mv "${GO_DEPS_FILE}.new" "$GO_DEPS_FILE"
 bazel run //:buildifier
 
 
-REPIN=1 bazel run @unpinned_maven//:pin
+REPIN=1 bazel run --noenable_bzlmod @unpinned_contrib_rules_jvm_tests//:pin
 ./tools/freeze-deps.py
 bazel fetch "@frozen_deps//..."
 
