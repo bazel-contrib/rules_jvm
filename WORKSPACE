@@ -71,7 +71,7 @@ maven_install(
         "com.puppycrawl.tools:checkstyle:10.2",
 
         # PMD deps
-        "net.sourceforge.pmd:pmd-dist:6.46.0",
+        "net.sourceforge.pmd:pmd-dist:6.55.0",
 
         # Spotbugs deps
         # We don't want to force people to use 1.8-beta
