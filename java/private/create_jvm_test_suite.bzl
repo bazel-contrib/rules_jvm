@@ -90,6 +90,7 @@ def create_jvm_test_suite(
             srcs = nontest_srcs,
             testonly = True,
             visibility = visibility,
+            tags = tags,
             **library_attrs
         )
         if not _contains_label(deps or [], lib_dep_label):
