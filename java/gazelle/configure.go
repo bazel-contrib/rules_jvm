@@ -56,6 +56,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaModuleGranularityDirective,
 		javaconfig.JavaTestFileSuffixes,
 		javaconfig.JavaTestMode,
+		javaconfig.JavaGenerateProto,
 	}
 }
 
@@ -107,6 +108,17 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.JavaTestMode:
 				cfg.SetTestMode(d.Value)
+
+			case javaconfig.JavaGenerateProto:
+				switch d.Value {
+				case "true":
+					cfg.SetGenerateProto(true)
+				case "false":
+					cfg.SetGenerateProto(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JavaGenerateProto, d.Value)
+				}
 			}
 		}
 	}
