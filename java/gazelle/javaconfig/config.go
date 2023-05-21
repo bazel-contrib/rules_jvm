@@ -38,7 +38,7 @@ const (
 	// JavaTestMode allows user to choose from per file test or per directory test suite.
 	JavaTestMode = "java_test_mode"
 
-	// JavaGenerateProto tells the code generator not to generate `java_proto_library` or `java_library`
+	// JavaGenerateProto tells the code generator whether to generate `java_proto_library` or `java_library`
 	// rules when a `proto_library` rule is present.
 	JavaGenerateProto = "java_generate_proto"
 )
