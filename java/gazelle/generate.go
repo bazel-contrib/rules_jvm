@@ -50,58 +50,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		return res
 	}
 
-	var protoRuleNames []string
-	protoPackages := make(map[string]proto.Package)
-	protoFileInfo := make(map[string]proto.FileInfo)
-	for _, r := range args.OtherGen {
-		if r.Kind() != "proto_library" {
-			continue
-		}
-		pkg := r.PrivateAttr(proto.PackageKey).(proto.Package)
-		protoPackages[r.Name()] = pkg
-		for name, info := range pkg.Files {
-			protoFileInfo[name] = info
-		}
-		protoRuleNames = append(protoRuleNames, r.Name())
-	}
-	sort.Strings(protoRuleNames)
-
 	isModule := cfg.ModuleGranularity() == "module"
 
-	for _, protoRuleName := range protoRuleNames {
-		protoPackage := protoPackages[protoRuleName]
-
-		jplName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_proto"
-		jglName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_grpc"
-		jlName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_library"
-
-		rjpl := rule.NewRule("java_proto_library", jplName)
-		rjpl.SetAttr("deps", []string{":" + protoRuleName})
-		res.Gen = append(res.Gen, rjpl)
-		res.Imports = append(res.Imports, types.ResolveInput{})
-
-		if protoPackage.HasServices {
-			r := rule.NewRule("java_grpc_library", jglName)
-			r.SetAttr("srcs", []string{":" + protoRuleName})
-			r.SetAttr("deps", []string{":" + jplName})
-			res.Gen = append(res.Gen, r)
-			res.Imports = append(res.Imports, types.ResolveInput{})
-		}
-
-		rjl := rule.NewRule("java_library", jlName)
-		rjl.SetAttr("visibility", []string{"//:__subpackages__"})
-		var exports []string
-		if protoPackage.HasServices {
-			exports = append(exports, ":"+jglName)
-		}
-		rjl.SetAttr("exports", append(exports, ":"+jplName))
-		packageName := types.NewPackageName(protoPackage.Options["java_package"])
-		log.Debug().Str("pkg", packageName.Name).Msg("adding the proto import statement")
-		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(packageName, false, false)})
-		res.Gen = append(res.Gen, rjl)
-		res.Imports = append(res.Imports, types.ResolveInput{
-			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
-		})
+	if cfg.GenerateProto() {
+		generateProtoLibraries(args, log, &res)
 	}
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
@@ -349,6 +301,60 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 	}
 
 	return runtimeDeps
+}
+
+func generateProtoLibraries(args language.GenerateArgs, log zerolog.Logger, res *language.GenerateResult) {
+	var protoRuleNames []string
+	protoPackages := make(map[string]proto.Package)
+	protoFileInfo := make(map[string]proto.FileInfo)
+	for _, r := range args.OtherGen {
+		if r.Kind() != "proto_library" {
+			continue
+		}
+		pkg := r.PrivateAttr(proto.PackageKey).(proto.Package)
+		protoPackages[r.Name()] = pkg
+		for name, info := range pkg.Files {
+			protoFileInfo[name] = info
+		}
+		protoRuleNames = append(protoRuleNames, r.Name())
+	}
+	sort.Strings(protoRuleNames)
+
+	for _, protoRuleName := range protoRuleNames {
+		protoPackage := protoPackages[protoRuleName]
+
+		jplName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_proto"
+		jglName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_grpc"
+		jlName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_library"
+
+		rjpl := rule.NewRule("java_proto_library", jplName)
+		rjpl.SetAttr("deps", []string{":" + protoRuleName})
+		res.Gen = append(res.Gen, rjpl)
+		res.Imports = append(res.Imports, types.ResolveInput{})
+
+		if protoPackage.HasServices {
+			r := rule.NewRule("java_grpc_library", jglName)
+			r.SetAttr("srcs", []string{":" + protoRuleName})
+			r.SetAttr("deps", []string{":" + jplName})
+			res.Gen = append(res.Gen, r)
+			res.Imports = append(res.Imports, types.ResolveInput{})
+		}
+
+		rjl := rule.NewRule("java_library", jlName)
+		rjl.SetAttr("visibility", []string{"//:__subpackages__"})
+		var exports []string
+		if protoPackage.HasServices {
+			exports = append(exports, ":"+jglName)
+		}
+		rjl.SetAttr("exports", append(exports, ":"+jplName))
+		packageName := types.NewPackageName(protoPackage.Options["java_package"])
+		log.Debug().Str("pkg", packageName.Name).Msg("adding the proto import statement")
+		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(packageName, false, false)})
+		res.Gen = append(res.Gen, rjl)
+		res.Imports = append(res.Imports, types.ResolveInput{
+			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
+		})
+	}
 }
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.

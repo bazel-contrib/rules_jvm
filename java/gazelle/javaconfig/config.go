@@ -37,6 +37,11 @@ const (
 
 	// JavaTestMode allows user to choose from per file test or per directory test suite.
 	JavaTestMode = "java_test_mode"
+
+	// JavaGenerateProto tells the code generator whether to generate `java_proto_library` (and `java_library`)
+	// rules when a `proto_library` rule is present.
+	// Can be either "true" or "false". Defaults to "true".
+	JavaGenerateProto = "java_generate_proto"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -50,6 +55,7 @@ func (c *Config) NewChild() *Config {
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
+		generateProto:          true,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
 		repoRoot:               c.repoRoot,
@@ -75,6 +81,7 @@ type Config struct {
 
 	extensionEnabled       bool
 	isModuleRoot           bool
+	generateProto          bool
 	mavenInstallFile       string
 	moduleGranularity      string
 	repoRoot               string
@@ -94,6 +101,7 @@ func New(repoRoot string) *Config {
 	return &Config{
 		extensionEnabled:       true,
 		isModuleRoot:           false,
+		generateProto:          true,
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,
@@ -116,6 +124,14 @@ func (c *Config) SetExtensionEnabled(enabled bool) {
 
 func (c Config) IsModuleRoot() bool {
 	return c.isModuleRoot
+}
+
+func (c *Config) GenerateProto() bool {
+	return c.generateProto
+}
+
+func (c *Config) SetGenerateProto(generate bool) {
+	c.generateProto = generate
 }
 
 func (c Config) MavenInstallFile() string {

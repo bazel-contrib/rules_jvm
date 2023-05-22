@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package example.hello;
+
+option java_outer_classname = "HelloProto";
+option java_multiple_files = true;
+option java_package = "com.example.hello";
+
+message Book {
+  string title = 1;
+  string author = 2;
+}
