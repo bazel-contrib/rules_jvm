@@ -21,7 +21,6 @@ def contrib_rules_jvm_deps():
         http_archive,
         name = "bazel_skylib",
         sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
-        strip_prefix = "bazel-skylib-1.4.2",
         url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
     )
 
@@ -51,7 +50,7 @@ def contrib_rules_jvm_deps():
         name = "rules_jvm_external",
         sha256 = "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac",
         strip_prefix = "rules_jvm_external-5.3",
-        url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.3/rules_jvm_external-5.3.tar.gz"",
+        url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.3/rules_jvm_external-5.3.tar.gz",
     )
 
 def contrib_rules_jvm_gazelle_deps():
@@ -59,7 +58,6 @@ def contrib_rules_jvm_gazelle_deps():
         http_archive,
         name = "bazel_gazelle",
         sha256 = "b8b6d75de6e4bf7c41b7737b183523085f56283f6db929b86c5e7e1f09cf59c9",
-        strip_prefix = "bazel-gazelle-v0.31.1",
         urls = [
             "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.1/bazel-gazelle-v0.31.1.tar.gz",
         ],
@@ -77,7 +75,7 @@ def contrib_rules_jvm_gazelle_deps():
         http_archive,
         name = "io_bazel_rules_go",
         sha256 = "51dc53293afe317d2696d4d6433a4c33feedb7748a9e352072e2ec3c0dafd2c6",
-        url ="https://github.com/bazelbuild/rules_go/releases/download/v0.40.1/rules_go-v0.40.1.zip",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.40.1/rules_go-v0.40.1.zip",
     )
 
     maybe(
