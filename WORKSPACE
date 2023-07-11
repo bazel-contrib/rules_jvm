@@ -38,6 +38,7 @@ contrib_rules_jvm_gazelle_setup()
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS")
+load("//third_party:protobuf_version.bzl", "PROTOBUF_JAVA_VERSION")
 
 # This only exists to give us a target to use with `./tools/update-dependencies.sh`.
 # If you update this, then please re-run that script and commit the changes to repo.
@@ -91,6 +92,10 @@ maven_install(
         },
         "org.slf4j:slf4j-api:1.7.32",
         "org.slf4j:slf4j-jdk14:1.7.32",
+
+        # We explicitly declare a protobuf runtime version
+        # so that it coincides with the one we use to generate the code.
+        "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
     ] + IO_GRPC_GRPC_JAVA_ARTIFACTS,
     fail_if_repin_required = True,
     fetch_sources = True,

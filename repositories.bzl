@@ -1,5 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("//third_party:protobuf_version.bzl", "PROTOBUF_VERSION")
 load("//java/private:zip_repository.bzl", "zip_repository")
 
 def contrib_rules_jvm_deps():
@@ -36,9 +37,9 @@ def contrib_rules_jvm_deps():
     maybe(
         http_archive,
         name = "com_google_protobuf",
-        sha256 = "c6003e1d2e7fefa78a3039f19f383b4f3a61e81be8c19356f85b6461998ad3db",
-        strip_prefix = "protobuf-3.17.3",
-        urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.17.3.tar.gz"],
+        sha256 = "75be42bd736f4df6d702a0e4e4d30de9ee40eac024c4b845d17ae4cc831fe4ae",
+        strip_prefix = "protobuf-{}".format(PROTOBUF_VERSION),
+        urls = ["https://github.com/protocolbuffers/protobuf/archive/v{}.tar.gz".format(PROTOBUF_VERSION)],
     )
 
     maybe(
@@ -95,6 +96,8 @@ def contrib_rules_jvm_gazelle_deps():
         http_archive,
         name = "rules_proto",
         sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
-        strip_prefix = "rules_proto-5.3.0-21.7",
-        url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
+        # We intentionally format it with the protobuf version to ensure that,
+        # if we try to upgrade protobuf without upgrading rules_proto, it crashes.
+        strip_prefix = "rules_proto-5.3.0-{}".format(PROTOBUF_VERSION),
+        url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-{}.tar.gz".format(PROTOBUF_VERSION),
     )
