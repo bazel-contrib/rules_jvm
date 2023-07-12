@@ -55,6 +55,8 @@ def contrib_rules_jvm_deps():
     )
 
 def contrib_rules_jvm_gazelle_deps():
+    io_grpc_grpc_java()
+
     maybe(
         http_archive,
         name = "bazel_gazelle",
@@ -81,18 +83,19 @@ def contrib_rules_jvm_gazelle_deps():
 
     maybe(
         http_archive,
-        name = "io_grpc_grpc_java",
-        sha256 = "17dd91014032a147c978ae99582fddd950f5444388eae700cf51eda0326ad2f9",
-        strip_prefix = "grpc-java-1.56.1",
-        urls = ["https://github.com/grpc/grpc-java/archive/v1.56.1.tar.gz"],
-    )
-
-    maybe(
-        http_archive,
         name = "rules_proto",
         sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
         # We intentionally format it with the protobuf version to ensure that,
         # if we try to upgrade protobuf without upgrading rules_proto, it crashes.
         strip_prefix = "rules_proto-5.3.0-{}".format(PROTOBUF_VERSION),
         url = "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-{}.tar.gz".format(PROTOBUF_VERSION),
+    )
+
+def io_grpc_grpc_java():
+    maybe(
+        http_archive,
+        name = "io_grpc_grpc_java",
+        sha256 = "17dd91014032a147c978ae99582fddd950f5444388eae700cf51eda0326ad2f9",
+        strip_prefix = "grpc-java-1.56.1",
+        urls = ["https://github.com/grpc/grpc-java/archive/v1.56.1.tar.gz"],
     )
