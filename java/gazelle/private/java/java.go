@@ -27,6 +27,7 @@ var stdlibPrefixes = []types.PackageName{
 	types.NewPackageName("com.sun.management"),
 	types.NewPackageName("com.sun.net.httpserver"),
 	types.NewPackageName("java"),
+	types.NewPackageName("javax.annotation.processing"),
 	types.NewPackageName("javax.annotation.security"),
 	types.NewPackageName("javax.crypto"),
 	types.NewPackageName("javax.management"),
