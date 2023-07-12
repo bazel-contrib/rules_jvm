@@ -18,26 +18,26 @@ func TestResolver(t *testing.T) {
 
 	m := make(map[string]struct{})
 	m["@maven//:com_google_j2objc_j2objc_annotations"] = struct{}{}
-	r, err := NewResolver("testdata/guava_maven_install.json", m, logger)
+	r, err := NewResolver("testdata/guava_maven_install.json", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assertResolves(t, r, "com.google.common.collect", "@maven//:com_google_guava_guava")
-	assertResolves(t, r, "javax.annotation", "@maven//:com_google_code_findbugs_jsr305")
-	got, err := r.Resolve(types.NewPackageName("unknown.package"))
+	assertResolves(t, r, m, "com.google.common.collect", "@maven//:com_google_guava_guava")
+	assertResolves(t, r, m, "javax.annotation", "@maven//:com_google_code_findbugs_jsr305")
+	got, err := r.Resolve(types.NewPackageName("unknown.package"), m)
 	if err == nil {
 		t.Errorf("Want error finding label for unknown.package, got %v", got)
 	}
-	got, err = r.Resolve(types.NewPackageName("com.google.j2objc.annotations"))
+	got, err = r.Resolve(types.NewPackageName("com.google.j2objc.annotations"), m)
 	if err == nil {
 		t.Errorf("Want error finding label for excluded artifact, got %v", got)
 	}
 
 }
 
-func assertResolves(t *testing.T, r Resolver, pkg, wantLabelStr string) {
-	got, err := r.Resolve(types.NewPackageName(pkg))
+func assertResolves(t *testing.T, r Resolver, excludePackages map[string]struct{}, pkg, wantLabelStr string) {
+	got, err := r.Resolve(types.NewPackageName(pkg), excludePackages)
 	if err != nil {
 		t.Errorf("Error finding label for %v: %v", pkg, err)
 	}

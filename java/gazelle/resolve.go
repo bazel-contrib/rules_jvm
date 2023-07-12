@@ -7,6 +7,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
@@ -81,13 +82,17 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 	resolveInput := imports.(types.ResolveInput)
 
+	packageConfig := c.Exts[languageName].(javaconfig.Configs)[from.Pkg]
+	if (packageConfig == nil) {
+		jr.lang.logger.Fatal().Msg("failed retrieving package config")
+	}
 	isTestRule := isTestRule(r.Kind())
 
-	jr.populateAttr(c, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
-	jr.populateAttr(c, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 }
 
-func (jr Resolver) populateAttr(c *config.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
+func (jr Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
 
 	for _, implicitDep := range r.AttrStrings(attrName) {
@@ -99,7 +104,7 @@ func (jr Resolver) populateAttr(c *config.Config, r *rule.Rule, attrName string,
 	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
-		dep, err := jr.resolveSinglePackage(c, imp, ix, from, isTestRule, ownPackageNames)
+		dep, err := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
 		if err != nil {
 			jr.lang.logger.Error().Str("import", dep.String()).Err(err).Msg("error converting import")
 			panic(fmt.Sprintf("error converting import: %s", err))
@@ -151,7 +156,7 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) resolveSinglePackage(c *config.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
+func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
@@ -192,7 +197,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, imp types.PackageName
 		return label.NoLabel, nil
 	}
 
-	if l, err := jr.lang.mavenResolver.Resolve(imp); err == nil {
+	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts()); err == nil {
 		return l, nil
 	}
 
