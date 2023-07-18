@@ -28,7 +28,9 @@ class TestResult extends BaseResult {
 
   public boolean isError() {
     TestExecutionResult result = getResult();
-    if (result == null || result.getStatus() == TestExecutionResult.Status.SUCCESSFUL) {
+    if (result == null
+        || result.getStatus() == TestExecutionResult.Status.SUCCESSFUL
+        || isSkipped()) {
       return false;
     }
 
@@ -37,7 +39,9 @@ class TestResult extends BaseResult {
 
   public boolean isFailure() {
     TestExecutionResult result = getResult();
-    if (result == null || result.getStatus() == TestExecutionResult.Status.SUCCESSFUL) {
+    if (result == null
+        || result.getStatus() == TestExecutionResult.Status.SUCCESSFUL
+        || isSkipped()) {
       return false;
     }
 
@@ -81,28 +85,12 @@ class TestResult extends BaseResult {
 
           if (isDisabled() || isSkipped()) {
             xml.writeStartElement("skipped");
+            writeThrowableMessage(xml);
             xml.writeEndElement();
           }
           if (isFailure() || isError()) {
-            Throwable throwable = getResult().getThrowable().orElse(null);
-
             xml.writeStartElement(isFailure() ? "failure" : "error");
-            if (throwable == null) {
-              // Stub out the values
-              xml.writeAttribute("message", "unknown cause");
-              xml.writeAttribute("type", RuntimeException.class.getName());
-              xml.writeEndElement();
-              return;
-            }
-
-            xml.writeAttribute(
-                "message", escapeIllegalCharacters(String.valueOf(throwable.getMessage())));
-            xml.writeAttribute("type", throwable.getClass().getName());
-
-            StringWriter stringWriter = new StringWriter();
-            throwable.printStackTrace(new PrintWriter(stringWriter));
-
-            xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
+            writeThrowableMessage(xml);
             xml.writeEndElement();
           }
 
@@ -121,6 +109,31 @@ class TestResult extends BaseResult {
           }
 
           xml.writeEndElement();
+        });
+  }
+
+  private void writeThrowableMessage(XMLStreamWriter xml) {
+    write(
+        () -> {
+          Throwable throwable = null;
+          if (getResult() != null) {
+            throwable = getResult().getThrowable().orElse(null);
+          }
+          if (throwable == null) {
+            // Stub out the values
+            xml.writeAttribute("message", "unknown cause");
+            xml.writeAttribute("type", RuntimeException.class.getName());
+            return;
+          }
+
+          xml.writeAttribute(
+              "message", escapeIllegalCharacters(String.valueOf(throwable.getMessage())));
+          xml.writeAttribute("type", throwable.getClass().getName());
+
+          StringWriter stringWriter = new StringWriter();
+          throwable.printStackTrace(new PrintWriter(stringWriter));
+
+          xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
         });
   }
 

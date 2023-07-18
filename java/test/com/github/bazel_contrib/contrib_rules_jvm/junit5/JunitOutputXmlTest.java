@@ -84,6 +84,42 @@ public class JunitOutputXmlTest {
     result.markFinished(testExecutionResult);
 
     assertFalse(result.isDisabled());
+    assertTrue(result.isSkipped());
+  }
+
+  @Test
+  public void skippedTestsAreNotFailures() {
+    TestPlan testPlan = Mockito.mock(TestPlan.class);
+
+    TestResult result = new TestResult(testPlan, identifier, false);
+    TestExecutionResult testExecutionResult =
+        TestExecutionResult.aborted(new TestAbortedException("skipping is fun"));
+    result.markFinished(testExecutionResult);
+
+    assertTrue(result.isSkipped());
+    assertFalse(result.isFailure());
+    assertFalse(result.isError());
+    assertFalse(result.isDisabled());
+  }
+
+  @Test
+  public void skippedTestsContainMessages() {
+    var test = new TestResult(Mockito.mock(TestPlan.class), identifier, false);
+    test.markFinished(TestExecutionResult.aborted(new TestAbortedException("skipping is fun")));
+
+    var root = generateTestXml(test).getDocumentElement();
+    assertNotNull(root);
+    assertEquals("testcase", root.getTagName());
+
+    var skipped = root.getElementsByTagName("skipped");
+    assertEquals(1, skipped.getLength());
+
+    var failures = root.getElementsByTagName("failure");
+    assertEquals(0, failures.getLength());
+
+    var message = skipped.item(0).getAttributes().getNamedItem("message");
+    assertNotNull(message);
+    assertEquals("skipping is fun", message.getTextContent());
   }
 
   @Test
@@ -113,9 +149,9 @@ public class JunitOutputXmlTest {
     assertEquals(1, allTestCases.getLength());
     Node testCase = allTestCases.item(0);
 
-    boolean skippedSeen = containsChild("skipped", testCase);
+    Node skipped = getChild("skipped", testCase);
 
-    assertTrue(skippedSeen);
+    assertNotNull(skipped);
   }
 
   @Test
@@ -212,7 +248,7 @@ public class JunitOutputXmlTest {
     }
   }
 
-  private boolean containsChild(String childTagName, Node withinNode) {
+  private Node getChild(String childTagName, Node withinNode) {
     NodeList childNodes = withinNode.getChildNodes();
     for (int i = 0; i < childNodes.getLength(); i++) {
       Node node = childNodes.item(i);
@@ -220,10 +256,10 @@ public class JunitOutputXmlTest {
         continue;
       }
       if (childTagName.equals(node.getNodeName())) {
-        return true;
+        return node;
       }
     }
-    return false;
+    return null;
   }
 
   private UniqueId createId(String testName) {
