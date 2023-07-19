@@ -5,6 +5,6 @@ java_test_suite(
     srcs = ["AppTest.java"],
     deps = [
         "//src/main/java/com/example/myproject",
-        "@maven//:junit_junit",
+        "@vendor_java//:junit_junit",
     ],
 )

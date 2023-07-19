@@ -12,7 +12,7 @@ import (
 )
 
 type Resolver interface {
-	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error)
+	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
 }
 
 // resolver finds Maven provided packages by reading the maven_install.json
@@ -43,16 +43,15 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse coordinate %v: %w", coords, err)
 		}
-		l := LabelFromArtifact(coords.ArtifactString())
 		for _, pkg := range c.ListDependencyPackages(depName) {
-			r.data.Add(pkg, l.String())
+			r.data.Add(pkg, coords.ArtifactString())
 		}
 	}
 
 	return &r, nil
 }
 
-func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error) {
+func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	v, found := r.data.Get(pkg.Name)
 	if !found {
 		return label.NoLabel, fmt.Errorf("package not found: %s", pkg)
@@ -60,10 +59,10 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 
 	var filtered []string
 	for k := range v {
-		if _, excluded := excludedArtifacts[k]; excluded {
+		if _, excluded := excludedArtifacts[LabelFromArtifact(mavenRepositoryName, k).String()]; excluded {
 			continue
 		}
-		filtered = append(filtered, k)
+		filtered = append(filtered, LabelFromArtifact(mavenRepositoryName, k).String())
 	}
 
 	switch len(filtered) {
@@ -88,6 +87,6 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 	}
 }
 
-func LabelFromArtifact(artifact string) label.Label {
-	return label.New("maven", "", bazel.CleanupLabel(artifact))
+func LabelFromArtifact(mavenRepositoryName string, artifact string) label.Label {
+	return label.New(mavenRepositoryName, "", bazel.CleanupLabel(artifact))
 }

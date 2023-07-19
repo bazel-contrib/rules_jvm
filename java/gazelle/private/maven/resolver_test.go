@@ -25,11 +25,11 @@ func TestResolver(t *testing.T) {
 
 	assertResolves(t, r, m, "com.google.common.collect", "@maven//:com_google_guava_guava")
 	assertResolves(t, r, m, "javax.annotation", "@maven//:com_google_code_findbugs_jsr305")
-	got, err := r.Resolve(types.NewPackageName("unknown.package"), m)
+	got, err := r.Resolve(types.NewPackageName("unknown.package"), m, "maven")
 	if err == nil {
 		t.Errorf("Want error finding label for unknown.package, got %v", got)
 	}
-	got, err = r.Resolve(types.NewPackageName("com.google.j2objc.annotations"), m)
+	got, err = r.Resolve(types.NewPackageName("com.google.j2objc.annotations"), m, "maven")
 	if err == nil {
 		t.Errorf("Want error finding label for excluded artifact, got %v", got)
 	}
@@ -37,7 +37,7 @@ func TestResolver(t *testing.T) {
 }
 
 func assertResolves(t *testing.T, r Resolver, excludePackages map[string]struct{}, pkg, wantLabelStr string) {
-	got, err := r.Resolve(types.NewPackageName(pkg), excludePackages)
+	got, err := r.Resolve(types.NewPackageName(pkg), excludePackages, "maven")
 	if err != nil {
 		t.Errorf("Error finding label for %v: %v", pkg, err)
 	}

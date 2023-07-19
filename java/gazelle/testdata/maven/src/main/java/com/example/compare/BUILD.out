@@ -4,7 +4,7 @@ java_library(
     name = "compare",
     srcs = ["Compare.java"],
     visibility = ["//:__subpackages__"],
-    deps = ["@maven//:com_google_guava_guava"],
+    deps = ["@vendor_java//:com_google_guava_guava"],
 )
 
 java_binary(
