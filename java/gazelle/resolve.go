@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
@@ -83,7 +83,7 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 	resolveInput := imports.(types.ResolveInput)
 
 	packageConfig := c.Exts[languageName].(javaconfig.Configs)[from.Pkg]
-	if (packageConfig == nil) {
+	if packageConfig == nil {
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
 	isTestRule := isTestRule(r.Kind())
