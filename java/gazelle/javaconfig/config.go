@@ -51,6 +51,10 @@ type Configs map[string]*Config
 // NewChild creates a new child Config. It inherits desired values from the
 // current Config and sets itself as the parent to the child.
 func (c *Config) NewChild() *Config {
+	clonedExcludedArtifacts := make(map[string]struct{})
+	for key, value := range c.excludedArtifacts {
+		clonedExcludedArtifacts[key] = value
+	}
 	return &Config{
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
@@ -62,6 +66,7 @@ func (c *Config) NewChild() *Config {
 		testMode:               c.testMode,
 		customTestFileSuffixes: c.customTestFileSuffixes,
 		annotationToAttribute:  c.annotationToAttribute,
+		excludedArtifacts:      clonedExcludedArtifacts,
 	}
 }
 

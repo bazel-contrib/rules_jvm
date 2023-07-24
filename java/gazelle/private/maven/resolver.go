@@ -12,7 +12,7 @@ import (
 )
 
 type Resolver interface {
-	Resolve(pkg types.PackageName) (label.Label, error)
+	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error)
 }
 
 // resolver finds Maven provided packages by reading the maven_install.json
@@ -22,7 +22,7 @@ type resolver struct {
 	logger zerolog.Logger
 }
 
-func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logger zerolog.Logger) (Resolver, error) {
+func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
 		data:   multiset.NewStringMultiSet(),
 		logger: logger.With().Str("_c", "maven-resolver").Logger(),
@@ -43,10 +43,7 @@ func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logg
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse coordinate %v: %w", coords, err)
 		}
-		l := label.New("maven", "", bazel.CleanupLabel(coords.ArtifactString()))
-		if _, found := excludedArtifacts[l.String()]; found {
-			continue
-		}
+		l := LabelFromArtifact(coords.ArtifactString())
 		for _, pkg := range c.ListDependencyPackages(depName) {
 			r.data.Add(pkg, l.String())
 		}
@@ -55,19 +52,27 @@ func NewResolver(installFile string, excludedArtifacts map[string]struct{}, logg
 	return &r, nil
 }
 
-func (r *resolver) Resolve(pkg types.PackageName) (label.Label, error) {
+func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error) {
 	v, found := r.data.Get(pkg.Name)
 	if !found {
 		return label.NoLabel, fmt.Errorf("package not found: %s", pkg)
 	}
 
-	switch len(v) {
+	var filtered []string
+	for k := range v {
+		if _, excluded := excludedArtifacts[k]; excluded {
+			continue
+		}
+		filtered = append(filtered, k)
+	}
+
+	switch len(filtered) {
 	case 0:
 		return label.NoLabel, errors.New("no external imports")
 
 	case 1:
 		var ret string
-		for r := range v {
+		for _, r := range filtered {
 			ret = r
 			break
 		}
@@ -75,7 +80,7 @@ func (r *resolver) Resolve(pkg types.PackageName) (label.Label, error) {
 
 	default:
 		r.logger.Error().Msg("Append one of the following to BUILD.bazel:")
-		for k := range v {
+		for _, k := range filtered {
 			r.logger.Error().Msgf("# gazelle:resolve java %s %s", pkg, k)
 		}
 

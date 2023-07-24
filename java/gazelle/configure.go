@@ -134,7 +134,6 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if jc.lang.mavenResolver == nil {
 		resolver, err := maven.NewResolver(
 			cfg.MavenInstallFile(),
-			cfg.ExcludedArtifacts(),
 			jc.lang.logger,
 		)
 		if err != nil {
