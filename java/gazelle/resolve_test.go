@@ -240,7 +240,7 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 
 type testResolver struct{}
 
-func (*testResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error) {
+func (*testResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	return label.NoLabel, errors.New("not implemented")
 }
 
@@ -280,7 +280,7 @@ func NewTestMavenResolver() *TestMavenResolver {
 	}
 }
 
-func (r *TestMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}) (label.Label, error) {
+func (r *TestMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	l, found := r.data[pkg]
 	if !found {
 		return label.NoLabel, fmt.Errorf("unexpected import: %s", pkg)

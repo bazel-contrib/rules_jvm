@@ -42,6 +42,10 @@ const (
 	// rules when a `proto_library` rule is present.
 	// Can be either "true" or "false". Defaults to "true".
 	JavaGenerateProto = "java_generate_proto"
+
+	// JavaMavenRepositoryName tells the code generator what the repository name that contains all maven dependencies is.
+	// Defaults to "maven"
+	JavaMavenRepositoryName = "java_maven_repository_name"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -67,6 +71,7 @@ func (c *Config) NewChild() *Config {
 		customTestFileSuffixes: c.customTestFileSuffixes,
 		annotationToAttribute:  c.annotationToAttribute,
 		excludedArtifacts:      clonedExcludedArtifacts,
+		mavenRepositoryName:    c.mavenRepositoryName,
 	}
 }
 
@@ -94,6 +99,7 @@ type Config struct {
 	customTestFileSuffixes *[]string
 	excludedArtifacts      map[string]struct{}
 	annotationToAttribute  map[string]map[string]bzl.Expr
+	mavenRepositoryName    string
 }
 
 type LoadInfo struct {
@@ -114,6 +120,7 @@ func New(repoRoot string) *Config {
 		customTestFileSuffixes: nil,
 		excludedArtifacts:      make(map[string]struct{}),
 		annotationToAttribute:  make(map[string]map[string]bzl.Expr),
+		mavenRepositoryName:    "maven",
 	}
 }
 
@@ -137,6 +144,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) MavenRepositoryName() string {
+	return c.mavenRepositoryName
+}
+
+func (c *Config) SetMavenRepositoryName(name string) {
+	c.mavenRepositoryName = name
 }
 
 func (c Config) MavenInstallFile() string {

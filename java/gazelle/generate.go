@@ -216,7 +216,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				extraAttributes := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, tf, isModule, testJavaImportsWithHelpers, extraAttributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, extraAttributes, &res)
 			}
 
 		case "suite":
@@ -242,6 +242,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					suiteName,
 					srcs,
 					packageNames,
+					cfg.MavenRepositoryName(),
 					testJavaImportsWithHelpers,
 					cfg.GetCustomJavaTestFileSuffixes(),
 					testHelperJavaFiles.Len() > 0,
@@ -254,7 +255,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				sortedSeparateTestJavaFiles.Add(src)
 			}
 			for _, src := range sortedSeparateTestJavaFiles.SortedSlice() {
-				l.generateJavaTest(args.File, args.Rel, src, isModule, testJavaImportsWithHelpers, separateTestJavaFiles[src], &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, separateTestJavaFiles[src], &res)
 			}
 		}
 	}
@@ -459,7 +460,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -481,7 +482,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		// up the resolver to do this. We probably should.
 		// In the mean time, hard-code some labels.
 		for _, artifact := range junit5RuntimeDeps {
-			runtimeDeps.Add(maven.LabelFromArtifact(artifact))
+			runtimeDeps.Add(maven.LabelFromArtifact(mavenRepositoryName, artifact))
 		}
 	}
 
@@ -533,7 +534,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
@@ -549,10 +550,10 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	if importsJunit5(imports) {
 		r.SetAttr("runner", "junit5")
 		for _, artifact := range junit5RuntimeDeps {
-			runtimeDeps.Add(maven.LabelFromArtifact(artifact))
+			runtimeDeps.Add(maven.LabelFromArtifact(mavenRepositoryName, artifact))
 		}
 		if importsJunit4(imports) {
-			runtimeDeps.Add(maven.LabelFromArtifact("org.junit.vintage:junit-vintage-engine"))
+			runtimeDeps.Add(maven.LabelFromArtifact(mavenRepositoryName, "org.junit.vintage:junit-vintage-engine"))
 		}
 		// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
 		// but we don't currently wire up the resolver to do this.

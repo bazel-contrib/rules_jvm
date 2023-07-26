@@ -197,7 +197,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return label.NoLabel, nil
 	}
 
-	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts()); err == nil {
+	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err == nil {
 		return l, nil
 	}
 

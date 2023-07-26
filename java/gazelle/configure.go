@@ -57,6 +57,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestFileSuffixes,
 		javaconfig.JavaTestMode,
 		javaconfig.JavaGenerateProto,
+		javaconfig.JavaMavenRepositoryName,
 	}
 }
 
@@ -108,6 +109,9 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.JavaTestMode:
 				cfg.SetTestMode(d.Value)
+
+			case javaconfig.JavaMavenRepositoryName:
+				cfg.SetMavenRepositoryName(d.Value)
 
 			case javaconfig.JavaGenerateProto:
 				switch d.Value {
