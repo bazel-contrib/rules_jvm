@@ -16,12 +16,16 @@ SHARDING_TEST = [
     "ShardingTest.java",
 ]
 
+VINTAGE_NESTED_TEST = [
+    "NestedClassesVintageTest.java",
+]
+
 java_test_suite(
     name = "small-tests",
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST,
+        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -33,6 +37,20 @@ java_test_suite(
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
         artifact("org.mockito:mockito-core", "contrib_rules_jvm_tests"),
         artifact("org.opentest4j:opentest4j", "contrib_rules_jvm_tests"),
+    ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
+)
+
+java_test_suite(
+    name = "vintage-nested-test",
+    size = "small",
+    srcs = [
+        "NestedClassesVintageTest.java",
+    ],
+    exclude_engines = ["junit-jupiter"],
+    include_engines = ["junit-vintage"],
+    runner = "junit5",
+    deps = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
     ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
 )
 

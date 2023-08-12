@@ -10,12 +10,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
@@ -47,11 +51,28 @@ public class ActualRunner implements RunsTest {
               .addPostDiscoveryFilters(TestSharding.makeShardFilter())
               .build();
 
-      DiscoverySelector classSelector = DiscoverySelectors.selectClass(testClassName);
+      final Class<?> testClass;
+      try {
+        testClass = Class.forName(testClassName);
+      } catch (ClassNotFoundException e) {
+        throw new RuntimeException("Failed to find testClass", e);
+      }
+
+      // We only allow for one level of nesting at the moment
+      boolean enclosed = isRunWithEnclosed(testClass);
+      List<DiscoverySelector> classSelectors =
+          enclosed
+              ? new ArrayList<>()
+              : Arrays.stream(testClass.getDeclaredClasses())
+                  .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
+                  .map(clazz -> DiscoverySelectors.selectClass(clazz))
+                  .collect(Collectors.toList());
+
+      classSelectors.add(DiscoverySelectors.selectClass(testClassName));
 
       LauncherDiscoveryRequestBuilder request =
           LauncherDiscoveryRequestBuilder.request()
-              .selectors(Collections.singletonList(classSelector))
+              .selectors(classSelectors)
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
 
@@ -96,6 +117,27 @@ public class ActualRunner implements RunsTest {
 
       return summary.getFailureCount() == 0;
     }
+  }
+
+  /**
+   * Checks if the test class is annotation with `@RunWith(Enclosed.class)`. We deliberately avoid
+   * using types here to avoid polluting the classpath with junit4 deps.
+   */
+  private boolean isRunWithEnclosed(Class<?> clazz) {
+    for (Annotation annotation : clazz.getAnnotations()) {
+      Class<? extends Annotation> type = annotation.annotationType();
+      if (type.getName().equals("org.junit.runner.RunWith")) {
+        try {
+          Class<?> runner = (Class<?>) type.getMethod("value").invoke(annotation, (Object[]) null);
+          if (runner.getName().equals("org.junit.experimental.runners.Enclosed")) {
+            return true;
+          }
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   private File getExitFile() {
