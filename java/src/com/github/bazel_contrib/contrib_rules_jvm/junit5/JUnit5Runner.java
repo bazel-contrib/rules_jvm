@@ -53,7 +53,8 @@ public class JUnit5Runner {
   private static SystemExitToggle getSystemExitToggle() {
     // In Java 8 and lower, the first part of the version is a 1.
     // In Java 9 and higher, the first part of the version is the feature version.
-    int featureVersion = Integer.parseInt(System.getProperty("java.version").split("\\.")[0]);
+    // Major versions of early Access builds have an "-ea" suffix.
+    int featureVersion = Integer.parseInt(System.getProperty("java.version").split("[.-]")[0]);
     if (featureVersion == 1) {
       featureVersion = 8;
     }
