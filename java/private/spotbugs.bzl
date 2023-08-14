@@ -83,7 +83,7 @@ spotbugs_test = rule(
             allow_files = False,
         ),
         "config": attr.label(
-            default = "//java:spotbugs-default-config",
+            default = "@contrib_rules_jvm//java:spotbugs-default-config",
             providers = [
                 SpotBugsInfo,
             ],
