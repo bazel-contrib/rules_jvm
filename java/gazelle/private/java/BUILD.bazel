@@ -9,7 +9,8 @@ go_library(
         "package.go",
     ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/java",
-    visibility = ["//java/gazelle:__subpackages__"],
+    # Allow visibility for plugins like Kotlin that don't live in this repo
+    visibility = ["//visibility:public"],
     deps = [
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
