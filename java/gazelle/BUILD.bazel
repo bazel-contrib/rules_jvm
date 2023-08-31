@@ -47,7 +47,6 @@ go_test(
         "generate_test.go",
         "resolve_test.go",
     ],
-    data = glob(["testdata/**"]),
     embed = [":gazelle"],
     deps = [
         "//java/gazelle/javaconfig",
