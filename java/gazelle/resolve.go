@@ -1,11 +1,13 @@
 package gazelle
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -197,7 +199,22 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return label.NoLabel, nil
 	}
 
-	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err == nil {
+	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
+		var noExternal *maven.NoExternalImportsError
+		var multipleExternal *maven.MultipleExternalImportsError
+
+		if errors.As(err, &noExternal) {
+			// do not fail, the package might be provided elsewhere
+		} else if errors.As(err, &multipleExternal) {
+			jr.lang.logger.Error().Msg("Append one of the following to BUILD.bazel:")
+			for _, possible := range multipleExternal.PossiblePackages {
+				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
+			}
+			jr.lang.hasHadErrors = true
+		} else {
+			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
+		}
+	} else {
 		return l, nil
 	}
 

@@ -1,7 +1,6 @@
 package maven
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
@@ -10,6 +9,25 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/rs/zerolog"
 )
+
+// NoExternalImportsError represents the error when no external imports are found.
+type NoExternalImportsError struct {
+	PackageName string
+}
+
+func (e *NoExternalImportsError) Error() string {
+	return fmt.Sprintf("no external imports found for %s", e.PackageName)
+}
+
+// MultipleExternalImportsError represents the error when multiple possible external imports are found.
+type MultipleExternalImportsError struct {
+	PackageName      string
+	PossiblePackages []string
+}
+
+func (e *MultipleExternalImportsError) Error() string {
+	return fmt.Sprintf("multiple external imports found for %s; %v", e.PackageName, e.PossiblePackages)
+}
 
 type Resolver interface {
 	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
@@ -54,7 +72,7 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	v, found := r.data.Get(pkg.Name)
 	if !found {
-		return label.NoLabel, fmt.Errorf("package not found: %s", pkg)
+		return label.NoLabel, &NoExternalImportsError{PackageName: pkg.Name}
 	}
 
 	var filtered []string
@@ -67,7 +85,7 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 
 	switch len(filtered) {
 	case 0:
-		return label.NoLabel, errors.New("no external imports")
+		return label.NoLabel, &NoExternalImportsError{PackageName: pkg.Name}
 
 	case 1:
 		var ret string
@@ -78,12 +96,10 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 		return label.Parse(ret)
 
 	default:
-		r.logger.Error().Msg("Append one of the following to BUILD.bazel:")
-		for _, k := range filtered {
-			r.logger.Error().Msgf("# gazelle:resolve java %s %s", pkg.Name, k)
+		return label.NoLabel, &MultipleExternalImportsError{
+			PackageName:      pkg.Name,
+			PossiblePackages: filtered,
 		}
-
-		return label.NoLabel, errors.New("many possible imports")
 	}
 }
 

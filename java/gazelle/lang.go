@@ -1,6 +1,7 @@
 package gazelle
 
 import (
+	"context"
 	"os"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -17,6 +18,7 @@ import (
 // javaLang is a language.Language implementation for Java.
 type javaLang struct {
 	config.Configurer
+	language.BaseLifecycleManager
 	resolve.Resolver
 
 	parser        *javaparser.Runner
@@ -27,6 +29,12 @@ type javaLang struct {
 	// javaPackageCache is used for module granularity support
 	// Key is the path to the java package from the Bazel workspace root.
 	javaPackageCache map[string]*java.Package
+
+	// hasHadErrors triggers the extension to fail at destroy time.
+	//
+	// this is used to return != 0 when some errors during the generation were
+	// raised that will create invalid build files.
+	hasHadErrors bool
 }
 
 func NewLanguage() language.Language {
@@ -38,7 +46,7 @@ func NewLanguage() language.Language {
 		Caller().
 		Logger().
 		Level(goLevel)
-	logger.Print("creating java language")
+	logger.Debug().Msg("creating java language")
 
 	l := javaLang{
 		logger:           logger,
@@ -137,4 +145,10 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {}
 
 func (l javaLang) DoneGeneratingRules() {
 	l.parser.ServerManager().Shutdown()
+}
+
+func (l javaLang) AfterResolvingDeps(_ context.Context) {
+	if l.hasHadErrors {
+		l.logger.Fatal().Msg("the java extension encontered errors that will create invalid build files")
+	}
 }
