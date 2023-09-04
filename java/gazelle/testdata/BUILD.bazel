@@ -28,16 +28,16 @@ gazelle_binary(
 [
     gazelle_generation_test(
         name = file[0:-len("/WORKSPACE")],
-        gazelle_binary = ":gazelle",
-        gazelle_timeout_seconds = 30,
-        test_data = glob(
-            include = [file[0:-len("/WORKSPACE")] + "/**"],
-        ),
         env = {
             "GAZELLE_JAVA_LOG_CALLER": "false",
             "GAZELLE_JAVA_LOG_FORMAT": "json",
             "GAZELLE_JAVA_LOG_TIMESTAMP": "false",
         },
+        gazelle_binary = ":gazelle",
+        gazelle_timeout_seconds = 30,
+        test_data = glob(
+            include = [file[0:-len("/WORKSPACE")] + "/**"],
+        ),
     )
     for file in glob(["**/WORKSPACE"])
 ]
