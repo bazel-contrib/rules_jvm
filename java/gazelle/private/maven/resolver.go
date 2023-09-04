@@ -2,6 +2,7 @@ package maven
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset"
@@ -82,6 +83,7 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 		}
 		filtered = append(filtered, LabelFromArtifact(mavenRepositoryName, k).String())
 	}
+	sort.Strings(filtered)
 
 	switch len(filtered) {
 	case 0:
