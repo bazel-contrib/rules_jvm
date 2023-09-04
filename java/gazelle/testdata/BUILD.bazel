@@ -8,10 +8,6 @@ load("@bazel_gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
 gazelle_binary(
     name = "gazelle",
     languages = [
-        # Register a fake language which makes timestamps consistent via static initializers.
-        # Otherwise we end up with stderr diffs every time we run the tests beacuse of timestamps.
-        # (Yes, this is a horrible hack).
-        "//java/gazelle/private/testutil/reset_zerolog_timestamps",
         "@bazel_gazelle//language/proto:go_default_library",
         "//java/gazelle",
     ],
@@ -32,6 +28,11 @@ gazelle_binary(
 [
     gazelle_generation_test(
         name = file[0:-len("/WORKSPACE")],
+        env = {
+            "GAZELLE_JAVA_LOG_CALLER": "false",
+            "GAZELLE_JAVA_LOG_FORMAT": "json",
+            "GAZELLE_JAVA_LOG_TIMESTAMP": "false",
+        },
         gazelle_binary = ":gazelle",
         gazelle_timeout_seconds = 30,
         test_data = glob(

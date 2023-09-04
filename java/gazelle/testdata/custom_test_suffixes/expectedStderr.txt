@@ -1,4 +1,4 @@
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/private/maven/resolver.go:XXX[0m[36m >[0m not loading maven dependencies [36merror=[0m[31m"open %WORKSPACEPATH%/maven_install.json: no such file or directory"[0m [36m_c=[0mmaven-resolver
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/child/grandchild [36mpackage=[0morg.junit
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example/child [36mpackage=[0morg.junit
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/resolve.go:XXX[0m[36m >[0m Unable to find package for import in any dependency [36mfrom rule=[0m//src/test/com/example [36mpackage=[0morg.junit
+{"level":"warn","_c":"maven-resolver","error":"open %WORKSPACEPATH%/maven_install.json: no such file or directory","message":"not loading maven dependencies"}
+{"level":"warn","package":"org.junit","from rule":"//src/test/com/example/child/grandchild","message":"Unable to find package for import in any dependency"}
+{"level":"warn","package":"org.junit","from rule":"//src/test/com/example/child","message":"Unable to find package for import in any dependency"}
+{"level":"warn","package":"org.junit","from rule":"//src/test/com/example","message":"Unable to find package for import in any dependency"}

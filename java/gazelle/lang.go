@@ -40,12 +40,23 @@ type javaLang struct {
 func NewLanguage() language.Language {
 	goLevel, javaLevel := logconfig.LogLevel()
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).
-		With().
-		Timestamp().
-		Caller().
-		Logger().
-		Level(goLevel)
+	var logger zerolog.Logger
+	if os.Getenv("GAZELLE_JAVA_LOG_FORMAT") == "json" {
+		logger = zerolog.New(os.Stderr)
+	} else {
+		logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
+	if os.Getenv("GAZELLE_JAVA_LOG_TIMESTAMP") != "false" {
+		logger = logger.With().Timestamp().Logger()
+	}
+
+	if os.Getenv("GAZELLE_JAVA_LOG_CALLER") != "false" {
+		logger = logger.With().Caller().Logger()
+	}
+
+	logger = logger.Level(goLevel)
+
 	logger.Debug().Msg("creating java language")
 
 	l := javaLang{
