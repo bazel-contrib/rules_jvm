@@ -1,2 +1,2 @@
-[90m12:00AM[0m [31mWRN[0m [1mjava/gazelle/private/maven/resolver.go:XXX[0m[36m >[0m not loading maven dependencies [36merror=[0m[31m"open %WORKSPACEPATH%/maven_install.json: no such file or directory"[0m [36m_c=[0mmaven-resolver
-[90m12:00AM[0m [1m[31mFTL[0m[0m [1mjava/gazelle/generate.go:XXX[0m[36m >[0m label parse error [36merror=[0m[31m"label parse error: repository has invalid characters: \"@invalid:label\""[0m [36mdep=[0m@invalid:label [36mfile.Pkg=[0msrc/main/java/com/example/hello [36mname=[0mhello
+{"level":"warn","_c":"maven-resolver","error":"open %WORKSPACEPATH%/maven_install.json: no such file or directory","message":"not loading maven dependencies"}
+{"level":"fatal","file.Pkg":"src/main/java/com/example/hello","name":"hello","dep":"@invalid:label","error":"label parse error: repository has invalid characters: \"@invalid:label\"","message":"label parse error"}
