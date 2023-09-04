@@ -80,7 +80,7 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 	default:
 		r.logger.Error().Msg("Append one of the following to BUILD.bazel:")
 		for _, k := range filtered {
-			r.logger.Error().Msgf("# gazelle:resolve java %s %s", pkg, k)
+			r.logger.Error().Msgf("# gazelle:resolve java %s %s", pkg.Name, k)
 		}
 
 		return label.NoLabel, errors.New("many possible imports")
