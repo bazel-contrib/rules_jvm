@@ -2,8 +2,10 @@ load("@bazel_gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
 
 # It's important not to add any BUILD.bazel files in any subdirectory of this one. If you find tests failing which look like files are missing, it's likely a BUILD.bazel file has accidentally been added.
 
-# We don't want gazelle to run on this directory or its children, as having BUILD.bazel files would stop the test_data globs from reaching into the directories.
-# gazelle:exclude
+# We don't want gazelle to run on this directory's children, as having BUILD.bazel files would stop the test_data globs from reaching into the directories.
+# We do, however, want to include this BUILD.bazel file in Gazelle's knowledge, otherwise gazelle will view this directory as not being a package and will include testdata/** as a `data` glob in the parent's test target.
+# This causes problems when running Bazel with `--incompatible_disallow_empty_glob`.
+# gazelle:exclude *
 
 gazelle_binary(
     name = "gazelle",
