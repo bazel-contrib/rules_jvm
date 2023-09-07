@@ -53,7 +53,7 @@ public class ActualRunner implements RunsTest {
 
       final Class<?> testClass;
       try {
-        testClass = Class.forName(testClassName);
+        testClass = Class.forName(testClassName, false, getClass().getClassLoader());
       } catch (ClassNotFoundException e) {
         throw new RuntimeException("Failed to find testClass", e);
       }
