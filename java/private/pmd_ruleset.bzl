@@ -73,7 +73,8 @@ pmd_ruleset = rule(
         "format": attr.string(
             doc = "Generate report in the given format. One of html, text, or xml (default is xml)",
             default = "xml",
-            values = ["html", "text", "xml"],
+            # Per https://pmd.github.io/pmd/pmd_userdocs_report_formats.html
+            values = ["codeclimate", "emacs", "html", "sarif", "csv", "ideaj", "json", "summaryhtml", "text", "textcolor", "textpad", "vbhtml", "xml", "xslt", "yahtml"],
         ),
         "rulesets": attr.label_list(
             doc = "Use these rulesets.",
