@@ -65,6 +65,10 @@ func NewLanguage() language.Language {
 		javaPackageCache: make(map[string]*java.Package),
 	}
 
+	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
+		l: &l,
+	})
+
 	l.Configurer = NewConfigurer(&l)
 	l.Resolver = NewResolver(&l)
 
@@ -162,4 +166,18 @@ func (l javaLang) AfterResolvingDeps(_ context.Context) {
 	if l.hasHadErrors {
 		l.logger.Fatal().Msg("the java extension encontered errors that will create invalid build files")
 	}
+}
+
+type shutdownServerOnFatalLogHook struct {
+	l *javaLang
+}
+
+func (s shutdownServerOnFatalLogHook) Run(e *zerolog.Event, level zerolog.Level, message string) {
+	if s.l.parser == nil {
+		return
+	}
+	if level != zerolog.FatalLevel {
+		return
+	}
+	s.l.parser.ServerManager().Shutdown()
 }

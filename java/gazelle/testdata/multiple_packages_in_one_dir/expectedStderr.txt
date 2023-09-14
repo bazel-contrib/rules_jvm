@@ -1,0 +1,2 @@
+{"level":"warn","_c":"maven-resolver","error":"open %WORKSPACEPATH%/maven_install.json: no such file or directory","message":"not loading maven dependencies"}
+{"level":"fatal","step":"GenerateRules","rel":"src/main/com/example","error":"InvalidArgument: Expected exactly one java package, but saw 2: com.example, example","package":"src/main/com/example","message":"Failed to parse package"}

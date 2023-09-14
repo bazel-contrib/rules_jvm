@@ -11,6 +11,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc/status"
 )
 
 type Runner struct {
@@ -53,6 +54,11 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 
 	resp, err := r.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files})
 	if err != nil {
+		if grpcErr, ok := status.FromError(err); ok {
+			// gRPC is an implementation detail of the javaparser layer, and shouldn't be relied on by higher layers.
+			// Reformat gRPC-related details here, for more clear error messages.
+			return nil, fmt.Errorf("%s: %s", grpcErr.Code().String(), grpcErr.Message())
+		}
 		return nil, err
 	}
 

@@ -12,5 +12,6 @@ go_library(
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
         "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_google_grpc//status",
     ],
 )
