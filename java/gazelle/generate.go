@@ -71,7 +71,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		Files: javaFilenamesRelativeToPackage,
 	})
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
 	}
 
 	// We exclude intra-package imports to avoid self-dependencies.

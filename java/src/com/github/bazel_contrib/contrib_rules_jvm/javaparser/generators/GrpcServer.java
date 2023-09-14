@@ -7,6 +7,7 @@ import com.gazelle.java.javaparser.v0.Package;
 import com.gazelle.java.javaparser.v0.Package.Builder;
 import com.gazelle.java.javaparser.v0.ParsePackageRequest;
 import com.gazelle.java.javaparser.v0.PerClassMetadata;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
@@ -103,10 +104,7 @@ public class GrpcServer {
         responseObserver.onNext(getImports(request));
         responseObserver.onCompleted();
       } catch (Exception ex) {
-        logger.error(
-            "Got Exception parsing package {}: {}", Paths.get(request.getRel()), ex.getMessage());
         responseObserver.onError(ex);
-        responseObserver.onCompleted();
       } finally {
         timeoutHandler.finishedRequest();
       }
@@ -132,11 +130,11 @@ public class GrpcServer {
       }
       Set<String> packages = parser.getPackages();
       if (packages.size() > 1) {
-        logger.error(
-            "Set of classes in {} should have only one package, instead is: {}",
-            request.getRel(),
-            packages);
-        throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
+        throw new StatusRuntimeException(
+            Status.INVALID_ARGUMENT.withDescription(
+                String.format(
+                    "Expected exactly one java package, but saw %d: %s",
+                    packages.size(), Joiner.on(", ").join(packages))));
       } else if (packages.isEmpty()) {
         logger.info(
             "Set of classes in {} has no package", Paths.get(request.getRel()).toAbsolutePath());
