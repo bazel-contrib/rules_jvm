@@ -2,6 +2,12 @@
 
 Handy rules for working with JVM-based projects in Bazel.
 
+This ruleset is designed to complement `rules_java` (and Bazel's built-in Java rules), not replace them.
+
+The intended way of working is that the standard `rules_java` rules are used, and this ruleset adds extra functionality which is compatible with `rules_java`.
+
+## Using these rules
+
 In order to use these in your own projects, in your `WORKSPACE` once
 you've used an `http_archive`, you can load all the necessary
 dependencies by:
