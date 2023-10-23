@@ -57,12 +57,21 @@ def contrib_rules_jvm_deps():
 def contrib_rules_jvm_gazelle_deps():
     io_grpc_grpc_java()
 
+    http_archive(
+        name = "googleapis",
+        sha256 = "9d1a930e767c93c825398b8f8692eca3fe353b9aaadedfbcf1fca2282c85df88",
+        strip_prefix = "googleapis-64926d52febbf298cb82a8f472ade4a3969ba922",
+        urls = [
+            "https://github.com/googleapis/googleapis/archive/64926d52febbf298cb82a8f472ade4a3969ba922.zip",
+        ],
+    )
+
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "b8b6d75de6e4bf7c41b7737b183523085f56283f6db929b86c5e7e1f09cf59c9",
+        sha256 = "29218f8e0cebe583643cbf93cae6f971be8a2484cdcfa1e45057658df8d54002",
         urls = [
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.1/bazel-gazelle-v0.31.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.32.0/bazel-gazelle-v0.32.0.tar.gz",
         ],
     )
 
@@ -77,8 +86,8 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "io_bazel_rules_go",
-        sha256 = "51dc53293afe317d2696d4d6433a4c33feedb7748a9e352072e2ec3c0dafd2c6",
-        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.40.1/rules_go-v0.40.1.zip",
+        sha256 = "278b7ff5a826f3dc10f04feaf0b70d48b68748ccd512d7f98bf442077f043fe3",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.41.0/rules_go-v0.41.0.zip",
     )
 
     maybe(

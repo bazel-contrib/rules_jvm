@@ -1,3 +1,4 @@
+load("@rules_java//java:defs.bzl", "java_test")
 load("@rules_jvm_external//:defs.bzl", "artifact")
 load("//java:defs.bzl", "java_junit5_test", "java_test_suite", "junit5_deps", "junit5_vintage_deps")
 
@@ -29,8 +30,8 @@ java_test_suite(
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
-    test_suffixes_excludes = ["BaseTest.java"],
     runner = "junit5",
+    test_suffixes_excludes = ["BaseTest.java"],
     deps = [
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("com.github.spotbugs:spotbugs-annotations", "contrib_rules_jvm_deps"),
