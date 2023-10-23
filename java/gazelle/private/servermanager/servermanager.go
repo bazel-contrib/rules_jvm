@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"google.golang.org/grpc"
 )
+
+const javaparser = "java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
 
 type ServerManager struct {
 	workspace    string
@@ -42,12 +44,12 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 
 	logLevelFlag := fmt.Sprintf("-Dorg.slf4j.simpleLogger.defaultLogLevel=%s", m.javaLogLevel)
 
-	javaParserPath, found := bazel.FindBinary("java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators", "Main")
-	if !found {
-		return nil, fmt.Errorf("failed to find javaparser in runfiles")
+	javaParserPath, err := locateJavaparser()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find javaparser in runfiles: %w", err)
 	}
 
-	dir, err := ioutil.TempDir(os.Getenv("TMPDIR"), "gazelle-javaparser")
+	dir, err := os.MkdirTemp(os.Getenv("TMPDIR"), "gazelle-javaparser")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tmpdir to start javaparser server: %w", err)
 	}
@@ -86,6 +88,30 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
+func locateJavaparser() (string, error) {
+	runfiles, err := bazel.ListRunfiles()
+	if err != nil {
+		return "", fmt.Errorf("failed to find javaparser in runfiles: %w", err)
+	}
+
+	possiblePaths := make(map[string]bool)
+	for _, rf := range runfiles {
+		if strings.HasSuffix(rf.ShortPath, javaparser) {
+			possiblePaths[rf.Path] = true
+		}
+	}
+
+	if len(possiblePaths) == 0 {
+		return "", fmt.Errorf("failed to find javaparser in runfiles")
+	}
+
+	// The set may contain multiple element indirectly pointing to the same thing.
+	for path := range possiblePaths {
+		return path, nil
+	}
+	panic("unreachable code")
+}
+
 func readPort(path string) (int32, error) {
 	startTime := time.Now()
 	for {
@@ -93,7 +119,7 @@ func readPort(path string) (int32, error) {
 			return 0, fmt.Errorf("timed out waiting for port file to be written by javaparser server")
 		}
 
-		bs, err := ioutil.ReadFile(path)
+		bs, err := os.ReadFile(path)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				time.Sleep(10 * time.Millisecond)
@@ -125,6 +151,5 @@ func (m *ServerManager) Shutdown() {
 	cc.Shutdown(context.Background(), &pb.ShutdownRequest{})
 
 	m.conn.Close()
-
 	m.conn = nil
 }
