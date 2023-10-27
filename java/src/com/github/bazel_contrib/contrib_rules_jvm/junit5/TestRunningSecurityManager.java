@@ -29,7 +29,11 @@ public class TestRunningSecurityManager extends SecurityManager {
       if (allowExitCall) {
         return;
       }
-      throw new SecurityException("Replacing the security manager is not allowed");
+      if (System.getProperty("bazel.junit5runner.allowSettingSecurityManager") != null) {
+        System.err.println("Warning: junit runner security manager replaced, calls to System.exit will not be blocked");
+      } else {
+        throw new SecurityException("Replacing the security manager is not allowed");
+      }
     }
 
     if (delegateSecurityManager != null) {

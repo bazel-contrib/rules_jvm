@@ -316,6 +316,8 @@ you are using the standard `@maven` namespace for your
 **Note**: The junit5 runner prevents `System.exit` being called
 using a `SecurityManager`, which means that one test can't
 prematurely cause an entire test run to finish unexpectedly.
+This security measure prohibits tests from setting their own `SecurityManager`.
+To override this, set the `bazel.junit5runner.allowSettingSecurityManager` system property.
 
 While the `SecurityManager` has been deprecated in recent Java
 releases, there's no replacement yet. JEP 411 has this as one of
