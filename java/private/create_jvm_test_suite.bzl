@@ -1,8 +1,11 @@
 load("//java/private:package.bzl", "get_class_name")
 
-def _is_test(src, test_suffixes):
+def _is_test(src, test_suffixes, test_suffixes_excludes):
     for suffix in test_suffixes:
         if src.endswith(suffix):
+            for suffix_exclude in test_suffixes_excludes:
+                if src.endswith(suffix_exclude):
+                    return False
             return True
     return False
 
@@ -35,6 +38,7 @@ def create_jvm_test_suite(
         visibility = None,
         size = None,
         package_prefixes = [],
+        test_suffixes_excludes = [],
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -53,6 +57,7 @@ def create_jvm_test_suite(
       name: The name of the generated test suite.
       srcs: A list of source files.
       test_suffixes: A list of suffixes (eg. `["Test.kt"]`)
+      test_suffixes_excludes: A list of suffix excludes (eg. `["BaseTest.kt"]`)
       package: The package name to use. If `None`, a value will be
         calculated from the bazel package.
       library_attributes: Attributes to pass to `define_library`.
@@ -72,8 +77,8 @@ def create_jvm_test_suite(
     # First, grab any interesting attrs
     library_attrs = {attr: kwargs[attr] for attr in library_attributes if attr in kwargs}
 
-    test_srcs = [src for src in srcs if _is_test(src, test_suffixes)]
-    nontest_srcs = [src for src in srcs if not _is_test(src, test_suffixes)]
+    test_srcs = [src for src in srcs if _is_test(src, test_suffixes, test_suffixes_excludes)]
+    nontest_srcs = [src for src in srcs if not _is_test(src, test_suffixes, test_suffixes_excludes)]
 
     if nontest_srcs:
         lib_dep_name = "%s-test-lib" % name
