@@ -1,38 +1,36 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toCollection;
 
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 public class BazelJUnitOutputListener implements TestExecutionListener, Closeable {
-
-  private static final Logger LOG = Logger.getLogger(BazelJUnitOutputListener.class.getName());
   private final XMLStreamWriter xml;
-  private Set<RootContainer> roots;
+
+  private final Map<UniqueId, TestData> results = new ConcurrentHashMap<>();
+  private TestPlan testPlan;
 
   public BazelJUnitOutputListener(Path xmlOut) {
-    // Outputs from tests can be pretty large, so rather than hold them
-    // in memory, write to the output xml asap.
-
     try {
       Files.createDirectories(xmlOut.getParent());
       BufferedWriter writer = Files.newBufferedWriter(xmlOut, UTF_8);
@@ -45,67 +43,125 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
 
   @Override
   public void testPlanExecutionStarted(TestPlan testPlan) {
-    if (roots != null) {
-      throw new IllegalStateException("Test plan is currently executing");
-    }
+    this.testPlan = testPlan;
 
-    roots =
-        testPlan.getRoots().stream()
-            .map(root -> new RootContainer(root, testPlan))
-            .collect(
-                collectingAndThen(toCollection(LinkedHashSet::new), Collections::unmodifiableSet));
+    try {
+      // Closed when we call `testPlanExecutionFinished
+      xml.writeStartElement("testsuites");
+    } catch (XMLStreamException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public void testPlanExecutionFinished(TestPlan testPlan) {
-    if (roots == null) {
+    if (this.testPlan == null) {
       throw new IllegalStateException("Test plan is not currently executing");
     }
 
     try {
-      xml.writeStartElement("testsuites");
-      roots.forEach(root -> root.toXml(xml));
+      // Closing `testsuites` element
       xml.writeEndElement();
     } catch (XMLStreamException e) {
       throw new RuntimeException(e);
-    } finally {
-      roots = null;
     }
+
+    this.testPlan = null;
+  }
+
+  private Map<TestData, List<TestData>> matchTestCasesToSuites(List<TestData> testCases) {
+    Map<TestData, List<TestData>> knownSuites = new HashMap<>();
+
+    // Find the containing test suites for the test cases.
+    for (TestData testCase : testCases) {
+      TestData parent = testCase.getId().getParentIdObject().map(results::get).orElse(null);
+      if (parent == null) {
+        // We should really log this, because something has gone wildly wrong
+        continue;
+      }
+
+      knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
+    }
+
+    return knownSuites;
+  }
+
+  private List<TestData> findTestCases() {
+    return results.values().stream()
+        // Ignore test plan roots. These are always the engine being used.
+        .filter(result -> !testPlan.getRoots().contains(result.getId()))
+        .filter(
+            result -> {
+              // Find the test results we will convert to `testcase` entries. These
+              // are identified by the fact that they have no child test cases in the
+              // test plan, or they are marked as tests.
+              TestIdentifier id = result.getId();
+              return id.isTest() || testPlan.getChildren(id).isEmpty();
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
   public void dynamicTestRegistered(TestIdentifier testIdentifier) {
-    roots.forEach(root -> root.addDynamicTest(testIdentifier));
-  }
-
-  @Override
-  public void executionStarted(TestIdentifier testIdentifier) {
-    roots.forEach(root -> root.markStarted(testIdentifier));
+    getResult(testIdentifier).setDynamic(true);
   }
 
   @Override
   public void executionSkipped(TestIdentifier testIdentifier, String reason) {
-    roots.forEach(root -> root.markSkipped(testIdentifier, reason));
+    getResult(testIdentifier).mark(TestExecutionResult.aborted(null)).skipReason(reason);
+    outputIfTestRootIsComplete(testIdentifier);
+  }
+
+  @Override
+  public void executionStarted(TestIdentifier testIdentifier) {
+    getResult(testIdentifier).started();
   }
 
   @Override
   public void executionFinished(
       TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
-    roots.forEach(root -> root.markFinished(testIdentifier, testExecutionResult));
+    getResult(testIdentifier).mark(testExecutionResult);
+    outputIfTestRootIsComplete(testIdentifier);
+  }
+
+  private void outputIfTestRootIsComplete(TestIdentifier testIdentifier) {
+    if (!testPlan.getRoots().contains(testIdentifier)) {
+      return;
+    }
+
+    List<TestData> testCases = findTestCases();
+    Map<TestData, List<TestData>> testSuites = matchTestCasesToSuites(testCases);
+
+    // Write the results
+    try {
+      for (Map.Entry<TestData, List<TestData>> suiteAndTests : testSuites.entrySet()) {
+        new TestSuiteXmlRenderer(testPlan)
+            .toXml(xml, suiteAndTests.getKey(), suiteAndTests.getValue());
+      }
+    } catch (XMLStreamException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Delete the results we've used to conserve memory
+    Stream.concat(testCases.stream(), testSuites.keySet().stream())
+        .forEach(data -> results.remove(data.getId().getUniqueIdObject()));
   }
 
   @Override
   public void reportingEntryPublished(TestIdentifier testIdentifier, ReportEntry entry) {
-    roots.forEach(root -> root.addReportingEntry(testIdentifier, entry));
+    getResult(testIdentifier).addReportEntry(entry);
   }
 
-  @Override
+  private TestData getResult(TestIdentifier id) {
+    return results.computeIfAbsent(id.getUniqueIdObject(), ignored -> new TestData(id));
+  }
+
   public void close() {
     try {
       xml.writeEndDocument();
       xml.close();
     } catch (XMLStreamException e) {
-      LOG.log(Level.SEVERE, "Unable to close xml output", e);
+      // LOG.log(Level.SEVERE, "Unable to close xml output", e);
     }
   }
 }
