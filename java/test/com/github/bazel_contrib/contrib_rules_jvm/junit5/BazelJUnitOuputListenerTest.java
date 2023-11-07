@@ -224,8 +224,7 @@ public class BazelJUnitOuputListenerTest {
 
   private Document generateTestXml(
       TestPlan testPlan, TestData suite, Collection<TestData> testCases) {
-    return generateDocument(
-        xml -> new TestSuiteXmlRenderer(testPlan).toXml(xml, suite, testCases));
+    return generateDocument(xml -> new TestSuiteXmlRenderer(testPlan).toXml(xml, suite, testCases));
   }
 
   private Document generateDocument(XmlGenerator renderer) {
