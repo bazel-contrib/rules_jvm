@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.xml.stream.XMLOutputFactory;
@@ -25,6 +27,7 @@ import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 public class BazelJUnitOutputListener implements TestExecutionListener, Closeable {
+  public static final Logger LOG = Logger.getLogger(BazelJUnitOutputListener.class.getName());
   private final XMLStreamWriter xml;
 
   private final Map<UniqueId, TestData> results = new ConcurrentHashMap<>();
@@ -46,7 +49,7 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     this.testPlan = testPlan;
 
     try {
-      // Closed when we call `testPlanExecutionFinished
+      // Closed when we call `testPlanExecutionFinished`
       xml.writeStartElement("testsuites");
     } catch (XMLStreamException e) {
       throw new RuntimeException(e);
@@ -76,8 +79,10 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     for (TestData testCase : testCases) {
       TestData parent = testCase.getId().getParentIdObject().map(results::get).orElse(null);
       if (parent == null) {
-        // We should really log this, because something has gone wildly wrong
-        continue;
+        // Something has gone wildly wrong. I really hope people file some
+        // bugs with us if they run into this....
+        LOG.warning("Unable to find parent test for " + testCase.getId());
+        throw new IllegalStateException("Unable to find parent test for " + testCase.getId());
       }
 
       knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
@@ -142,7 +147,13 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       throw new RuntimeException(e);
     }
 
-    // Delete the results we've used to conserve memory
+    // Delete the results we've used to conserve memory. This is safe to do
+    // since we only do this when the test root is complete, so we know that
+    // we won't be adding to the list of suites and test cases for that root
+    // (because tests and containers are arranged in a hierarchy --- the
+    // containers only complete when all the things they contain are
+    // finished. We are leaving all the test data that we have _not_ written
+    // to the XML file.
     Stream.concat(testCases.stream(), testSuites.keySet().stream())
         .forEach(data -> results.remove(data.getId().getUniqueIdObject()));
   }
@@ -161,7 +172,7 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       xml.writeEndDocument();
       xml.close();
     } catch (XMLStreamException e) {
-      // LOG.log(Level.SEVERE, "Unable to close xml output", e);
+      LOG.log(Level.SEVERE, "Unable to close xml output", e);
     }
   }
 }

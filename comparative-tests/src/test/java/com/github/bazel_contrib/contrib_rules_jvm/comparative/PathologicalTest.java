@@ -10,7 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class DisabledSkippedParameterisedTest {
+class PathologicalTest {
 
   private static Stream<Arguments> argsProvider() {
     return Stream.of(Arguments.of("alpha"), Arguments.of("beta"), Arguments.of("gamma"));
@@ -21,6 +21,6 @@ class DisabledSkippedParameterisedTest {
   @MethodSource("argsProvider")
   public void bootstrap(String goGreek) {
     System.out.println(goGreek);
-    fail("This should be ignored if we are running in bazel");
+    fail("This test should never be run because it's disabled");
   }
 }

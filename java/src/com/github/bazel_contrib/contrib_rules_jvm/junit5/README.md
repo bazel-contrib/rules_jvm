@@ -193,6 +193,8 @@ The `name` attribute is the name of the test method without type information
 
 #### Suite
 
+Skipped
+
 #### Dynamic
 
 Skipped
@@ -236,7 +238,10 @@ Neither Gradle nor Maven expose the root containers, so it's appropriate
 that we don't do that either.
 
 The reason that the legacy XML listener is outputting top-level test suites 
-with names like `JUnit Platform Suite` is that 
+with names like `JUnit Platform Suite` is that these are the names of the 
+engines being used. That is, rather than looking at the _nearest_ container, 
+each `testcase` is nested in the ancestor container that does not have a 
+parent. 
 
 In no case do we want the "engine" suite appearing in our outputs.
 
