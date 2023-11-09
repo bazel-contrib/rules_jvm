@@ -42,12 +42,12 @@ public class ActualRunner implements RunsTest {
       throw new UncheckedIOException(e);
     }
 
-    try (BazelJUnitOutputListener bazelJunitXml = new BazelJUnitOutputListener(xmlOut)) {
+    try (BazelJUnitOutputListener bazelJUnitXml = new BazelJUnitOutputListener(xmlOut)) {
       CommandLineSummary summary = new CommandLineSummary();
 
       LauncherConfig config =
           LauncherConfig.builder()
-              .addTestExecutionListeners(bazelJunitXml, summary)
+              .addTestExecutionListeners(bazelJUnitXml, summary)
               .addPostDiscoveryFilters(TestSharding.makeShardFilter())
               .build();
 
@@ -65,7 +65,7 @@ public class ActualRunner implements RunsTest {
               ? new ArrayList<>()
               : Arrays.stream(testClass.getDeclaredClasses())
                   .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
-                  .map(clazz -> DiscoverySelectors.selectClass(clazz))
+                  .map(DiscoverySelectors::selectClass)
                   .collect(Collectors.toList());
 
       classSelectors.add(DiscoverySelectors.selectClass(testClassName));
