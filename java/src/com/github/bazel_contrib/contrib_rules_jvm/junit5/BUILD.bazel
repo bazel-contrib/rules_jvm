@@ -58,11 +58,18 @@ java_library(
         "--release",
         "8",
     ],
+    resource_strip_prefix = package_name(),
+    resources = ["META-INF/services/org.junit.jupiter.api.extension.Extension"],
     deps = [
         ":system-exit-toggle",
         # The only dependencies here are those required to run
         # a junit5 test. We try not to pollute the classpath, so
         # be very careful when adding new deps here.
+        #
+        # junit-jupiter-api is only a compilation dependency and not listed in JUNIT5_DEPS. This is
+        # fine as it is a transitive dependency of junit-jupiter-engine and will thus be available
+        # at runtime.
+        artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.jupiter:junit-jupiter-engine"),
         artifact("org.junit.platform:junit-platform-commons"),
         artifact("org.junit.platform:junit-platform-engine"),
