@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" tests="2" skipped="0" failures="0" errors="0" timestamp="2023-11-08T12:49:19" hostname="Simons-Chunky-MBP.local" time="0.042">
+  <properties/>
+  <testcase name="doSomething()" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.007"/>
+  <testcase name="doSomething()" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.0"/>
+  <system-out><![CDATA[Hello, World!
+Hello, World!
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

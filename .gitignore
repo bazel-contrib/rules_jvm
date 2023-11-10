@@ -3,3 +3,4 @@ bazel-*
 .idea
 .ijwb
 .eclipse
+/comparative-tests/.gradle/
