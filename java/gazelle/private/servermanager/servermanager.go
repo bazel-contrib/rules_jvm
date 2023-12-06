@@ -8,17 +8,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 )
 
-const javaparser = "java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
+const javaparser = "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
 
 type ServerManager struct {
 	logger       zerolog.Logger
@@ -47,7 +46,7 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 
 	logLevelFlag := fmt.Sprintf("-Dorg.slf4j.simpleLogger.defaultLogLevel=%s", m.javaLogLevel)
 
-	javaParserPath, err := locateJavaparser()
+	javaParserPath, err := m.locateJavaparser()
 	if err != nil {
 		return nil, fmt.Errorf("failed to find javaparser in runfiles: %w", err)
 	}
@@ -63,7 +62,13 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 		"--jvm_flag="+logLevelFlag,
 		"--server-port-file-path", portFilePath,
 		"--workspace", m.workspace,
-		"--idle-timeout", "30")
+		"--idle-timeout", "30",
+	)
+
+	m.logger.Info().
+		Str("cmd", cmd.String()).
+		Msg("starting javaparser with command")
+
 	// Send JavaParser stdout to stderr for two reasons:
 	//  1. We don't want to pollute our own stdout
 	//  2. Java does some output buffer sniffing where it will block its own progress until the
@@ -91,28 +96,13 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func locateJavaparser() (string, error) {
-	runfiles, err := bazel.ListRunfiles()
+func (m *ServerManager) locateJavaparser() (string, error) {
+	path, err := runfiles.Rlocation(javaparser)
 	if err != nil {
 		return "", fmt.Errorf("failed to find javaparser in runfiles: %w", err)
 	}
 
-	possiblePaths := make(map[string]bool)
-	for _, rf := range runfiles {
-		if strings.HasSuffix(rf.ShortPath, javaparser) {
-			possiblePaths[rf.Path] = true
-		}
-	}
-
-	if len(possiblePaths) == 0 {
-		return "", fmt.Errorf("failed to find javaparser in runfiles")
-	}
-
-	// The set may contain multiple element indirectly pointing to the same thing.
-	for path := range possiblePaths {
-		return path, nil
-	}
-	panic("unreachable code")
+	return path, nil
 }
 
 func readPort(path string) (int32, error) {
