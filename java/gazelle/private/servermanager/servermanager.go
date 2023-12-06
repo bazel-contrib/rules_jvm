@@ -14,12 +14,14 @@ import (
 
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 )
 
 const javaparser = "java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
 
 type ServerManager struct {
+	logger       zerolog.Logger
 	workspace    string
 	javaLogLevel string
 
@@ -27,10 +29,11 @@ type ServerManager struct {
 	conn *grpc.ClientConn
 }
 
-func New(workspace, javaLogLevel string) *ServerManager {
+func New(workspace, javaLogLevel string, logger zerolog.Logger) *ServerManager {
 	return &ServerManager{
 		workspace:    workspace,
 		javaLogLevel: javaLogLevel,
+		logger:       logger,
 	}
 }
 

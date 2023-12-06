@@ -21,7 +21,7 @@ type Runner struct {
 }
 
 func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) (*Runner, error) {
-	serverManager := servermanager.New(repoRoot, javaLogLevel)
+	serverManager := servermanager.New(repoRoot, javaLogLevel, logger)
 
 	conn, err := serverManager.Connect()
 	if err != nil {
