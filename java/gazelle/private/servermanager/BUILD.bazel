@@ -10,6 +10,7 @@ go_library(
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
         "@com_github_rs_zerolog//:zerolog",
         "@io_bazel_rules_go//go/runfiles:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )

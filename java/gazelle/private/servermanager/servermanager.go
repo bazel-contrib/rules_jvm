@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +18,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-const javaparser = "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
+const (
+	javaparserPath = "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
+
+	runfilesManifestFileKey = "RUNFILES_MANIFEST_FILE"
+	runfilesDirKey          = "RUNFILES_DIR"
+	javaRunfilesKey         = "JAVA_RUNFILES"
+)
 
 type ServerManager struct {
 	logger       zerolog.Logger
@@ -65,9 +72,17 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 		"--idle-timeout", "30",
 	)
 
-	m.logger.Info().
+	runfilesEnv, err := m.runfilesEnv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get runfiles env vars for javaparser: %w", err)
+	}
+
+	cmd.Env = append(cmd.Env, runfilesEnv...)
+
+	m.logger.Debug().
 		Str("cmd", cmd.String()).
-		Msg("starting javaparser with command")
+		Strs("env", cmd.Env).
+		Msg("Starting javaparser with command")
 
 	// Send JavaParser stdout to stderr for two reasons:
 	//  1. We don't want to pollute our own stdout
@@ -97,12 +112,57 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 }
 
 func (m *ServerManager) locateJavaparser() (string, error) {
-	path, err := runfiles.Rlocation(javaparser)
+	path, err := runfiles.Rlocation(javaparserPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to find javaparser in runfiles: %w", err)
 	}
 
 	return path, nil
+}
+
+func (m *ServerManager) runfilesEnv() ([]string, error) {
+	envVars, err := runfiles.Env()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get runfiles env: %w", err)
+	}
+
+	m.logger.Debug().
+		Strs("res", envVars).
+		Msg("resolved runfiles env")
+
+	var (
+		hasJavaRunfiles  bool
+		runfilesManifest string
+	)
+
+	res := make([]string, 0, len(envVars)+2) // NOTE: potentially adding two more env vars.
+
+	for _, envVar := range envVars {
+		if runfilesManifest == "" && strings.HasPrefix(envVar, runfilesManifestFileKey) {
+			runfilesManifest = strings.ReplaceAll(envVar, runfilesManifestFileKey+"=", "")
+		}
+
+		if !hasJavaRunfiles && strings.HasPrefix(envVar, runfilesDirKey) {
+			hasJavaRunfiles = true
+			path := strings.ReplaceAll(envVar, javaRunfilesKey+"=", "")
+			res = append(res, javaRunfilesKey+"="+path)
+		}
+
+		if !hasJavaRunfiles && strings.HasPrefix(envVar, javaRunfilesKey) {
+			hasJavaRunfiles = true
+		}
+
+		res = append(res, envVar)
+	}
+
+	if !hasJavaRunfiles && runfilesManifest != "" {
+		manifestDirPath := strings.ReplaceAll(runfilesManifest, runfilesManifestFileKey+"=", "")
+		runfilesDirPath := strings.ReplaceAll(manifestDirPath, "_manifest", "")
+
+		res = append(res, javaRunfilesKey+"="+runfilesDirPath)
+	}
+
+	return res, nil
 }
 
 func readPort(path string) (int32, error) {
