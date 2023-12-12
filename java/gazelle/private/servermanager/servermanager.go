@@ -8,16 +8,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"google.golang.org/grpc"
 )
-
-const javaparser = "java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
 
 type ServerManager struct {
 	workspace    string
@@ -89,27 +86,18 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 }
 
 func locateJavaparser() (string, error) {
-	runfiles, err := bazel.ListRunfiles()
+	rf, err := runfiles.New()
 	if err != nil {
-		return "", fmt.Errorf("failed to find javaparser in runfiles: %w", err)
+		return "", fmt.Errorf("failed to init new style runfiles: %w", err)
 	}
 
-	possiblePaths := make(map[string]bool)
-	for _, rf := range runfiles {
-		if strings.HasSuffix(rf.ShortPath, javaparser) {
-			possiblePaths[rf.Path] = true
-		}
+	// We want //java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main
+	loc, err := rf.Rlocation("contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main")
+	if err != nil {
+		return "", fmt.Errorf("failed to call RLocation: %w", err)
 	}
 
-	if len(possiblePaths) == 0 {
-		return "", fmt.Errorf("failed to find javaparser in runfiles")
-	}
-
-	// The set may contain multiple element indirectly pointing to the same thing.
-	for path := range possiblePaths {
-		return path, nil
-	}
-	panic("unreachable code")
+	return loc, nil
 }
 
 func readPort(path string) (int32, error) {
