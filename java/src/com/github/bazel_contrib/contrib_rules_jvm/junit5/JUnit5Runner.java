@@ -92,6 +92,9 @@ public class JUnit5Runner {
 
   private static void detectJUnit5Classes() {
     checkClass(
+        "org.junit.jupiter.api.extension.ExecutionCondition",
+        "org.junit.jupiter:junit-jupiter-api");
+    checkClass(
         "org.junit.jupiter.engine.JupiterTestEngine", "org.junit.jupiter:junit-jupiter-engine");
     checkClass(
         "org.junit.platform.commons.JUnitException", "org.junit.platform:junit-platform-commons");

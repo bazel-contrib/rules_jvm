@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.junit.jupiter.engine.Constants;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
@@ -44,10 +45,11 @@ public class ActualRunner implements RunsTest {
 
     try (BazelJUnitOutputListener bazelJUnitXml = new BazelJUnitOutputListener(xmlOut)) {
       CommandLineSummary summary = new CommandLineSummary();
+      FailFastExtension failFastExtension = new FailFastExtension();
 
       LauncherConfig config =
           LauncherConfig.builder()
-              .addTestExecutionListeners(bazelJUnitXml, summary)
+              .addTestExecutionListeners(bazelJUnitXml, summary, failFastExtension)
               .addPostDiscoveryFilters(TestSharding.makeShardFilter())
               .build();
 
@@ -74,7 +76,9 @@ public class ActualRunner implements RunsTest {
           LauncherDiscoveryRequestBuilder.request()
               .selectors(classSelectors)
               .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
-              .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true");
+              .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
+              .configurationParameter(
+                  Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true");
 
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
