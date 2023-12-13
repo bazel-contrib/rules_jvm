@@ -5,5 +5,4 @@ go_library(
     srcs = ["bazel.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel",
     visibility = ["//java/gazelle:__subpackages__"],
-    deps = ["@io_bazel_rules_go//go/tools/bazel:go_default_library"],
 )

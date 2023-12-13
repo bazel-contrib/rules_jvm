@@ -1,15 +1,6 @@
 package bazel
 
-import (
-	"regexp"
-
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
-)
-
-var (
-	FindBinary   = bazel.FindBinary
-	ListRunfiles = bazel.ListRunfiles
-)
+import "regexp"
 
 var nonWordRe = regexp.MustCompile(`\W+`)
 
