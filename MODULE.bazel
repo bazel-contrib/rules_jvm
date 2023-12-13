@@ -28,15 +28,6 @@ bazel_dep(
     version = "0.34.0",
     repo_name = "bazel_gazelle",
 )
-
-# We need https://github.com/bazelbuild/bazel-gazelle/pull/1686
-archive_override(
-    module_name = "gazelle",
-    integrity = "sha256-K0qiW1KIxkmMuxDNaLEch/PxFLJ5xVEmPtlkuMwj0BY=",
-    strip_prefix = "bazel-gazelle-8e09916b20b52a0346e77a3203fc0b50825fedcd",
-    urls = ["https://github.com/bazelbuild/bazel-gazelle/archive/8e09916b20b52a0346e77a3203fc0b50825fedcd.tar.gz"],
-)
-
 bazel_dep(
     name = "protobuf",
     version = PROTOBUF_VERSION,

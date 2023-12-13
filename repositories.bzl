@@ -70,9 +70,8 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "2b4aa25b5288c6498cbb10cd68b11c87f3f114b279c551263ed964b8cc23d016",
-        strip_prefix = "bazel-gazelle-8e09916b20b52a0346e77a3203fc0b50825fedcd",
-        url = "https://github.com/bazelbuild/bazel-gazelle/archive/8e09916b20b52a0346e77a3203fc0b50825fedcd.tar.gz",
+        sha256 = "b7387f72efb59f876e4daae42f1d3912d0d45563eac7cb23d1de0b094ab588cf",
+        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.34.0/bazel-gazelle-v0.34.0.tar.gz",
     )
 
     maybe(
