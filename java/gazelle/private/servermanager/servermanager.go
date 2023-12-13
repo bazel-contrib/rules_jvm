@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"google.golang.org/grpc"
 )
 
@@ -42,12 +41,12 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 
 	logLevelFlag := fmt.Sprintf("-Dorg.slf4j.simpleLogger.defaultLogLevel=%s", m.javaLogLevel)
 
-	javaParserPath, found := bazel.FindBinary("java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators", "Main")
-	if !found {
-		return nil, fmt.Errorf("failed to find javaparser in runfiles")
+	javaParserPath, err := locateJavaparser()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find javaparser in runfiles: %w", err)
 	}
 
-	dir, err := ioutil.TempDir(os.Getenv("TMPDIR"), "gazelle-javaparser")
+	dir, err := os.MkdirTemp(os.Getenv("TMPDIR"), "gazelle-javaparser")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tmpdir to start javaparser server: %w", err)
 	}
@@ -86,6 +85,21 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
+func locateJavaparser() (string, error) {
+	rf, err := runfiles.New()
+	if err != nil {
+		return "", fmt.Errorf("failed to init new style runfiles: %w", err)
+	}
+
+	// We want //java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main
+	loc, err := rf.Rlocation("contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main")
+	if err != nil {
+		return "", fmt.Errorf("failed to call RLocation: %w", err)
+	}
+
+	return loc, nil
+}
+
 func readPort(path string) (int32, error) {
 	startTime := time.Now()
 	for {
@@ -93,7 +107,7 @@ func readPort(path string) (int32, error) {
 			return 0, fmt.Errorf("timed out waiting for port file to be written by javaparser server")
 		}
 
-		bs, err := ioutil.ReadFile(path)
+		bs, err := os.ReadFile(path)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				time.Sleep(10 * time.Millisecond)
