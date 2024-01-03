@@ -12,6 +12,12 @@ checkstyle_config(
     data = ["suppressions.xml"],
 )
 
+checkstyle_config(
+    name = "copied_checkstyle_with_suppressions",
+    config_file = "copied_checkstyle_with_suppressions.xml",
+    data = ["suppressions.xml"],
+)
+
 checkstyle_test(
     name = "this_should_fail_missing_file",
     srcs = ["Sample.java"],
@@ -32,8 +38,21 @@ checkstyle_test(
     config = ":checkstyle_with_suppressions",
 )
 
+checkstyle_test(
+    name = "this_should_also_pass",
+    srcs = ["Sample.java"],
+    config = ":copied_checkstyle_with_suppressions",
+)
+
 java_library(
     name = "checkstyle",
     testonly = True,
     srcs = ["Sample.java"],
+)
+
+genrule(
+    name = "copy_config_file",
+    srcs = ["checkstyle_with_suppressions.xml"],
+    outs = ["copied_checkstyle_with_suppressions.xml"],
+    cmd = "cp $< $@",
 )
