@@ -13,7 +13,10 @@ bzl_library(
     name = "checkstyle",
     srcs = ["checkstyle.bzl"],
     visibility = ["//java:__subpackages__"],
-    deps = [":checkstyle_config"],
+    deps = [
+        ":checkstyle_config",
+        "@bazel_skylib//lib:paths",
+    ],
 )
 
 bzl_library(

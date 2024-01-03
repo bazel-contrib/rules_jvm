@@ -1,5 +1,6 @@
 load(":checkstyle_config.bzl", "CheckStyleInfo")
 load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 """
 Checkstyle rule implementation
@@ -10,12 +11,15 @@ def _checkstyle_impl(ctx):
     config = info.config_file
     output_format = info.output_format
 
+    config_dir = paths.dirname(config.short_path)
+    maybe_cd_config_dir = ["cd {}".format(config_dir)] if config_dir else []
+
     script = "\n".join([
         "#!/usr/bin/env bash",
         "set -o pipefail",
         "set -e",
         "OLDPWD=$PWD",
-        "cd {config_dir}".format(config_dir = config.dirname),
+    ] + maybe_cd_config_dir + [
         "$OLDPWD/{lib} -f {output_format} -c {config} {srcs} |sed s:$OLDPWD/::g".format(
             lib = info.checkstyle.short_path,
             output_format = output_format,
