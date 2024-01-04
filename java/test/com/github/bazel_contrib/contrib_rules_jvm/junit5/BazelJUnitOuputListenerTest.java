@@ -233,7 +233,6 @@ public class BazelJUnitOuputListenerTest {
       XMLStreamWriter xsw = XMLOutputFactory.newDefaultFactory().createXMLStreamWriter(writer);
 
       renderer.accept(xsw);
-      System.out.println(writer);
 
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       DocumentBuilder builder;
