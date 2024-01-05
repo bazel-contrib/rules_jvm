@@ -1,7 +1,5 @@
 # Settings that apply only to CI are in .github/workflows/ci.bazelrc
 
-build --enable_bzlmod
-
 # Pin java versions
 build:jdk11 --java_runtime_version=remotejdk_11
 build:jdk11 --java_language_version=11
