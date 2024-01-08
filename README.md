@@ -78,7 +78,7 @@ checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checksty
 
  Rule allowing checkstyle to be configured. This is typically
      used with the linting rules from `@apple_rules_lint` to configure how
-     checkstyle should run. 
+     checkstyle should run.
 
 **ATTRIBUTES**
 
@@ -140,7 +140,7 @@ Use PMD to lint the `srcs`.
 ## spotbugs_config
 
 <pre>
-spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
+spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-plugin_list">plugin_list</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
 </pre>
 
 Configuration used for spotbugs, typically by the `//lint` rules.
@@ -153,6 +153,7 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 | <a id="spotbugs_config-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | <code>"default"</code> |
 | <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
+| <a id="spotbugs_config-plugin_list"></a>plugin_list |  Specify a list of plugin Jar files to load   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>None</code> |
 | <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | <code>True</code> |
 | <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:spotbugs_cli</code> |
 
@@ -541,9 +542,9 @@ file you need to do the following:
         fetch_sources = True,
         maven_install_json = "@workspace//:frozen_deps_install.json",
    )
-   
+
    load("@frozen_deps//:defs.bzl", "pinned_maven_install")
-   
+
    pinned_maven_install()
    ```
 2. Run `bazel run //tools:freeze-deps -- --repo <repo name> --zip
@@ -563,7 +564,7 @@ file you need to do the following:
 5. Make sure to pin the maven install from the repostitory:
    ```starlark
    load("@workspace_deps//:defs.bzl", "pinned_maven_install")
-   
+
    pinned_maven_install()
    ```
 6. Use the dependencies for your `java_library` rules from the frozen
@@ -592,6 +593,6 @@ following changes and abide by the following restrictions.
 3. In step 5, add the call to generate the compat_repositories:
    ```starlark
    load("@workspace_deps//:compat.bzl", "compat_repositories")
-   
+
    compat_repositories()
    ```
