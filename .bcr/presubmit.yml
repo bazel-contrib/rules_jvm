@@ -1,10 +1,18 @@
-# We should probably create a standalone test module, but for now we'll just run our in-repo tests.
 bcr_test_module:
   matrix:
     platform: ["debian10", "macos", "ubuntu2004", "windows"]
   tasks:
-    run_tests:
-      name: "Run tests"
+    gazelle:
+      working_directory: "examples/gazelle"
+      name: "Gazelle"
+      platform: ${{ platform }}
+      run_targets:
+        - "//:gazelle"
+      test_targets:
+        - "//..."
+    tests_and_lints:
+      working_directory: "examples/tests_and_lints"
+      name: "Tests and lints"
       platform: ${{ platform }}
       test_targets:
         - "//..."

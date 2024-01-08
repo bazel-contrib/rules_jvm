@@ -38,17 +38,29 @@ jobs:
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: bazel --bazelrc=.github/workflows/ci.bazelrc --bazelrc=.bazelrc test --config=jdk11 //...
+        run: bazel --bazelrc=.github/workflows/ci.bazelrc test --config=jdk11 //...
 
       - name: bazel test //... (Java 17)
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: bazel --bazelrc=.github/workflows/ci.bazelrc --bazelrc=.bazelrc test //...
+        run: bazel --bazelrc=.github/workflows/ci.bazelrc test //...
 
       - name: bazel test //... (no bzlmod)
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
           # The docs targets are tagged as `manual` to prevent stardoc from running with bzlmod
-        run: bazel --bazelrc=.github/workflows/ci.bazelrc --bazelrc=.bazelrc test --noenable_bzlmod //... //docs:all
+        run: bazel --bazelrc=.github/workflows/ci.bazelrc test --noenable_bzlmod //... //docs:all
+
+      - name: bzlmod tests_and_lints
+        env:
+          # Bazelisk will download bazel to here, ensure it is cached between runs.
+          XDG_CACHE_HOME: ~/.cache/bazel-repo
+        run: (cd examples/tests_and_lints && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
+
+      - name: bzlmod gazelle
+        env:
+          # Bazelisk will download bazel to here, ensure it is cached between runs.
+          XDG_CACHE_HOME: ~/.cache/bazel-repo
+        run: (cd examples/gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
