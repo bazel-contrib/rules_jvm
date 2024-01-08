@@ -14,6 +14,11 @@ local_path_override(
 )
 
 bazel_dep(
+    name = "bazel_skylib",
+    version = "1.5.0",
+)
+
+bazel_dep(
     name = "rules_jvm_external",
     version = "5.3",
 )
@@ -40,5 +45,4 @@ use_repo(
 bazel_dep(
     name = "gazelle",
     version = "0.34.0",
-
 )
