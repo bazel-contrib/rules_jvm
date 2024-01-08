@@ -1,0 +1,44 @@
+module(
+    name = "gazelle_example",
+    version = "0.0.0",
+)
+
+bazel_dep(
+    name = "contrib_rules_jvm",
+    version = "0.0.0",
+)
+
+local_path_override(
+    module_name = "contrib_rules_jvm",
+    path = "../..",
+)
+
+bazel_dep(
+    name = "rules_jvm_external",
+    version = "5.3",
+)
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+
+maven.install(
+    name = "maven",
+    artifacts = [
+        "org.junit.jupiter:junit-jupiter-api:5.8.2",
+        "org.junit.jupiter:junit-jupiter-engine:5.8.2",
+        "org.junit.platform:junit-platform-launcher:1.8.2",
+        "org.junit.platform:junit-platform-reporting:1.8.2",
+    ],
+    lock_file = "//:maven_install.json",
+)
+
+use_repo(
+    maven,
+    "maven",
+    "unpinned_maven",
+)
+
+bazel_dep(
+    name = "gazelle",
+    version = "0.34.0",
+
+)
