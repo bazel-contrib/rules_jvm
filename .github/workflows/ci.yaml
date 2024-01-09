@@ -26,22 +26,17 @@ jobs:
       - uses: bazelbuild/setup-bazelisk@v2
 
       - name: bazel test //... (Java 11)
-        env:
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test --config=jdk11 //...
 
       - name: bazel test //... (Java 17)
-        env:
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test //...
 
       - name: bazel test //... (no bzlmod)
-        env:
-          # The docs targets are tagged as `manual` to prevent stardoc from running with bzlmod
+        # The docs targets are tagged as `manual` to prevent stardoc from running with bzlmod
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test --noenable_bzlmod //... //docs:all
 
       - name: bzlmod tests_and_lints
-        env:
         run: (cd examples/tests_and_lints && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
 
       - name: bzlmod gazelle
-        env:
         run: (cd examples/gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
