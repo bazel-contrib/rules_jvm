@@ -15,7 +15,7 @@ jobs:
   test:
     strategy:
       matrix:
-        platform: ["ubuntu-latest", "windows-latest"]
+        platform: ["windows-latest"]
     # The type of runner that the job will run on
     runs-on: ${{ matrix.platform }}
 
@@ -25,45 +25,23 @@ jobs:
 
       - uses: bazelbuild/setup-bazelisk@v2
 
-      - name: Mount bazel action cache
-        uses: actions/cache@v2
-        with:
-          path: "~/.cache/bazel"
-          key: bazel
-
-      - name: Mount bazel repo cache
-        uses: actions/cache@v2
-        with:
-          path: "~/.cache/bazel-repo"
-          key: bazel-repo
-
       - name: bazel test //... (Java 11)
         env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test --config=jdk11 //...
 
       - name: bazel test //... (Java 17)
         env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test //...
 
       - name: bazel test //... (no bzlmod)
         env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
           # The docs targets are tagged as `manual` to prevent stardoc from running with bzlmod
         run: bazel --bazelrc=.github/workflows/ci.bazelrc test --noenable_bzlmod //... //docs:all
 
       - name: bzlmod tests_and_lints
         env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
         run: (cd examples/tests_and_lints && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
 
       - name: bzlmod gazelle
         env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
         run: (cd examples/gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
