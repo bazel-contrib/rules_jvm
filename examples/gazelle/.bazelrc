@@ -1,0 +1,5 @@
+common --enable_platform_specific_config
+
+# https://bazel.build/docs/windows#symlink
+startup --windows_enable_symlinks
+run:windows --enable_runfiles
