@@ -4,6 +4,10 @@ module(
 )
 
 bazel_dep(
+    name = "apple_rules_lint",
+    version = "0.3.2",
+)
+bazel_dep(
     name = "contrib_rules_jvm",
     version = "0.0.0",
 )
@@ -17,6 +21,9 @@ bazel_dep(
     version = "5.3",
 )
 
+linter = use_extension("@apple_rules_lint//lint:extensions.bzl", "linter")
+linter.configure(name = "java-spotbugs", config = ":spotbugs-custom-config")
+
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     name = "maven",
@@ -25,6 +32,8 @@ maven.install(
         "org.junit.jupiter:junit-jupiter-engine:5.8.2",
         "org.junit.platform:junit-platform-launcher:1.8.2",
         "org.junit.platform:junit-platform-reporting:1.8.2",
+        "com.github.spotbugs:spotbugs:4.7.3",
+        "com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0",
     ],
     lock_file = "//:maven_install.json",
 )
