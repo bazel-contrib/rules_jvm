@@ -22,7 +22,10 @@ bazel_dep(
 )
 
 linter = use_extension("@apple_rules_lint//lint:extensions.bzl", "linter")
-linter.configure(name = "java-spotbugs", config = ":spotbugs-custom-config")
+linter.configure(
+    name = "java-spotbugs",
+    config = ":spotbugs-custom-config",
+)
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
