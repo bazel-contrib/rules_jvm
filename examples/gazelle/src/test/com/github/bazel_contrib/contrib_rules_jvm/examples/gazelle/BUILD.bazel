@@ -1,0 +1,14 @@
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+
+genquery(
+    name = "generated_targets",
+    expression = "kind(java_test, deps(//src/test/com/github/bazel_contrib/contrib_rules_jvm/examples/gazelle:gazelle))",
+    opts = ["--output=label_kind"],
+    scope = ["//src/test/com/github/bazel_contrib/contrib_rules_jvm/examples/gazelle"],
+)
+
+diff_test(
+    name = "diff_test",
+    file1 = ":generated_targets",
+    file2 = ":expected-query-output",
+)

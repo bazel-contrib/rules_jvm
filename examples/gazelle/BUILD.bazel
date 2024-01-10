@@ -1,0 +1,15 @@
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+gazelle_binary(
+    name = "gazelle_binary",
+    languages = [
+        "@gazelle//language/proto:go_default_library",
+        "@contrib_rules_jvm//java/gazelle",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_binary",
+)

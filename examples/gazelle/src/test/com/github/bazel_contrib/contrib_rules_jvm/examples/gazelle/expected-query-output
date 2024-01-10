@@ -1,0 +1,1 @@
+java_test rule //src/test/com/github/bazel_contrib/contrib_rules_jvm/examples/gazelle:ExampleTest
