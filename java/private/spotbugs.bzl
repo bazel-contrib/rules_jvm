@@ -10,6 +10,7 @@ def _spotbugs_impl(ctx):
     effort = info.effort
     fail_on_warning = info.fail_on_warning
     exclude_filter = info.exclude_filter
+    plugin_list = info.plugin_list
 
     if ctx.attr.only_output_jars:
         deps = []
@@ -28,6 +29,11 @@ def _spotbugs_impl(ctx):
     if exclude_filter:
         flags.extend(["-exclude", exclude_filter.short_path])
         runfiles.append(exclude_filter)
+
+    if plugin_list:
+        plugin_list_cli_flag = ";".join([plugin.short_path for plugin in plugin_list])
+        flags.extend(["-pluginList", plugin_list_cli_flag])
+        runfiles.extend(plugin_list)
 
     test = [
         "#!/usr/bin/env bash",

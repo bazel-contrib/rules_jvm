@@ -140,7 +140,7 @@ Use PMD to lint the `srcs`.
 ## spotbugs_config
 
 <pre>
-spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
+spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-plugin_list">plugin_list</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
 </pre>
 
 Configuration used for spotbugs, typically by the `//lint` rules.
@@ -154,6 +154,7 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 | <a id="spotbugs_config-effort"></a>effort |  Effort can be min, less, default, more or max. Defaults to default   | String | optional | <code>"default"</code> |
 | <a id="spotbugs_config-exclude_filter"></a>exclude_filter |  Report all bug instances except those matching the filter specified by this filter file   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>None</code> |
 | <a id="spotbugs_config-fail_on_warning"></a>fail_on_warning |  Whether to fail on warning, or just create a report. Defaults to True   | Boolean | optional | <code>True</code> |
+| <a id="spotbugs_config-plugin_list"></a>plugin_list |  Specify a list of plugin Jar files to load   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional | <code>[]</code> |
 | <a id="spotbugs_config-spotbugs_binary"></a>spotbugs_binary |  The spotbugs binary to run.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional | <code>@contrib_rules_jvm//java:spotbugs_cli</code> |
 
 

@@ -1,0 +1,11 @@
+load("@contrib_rules_jvm//java:defs.bzl", "spotbugs_config")
+
+spotbugs_config(
+    name = "spotbugs-custom-config",
+    effort = "default",
+    fail_on_warning = True,
+    plugin_list = [
+        "@maven//:com_h3xstream_findsecbugs_findsecbugs_plugin",
+    ],
+    visibility = ["//visibility:public"],
+)
