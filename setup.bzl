@@ -6,7 +6,7 @@ load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_jav
 def contrib_rules_jvm_setup():
     ruleset_lint_setup()
 
-    # When using bazel 5, we have undefined toolchains from rules_js. This should be fine to skip, since we only need
+    # When using bazel 5, we have undefined toolchains from rules_java. This should be fine to skip, since we only need
     # it for the `JavaInfo` definition.
     major_version = native.bazel_version.partition(".")[0]
     if major_version != "5":
