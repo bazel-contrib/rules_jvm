@@ -1,7 +1,7 @@
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("//third_party:protobuf_version.bzl", "PROTOBUF_VERSION")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//java/private:zip_repository.bzl", "zip_repository")
+load("//third_party:protobuf_version.bzl", "PROTOBUF_VERSION")
 
 def contrib_rules_jvm_deps():
     maybe(
