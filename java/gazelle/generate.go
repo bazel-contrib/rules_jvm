@@ -203,7 +203,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		libName := filepath.Base(args.Rel)
 		if testHelperJavaClasses.Contains(m) {
 			isTestOnly = true
-			libName += "-test-lib"
+			libName = testHelperLibname(libName)
 		}
 		l.generateJavaBinary(args.File, m, libName, isTestOnly, &res)
 	}
@@ -235,7 +235,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				extraAttributes := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, extraAttributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, nil, extraAttributes, &res)
 			}
 
 		case "suite":
@@ -274,7 +274,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				sortedSeparateTestJavaFiles.Add(src)
 			}
 			for _, src := range sortedSeparateTestJavaFiles.SortedSlice() {
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, separateTestJavaFiles[src], &res)
+				var testHelperDep *string
+				if testHelperJavaFiles.Len() > 0 {
+					testHelperDep = ptr(testHelperLibname(suiteName))
+				}
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testHelperDep, separateTestJavaFiles[src], &res)
 			}
 		}
 	}
@@ -484,7 +488,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], depOnTestHelpers *string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -515,6 +519,10 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
 	r.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(f.pkg, true, false)})
+
+	if depOnTestHelpers != nil {
+		r.SetAttr("deps", []string{*depOnTestHelpers})
+	}
 
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -617,4 +625,12 @@ func labelsToStrings(labels []label.Label) []string {
 		out[idx] = l.String()
 	}
 	return out
+}
+
+func testHelperLibname(targetName string) string {
+	return targetName + "-test-lib"
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
