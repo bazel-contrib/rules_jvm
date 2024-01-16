@@ -135,7 +135,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, &res)
+			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
