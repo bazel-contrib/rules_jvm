@@ -190,8 +190,22 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, false, javaLibraryKind, &res)
 	}
 
+	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
 	for _, m := range allMains.SortedSlice() {
-		l.generateJavaBinary(args.File, m, filepath.Base(args.Rel), &res)
+		// Lazily populate because java_binaries are pretty rare
+		if testHelperJavaClasses == nil {
+			testHelperJavaClasses = sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
+			for _, testHelperJavaFile := range testHelperJavaFiles.SortedSlice() {
+				testHelperJavaClasses.Add(*testHelperJavaFile.ClassName())
+			}
+		}
+		isTestOnly := false
+		libName := filepath.Base(args.Rel)
+		if testHelperJavaClasses.Contains(m) {
+			isTestOnly = true
+			libName += "-test-lib"
+		}
+		l.generateJavaBinary(args.File, m, libName, isTestOnly, &res)
 	}
 
 	// We add special packages to point to testonly libraries which - this accumulates them,
@@ -450,11 +464,15 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	res.Imports = append(res.Imports, resolveInput)
 }
 
-func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName string, res *language.GenerateResult) {
+func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName string, testonly bool, res *language.GenerateResult) {
 	const ruleKind = "java_binary"
 	name := m.BareOuterClassName()
 	r := rule.NewRule("java_binary", name) // FIXME check collision on name
 	r.SetAttr("main_class", m.FullyQualifiedClassName())
+
+	if testonly {
+		r.SetAttr("testonly", true)
+	}
 
 	runtimeDeps := l.collectRuntimeDeps(ruleKind, name, file)
 	runtimeDeps.Add(label.Label{Name: libName, Relative: true})
