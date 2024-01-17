@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -30,8 +31,20 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   public static final Logger LOG = Logger.getLogger(BazelJUnitOutputListener.class.getName());
   private final XMLStreamWriter xml;
 
+  private final Object resultsLock = new Object();
+  // Commented out to avoid adding a dependency to building the test runner.
+  // This is really just documentation until someone actually turns on a static analyser.
+  // If they do, we can decide whether we want to pick up the dependency.
+  // @GuardedBy("resultsLock")
   private final Map<UniqueId, TestData> results = new ConcurrentHashMap<>();
   private TestPlan testPlan;
+
+  // If we have already closed this listener, we shouldn't write any more XML.
+  private final AtomicBoolean hasClosed = new AtomicBoolean();
+  // Whether test-running was interrupted (e.g. because our tests timed out and we got SIGTERM'd)
+  // and when writing results we want to flush any pending tests as interrupted,
+  // rather than ignoring them because they're incomplete.
+  private final AtomicBoolean wasInterrupted = new AtomicBoolean();
 
   public BazelJUnitOutputListener(Path xmlOut) {
     try {
@@ -72,7 +85,13 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     this.testPlan = null;
   }
 
-  private Map<TestData, List<TestData>> matchTestCasesToSuites(List<TestData> testCases) {
+  // Requires the caller to have acquired resultsLock.
+  // Commented out to avoid adding a dependency to building the test runner.
+  // This is really just documentation until someone actually turns on a static analyser.
+  // If they do, we can decide whether we want to pick up the dependency.
+  // @GuardedBy("resultsLock")
+  private Map<TestData, List<TestData>> matchTestCasesToSuites_locked(
+      List<TestData> testCases, boolean includeIncompleteTests) {
     Map<TestData, List<TestData>> knownSuites = new HashMap<>();
 
     // Find the containing test suites for the test cases.
@@ -84,14 +103,20 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         LOG.warning("Unable to find parent test for " + testCase.getId());
         throw new IllegalStateException("Unable to find parent test for " + testCase.getId());
       }
-
-      knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
+      if (includeIncompleteTests || testCase.getDuration() != null) {
+        knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
+      }
     }
 
     return knownSuites;
   }
 
-  private List<TestData> findTestCases() {
+  // Requires the caller to have acquired resultsLock.
+  // Commented out to avoid adding a dependency to building the test runner.
+  // This is really just documentation until someone actually turns on a static analyser.
+  // If they do, we can decide whether we want to pick up the dependency.
+  // @GuardedBy("resultsLock")
+  private List<TestData> findTestCases_locked() {
     return results.values().stream()
         // Ignore test plan roots. These are always the engine being used.
         .filter(result -> !testPlan.getRoots().contains(result.getId()))
@@ -134,28 +159,35 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       return;
     }
 
-    List<TestData> testCases = findTestCases();
-    Map<TestData, List<TestData>> testSuites = matchTestCasesToSuites(testCases);
+    output(false);
+  }
 
-    // Write the results
-    try {
-      for (Map.Entry<TestData, List<TestData>> suiteAndTests : testSuites.entrySet()) {
-        new TestSuiteXmlRenderer(testPlan)
-            .toXml(xml, suiteAndTests.getKey(), suiteAndTests.getValue());
+  private void output(boolean includeIncompleteTests) {
+    synchronized (this.resultsLock) {
+      List<TestData> testCases = findTestCases_locked();
+      Map<TestData, List<TestData>> testSuites =
+          matchTestCasesToSuites_locked(testCases, includeIncompleteTests);
+
+      // Write the results
+      try {
+        for (Map.Entry<TestData, List<TestData>> suiteAndTests : testSuites.entrySet()) {
+          new TestSuiteXmlRenderer(testPlan)
+              .toXml(xml, suiteAndTests.getKey(), suiteAndTests.getValue());
+        }
+      } catch (XMLStreamException e) {
+        throw new RuntimeException(e);
       }
-    } catch (XMLStreamException e) {
-      throw new RuntimeException(e);
-    }
 
-    // Delete the results we've used to conserve memory. This is safe to do
-    // since we only do this when the test root is complete, so we know that
-    // we won't be adding to the list of suites and test cases for that root
-    // (because tests and containers are arranged in a hierarchy --- the
-    // containers only complete when all the things they contain are
-    // finished. We are leaving all the test data that we have _not_ written
-    // to the XML file.
-    Stream.concat(testCases.stream(), testSuites.keySet().stream())
-        .forEach(data -> results.remove(data.getId().getUniqueIdObject()));
+      // Delete the results we've used to conserve memory. This is safe to do
+      // since we only do this when the test root is complete, so we know that
+      // we won't be adding to the list of suites and test cases for that root
+      // (because tests and containers are arranged in a hierarchy --- the
+      // containers only complete when all the things they contain are
+      // finished. We are leaving all the test data that we have _not_ written
+      // to the XML file.
+      Stream.concat(testCases.stream(), testSuites.keySet().stream())
+          .forEach(data -> results.remove(data.getId().getUniqueIdObject()));
+    }
   }
 
   @Override
@@ -164,10 +196,23 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   }
 
   private TestData getResult(TestIdentifier id) {
-    return results.computeIfAbsent(id.getUniqueIdObject(), ignored -> new TestData(id));
+    synchronized (resultsLock) {
+      return results.computeIfAbsent(id.getUniqueIdObject(), ignored -> new TestData(id));
+    }
+  }
+
+  public void closeForInterrupt() {
+    wasInterrupted.set(true);
+    close();
   }
 
   public void close() {
+    if (hasClosed.getAndSet(true)) {
+      return;
+    }
+    if (wasInterrupted.get()) {
+      output(true);
+    }
     try {
       xml.writeEndDocument();
       xml.close();

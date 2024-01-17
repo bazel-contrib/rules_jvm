@@ -8,6 +8,8 @@ import java.io.StringWriter;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -47,21 +49,32 @@ class TestCaseXmlRenderer {
     xml.writeStartElement("testcase");
     xml.writeAttribute("name", name);
     xml.writeAttribute("classname", LegacyReportingUtils.getClassName(testPlan, id));
-    xml.writeAttribute("time", decimalFormat.format(test.getDuration().toMillis() / 1000f));
 
-    if (test.isDisabled() || test.isSkipped()) {
-      xml.writeStartElement("skipped");
-      if (test.getSkipReason() != null) {
-        xml.writeCData(test.getSkipReason());
-      } else {
-        writeThrowableMessage(xml, test.getResult());
+    /* @Nullable */ Duration maybeDuration = test.getDuration();
+    boolean wasInterrupted = maybeDuration == null;
+    Duration duration =
+        maybeDuration == null ? Duration.between(test.getStarted(), Instant.now()) : maybeDuration;
+    xml.writeAttribute("time", decimalFormat.format(duration.toMillis() / 1000f));
+
+    if (wasInterrupted) {
+      xml.writeStartElement("failure");
+      xml.writeCData("Test timed out and was interrupted");
+      xml.writeEndElement();
+    } else {
+      if (test.isDisabled() || test.isSkipped()) {
+        xml.writeStartElement("skipped");
+        if (test.getSkipReason() != null) {
+          xml.writeCData(test.getSkipReason());
+        } else {
+          writeThrowableMessage(xml, test.getResult());
+        }
+        xml.writeEndElement();
       }
-      xml.writeEndElement();
-    }
-    if (test.isFailure() || test.isError()) {
-      xml.writeStartElement(test.isFailure() ? "failure" : "error");
-      writeThrowableMessage(xml, test.getResult());
-      xml.writeEndElement();
+      if (test.isFailure() || test.isError()) {
+        xml.writeStartElement(test.isFailure() ? "failure" : "error");
+        writeThrowableMessage(xml, test.getResult());
+        xml.writeEndElement();
+      }
     }
 
     writeTextElement(xml, "system-out", test.getStdOut());
