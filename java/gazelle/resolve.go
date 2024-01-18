@@ -199,6 +199,16 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return label.NoLabel, nil
 	}
 
+	// As per https://github.com/bazelbuild/bazel/blob/347407a88fd480fc5e0fbd42cc8196e4356a690b/tools/java/runfiles/Runfiles.java#L41
+	if imp.Name == "com.google.devtools.build.runfiles" {
+		runfilesLabel := "@bazel_tools//tools/java/runfiles"
+		l, err := label.Parse(runfilesLabel)
+		if err != nil {
+			return label.NoLabel, fmt.Errorf("failed to parse known-good runfiles label %s: %w", runfilesLabel, err)
+		}
+		return l, nil
+	}
+
 	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
 		var noExternal *maven.NoExternalImportsError
 		var multipleExternal *maven.MultipleExternalImportsError
