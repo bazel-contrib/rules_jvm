@@ -9,6 +9,7 @@ go_library(
         "//java/gazelle/private/java",
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
         "//java/gazelle/private/servermanager",
+        "//java/gazelle/private/sorted_multiset",
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
         "@com_github_rs_zerolog//:zerolog",

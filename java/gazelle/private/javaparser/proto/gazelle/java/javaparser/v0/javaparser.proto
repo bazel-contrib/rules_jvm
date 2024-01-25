@@ -51,7 +51,13 @@ message Package {
 }
 
 message PerClassMetadata {
-    repeated string annotation_class_names = 1;
+  repeated string annotation_class_names = 1;
+  // Not all methods will be present here, only those with something interesting to report.
+  map<string, PerMethodMetadata> per_method_metadata = 2;
+}
+
+message PerMethodMetadata {
+  repeated string annotation_class_names = 1;
 }
 
 service Lifecycle {

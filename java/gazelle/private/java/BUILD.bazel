@@ -12,6 +12,7 @@ go_library(
     # Allow visibility for plugins like Kotlin that don't live in this repo
     visibility = ["//visibility:public"],
     deps = [
+        "//java/gazelle/private/sorted_multiset",
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
     ],

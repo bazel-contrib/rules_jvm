@@ -1,6 +1,7 @@
 package java
 
 import (
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 )
@@ -21,5 +22,6 @@ type Package struct {
 }
 
 type PerClassMetadata struct {
-	AnnotationClassNames *sorted_set.SortedSet[string]
+	AnnotationClassNames       *sorted_set.SortedSet[string]
+	MethodAnnotationClassNames *sorted_multiset.SortedMultiSet[string, string]
 }
