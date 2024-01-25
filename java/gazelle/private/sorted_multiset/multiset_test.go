@@ -15,7 +15,7 @@ func TestNil(t *testing.T) {
 		t.Errorf("want len(nil.Keys()) == 0, got %d", gotKeysLen)
 	}
 
-	gotValues := s.Values("foo")
+	gotValues := s.SortedValues("foo")
 	if gotValuesLen := len(gotValues); gotValuesLen != 0 {
 		t.Errorf("want len(nil.Values(\"foo\")) == 0, got %d", gotValuesLen)
 	}
@@ -30,7 +30,12 @@ func TestMultiSet(t *testing.T) {
 			t.Errorf("want no keys, got %d: %v", gotKeysLen, gotKeys)
 		}
 
-		gotValues := s.Values("tasty")
+		gotValuesSlice := s.SortedValues("tasty")
+		if gotValuesLen := len(gotValuesSlice); gotValuesLen != 0 {
+			t.Errorf("want no values for tasty, got %d: %v", gotValuesLen, gotValuesSlice)
+		}
+
+		gotValues := s.Values("tasty").SortedSlice()
 		if gotValuesLen := len(gotValues); gotValuesLen != 0 {
 			t.Errorf("want no values for tasty, got %d: %v", gotValuesLen, gotValues)
 		}
@@ -45,12 +50,12 @@ func TestMultiSet(t *testing.T) {
 		}
 
 		wantTastyValues := []string{"hummus"}
-		gotTastyValues := s.Values("tasty")
+		gotTastyValues := s.SortedValues("tasty")
 		if !reflect.DeepEqual(wantTastyValues, gotTastyValues) {
 			t.Errorf("want tasty values %v got %v", wantTastyValues, gotTastyValues)
 		}
 
-		gotBadValues := s.Values("bad")
+		gotBadValues := s.SortedValues("bad")
 		if gotBadValuesLen := len(gotBadValues); gotBadValuesLen != 0 {
 			t.Errorf("want no values for tasty, got %d: %v", gotBadValuesLen, gotBadValues)
 		}
@@ -65,12 +70,12 @@ func TestMultiSet(t *testing.T) {
 		}
 
 		wantTastyValues := []string{"cheese", "hummus"}
-		gotTastyValues := s.Values("tasty")
+		gotTastyValues := s.SortedValues("tasty")
 		if !reflect.DeepEqual(wantTastyValues, gotTastyValues) {
 			t.Errorf("want tasty values %v got %v", wantTastyValues, gotTastyValues)
 		}
 
-		gotBadValues := s.Values("bad")
+		gotBadValues := s.SortedValues("bad")
 		if gotBadValuesLen := len(gotBadValues); gotBadValuesLen != 0 {
 			t.Errorf("want no values for tasty, got %d: %v", gotBadValuesLen, gotBadValues)
 		}
@@ -85,12 +90,12 @@ func TestMultiSet(t *testing.T) {
 		}
 
 		wantTastyValues := []string{"cheese", "hummus"}
-		gotTastyValues := s.Values("tasty")
+		gotTastyValues := s.SortedValues("tasty")
 		if !reflect.DeepEqual(wantTastyValues, gotTastyValues) {
 			t.Errorf("want tasty values %v got %v", wantTastyValues, gotTastyValues)
 		}
 
-		gotBadValues := s.Values("bad")
+		gotBadValues := s.SortedValues("bad")
 		if gotBadValuesLen := len(gotBadValues); gotBadValuesLen != 0 {
 			t.Errorf("want no values for tasty, got %d: %v", gotBadValuesLen, gotBadValues)
 		}
@@ -105,13 +110,18 @@ func TestMultiSet(t *testing.T) {
 		}
 
 		wantTastyValues := []string{"cheese", "hummus"}
-		gotTastyValues := s.Values("tasty")
+		gotTastyValues := s.SortedValues("tasty")
 		if !reflect.DeepEqual(wantTastyValues, gotTastyValues) {
 			t.Errorf("want tasty values %v got %v", wantTastyValues, gotTastyValues)
 		}
 
+		gotTastySortedSetValues := s.Values("tasty")
+		if !reflect.DeepEqual(wantTastyValues, gotTastySortedSetValues.SortedSlice()) {
+			t.Errorf("want tasty values %v got %v", wantTastyValues, gotTastyValues)
+		}
+
 		wantBadValues := []string{"soil"}
-		gotBadValues := s.Values("bad")
+		gotBadValues := s.SortedValues("bad")
 		if !reflect.DeepEqual(wantBadValues, gotBadValues) {
 			t.Errorf("want bad values %v got %v", wantBadValues, gotBadValues)
 		}

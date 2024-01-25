@@ -251,6 +251,13 @@ func TestAddAll(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("want %v got %v", want, got)
 	}
+
+	s.AddAll(nil)
+
+	got = s.SortedSlice()
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("want %v got %v", want, got)
+	}
 }
 
 func TestFilter(t *testing.T) {

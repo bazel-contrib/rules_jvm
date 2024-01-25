@@ -66,6 +66,9 @@ func (s *SortedSet[T]) Add(v T) {
 
 // AddAll adds all of the elements from the other SortedSet to this one.
 func (s *SortedSet[T]) AddAll(other *SortedSet[T]) {
+	if other == nil {
+		return
+	}
 	other.tree.Ascend(func(v T) bool {
 		s.Add(v)
 		return true
