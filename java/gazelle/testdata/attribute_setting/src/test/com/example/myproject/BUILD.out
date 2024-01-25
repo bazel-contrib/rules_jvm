@@ -16,6 +16,22 @@ java_test_suite(
 )
 
 java_junit5_test(
+    name = "MixedTest",
+    srcs = ["MixedTest.java"],
+    flaky = True,
+    test_class = "com.example.myproject.MixedTest",
+    runtime_deps = [
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven//:org_junit_platform_junit_platform_launcher",
+        "@maven//:org_junit_platform_junit_platform_reporting",
+    ],
+    deps = [
+        "//src/main/com/example/annotation",
+        "@maven//:org_junit_jupiter_junit_jupiter_api",
+    ],
+)
+
+java_junit5_test(
     name = "RandomTest",
     srcs = ["RandomTest.java"],
     flaky = True,

@@ -5,9 +5,7 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -31,7 +29,9 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -57,7 +57,7 @@ public class ClasspathParser {
 
   // Mapping from fully-qualified class-name to class-names of annotations on that class.
   // Annotations will be fully-qualified where that's known, and not where not known.
-  private final Map<String, SortedSet<String>> annotatedClasses = new TreeMap<>();
+  final Map<String, PerClassData> perClassData = new TreeMap<>();
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -65,6 +65,46 @@ public class ClasspathParser {
 
   public ClasspathParser() {
     // Doesn't need to do anything currently
+  }
+
+  static class PerClassData {
+    public PerClassData() {
+      this(new TreeSet<>(), new TreeMap<>());
+    }
+
+    @Override
+    public String toString() {
+      return "PerClassData{"
+          + "annotations="
+          + annotations
+          + ", perMethodAnnotations="
+          + perMethodAnnotations
+          + '}';
+    }
+
+    public PerClassData(
+        SortedSet<String> annotations, SortedMap<String, SortedSet<String>> perMethodAnnotations) {
+      this.annotations = annotations;
+      this.perMethodAnnotations = perMethodAnnotations;
+    }
+
+    final SortedSet<String> annotations;
+
+    final SortedMap<String, SortedSet<String>> perMethodAnnotations;
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      PerClassData that = (PerClassData) o;
+      return Objects.equals(annotations, that.annotations)
+          && Objects.equals(perMethodAnnotations, that.perMethodAnnotations);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(annotations, perMethodAnnotations);
+    }
   }
 
   public ImmutableSet<String> getUsedTypes() {
@@ -85,15 +125,6 @@ public class ClasspathParser {
 
   public ImmutableSet<String> getMainClasses() {
     return ImmutableSet.copyOf(mainClasses);
-  }
-
-  public ImmutableMap<String, ImmutableSortedSet<String>> getAnnotatedClasses() {
-    ImmutableMap.Builder<String, ImmutableSortedSet<String>> builder =
-        ImmutableMap.builderWithExpectedSize(annotatedClasses.size());
-    for (Map.Entry<String, SortedSet<String>> entry : annotatedClasses.entrySet()) {
-      builder.put(entry.getKey(), ImmutableSortedSet.copyOf(entry.getValue()));
-    }
-    return builder.build();
   }
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
@@ -245,6 +276,20 @@ public class ClasspathParser {
         checkFullyQualifiedType(param.getType());
         handleAnnotations(param.getModifiers().getAnnotations());
       }
+
+      for (AnnotationTree annotation : m.getModifiers().getAnnotations()) {
+        String annotationClassName = annotation.getAnnotationType().toString();
+        String importedFullyQualified = currentFileImports.get(annotationClassName);
+        String currentFullyQualifiedClass = fullyQualify(currentPackage, currentClassName);
+        if (importedFullyQualified != null) {
+          noteAnnotatedMethod(
+              currentFullyQualifiedClass, m.getName().toString(), importedFullyQualified);
+        } else {
+          noteAnnotatedMethod(
+              currentFullyQualifiedClass, m.getName().toString(), annotationClassName);
+        }
+      }
+
       return super.visitMethod(m, v);
     }
 
@@ -333,10 +378,27 @@ public class ClasspathParser {
 
   private void noteAnnotatedClass(
       String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
-    if (!annotatedClasses.containsKey(annotatedFullyQualifiedClassName)) {
-      annotatedClasses.put(annotatedFullyQualifiedClassName, new TreeSet<>());
+    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
     }
-    annotatedClasses.get(annotatedFullyQualifiedClassName).add(annotationFullyQualifiedClassName);
+    perClassData
+        .get(annotatedFullyQualifiedClassName)
+        .annotations
+        .add(annotationFullyQualifiedClassName);
+  }
+
+  private void noteAnnotatedMethod(
+      String annotatedFullyQualifiedClassName,
+      String methodName,
+      String annotationFullyQualifiedClassName) {
+    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    }
+    PerClassData data = perClassData.get(annotatedFullyQualifiedClassName);
+    if (!data.perMethodAnnotations.containsKey(methodName)) {
+      data.perMethodAnnotations.put(methodName, new TreeSet<>());
+    }
+    data.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
   }
 
   private String fullyQualify(String packageName, String className) {

@@ -415,7 +415,13 @@ func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from
 
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]separateJavaTestReasons, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
 	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
-		annotationClassNames := perClassMetadata[file.ClassName().FullyQualifiedClassName()].AnnotationClassNames
+		annotationClassNames := sorted_set.NewSortedSet[string](nil)
+		metadataForClass := perClassMetadata[file.ClassName().FullyQualifiedClassName()]
+		annotationClassNames.AddAll(metadataForClass.AnnotationClassNames)
+		for _, key := range metadataForClass.MethodAnnotationClassNames.Keys() {
+			annotationClassNames.AddAll(metadataForClass.MethodAnnotationClassNames.Values(key))
+		}
+
 		perFileAttrs := make(map[string]bzl.Expr)
 		wrapper := ""
 		for _, annotationClassName := range annotationClassNames.SortedSlice() {

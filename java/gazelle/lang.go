@@ -177,7 +177,7 @@ func (l javaLang) Loads() []rule.LoadInfo {
 	for _, name := range s.Keys() {
 		loads = append(loads, rule.LoadInfo{
 			Name:    name,
-			Symbols: s.Values(name),
+			Symbols: s.SortedValues(name),
 		})
 	}
 	return loads

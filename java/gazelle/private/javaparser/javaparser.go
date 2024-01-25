@@ -8,6 +8,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/rs/zerolog"
@@ -64,8 +65,15 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 
 	perClassMetadata := make(map[string]java.PerClassMetadata, len(resp.GetPerClassMetadata()))
 	for k, v := range resp.GetPerClassMetadata() {
+		methodAnnotationClassNames := sorted_multiset.NewSortedMultiSet[string, string]()
+		for method, perMethod := range v.GetPerMethodMetadata() {
+			for _, annotation := range perMethod.AnnotationClassNames {
+				methodAnnotationClassNames.Add(method, annotation)
+			}
+		}
 		metadata := java.PerClassMetadata{
-			AnnotationClassNames: sorted_set.NewSortedSet(v.GetAnnotationClassNames()),
+			AnnotationClassNames:       sorted_set.NewSortedSet(v.GetAnnotationClassNames()),
+			MethodAnnotationClassNames: methodAnnotationClassNames,
 		}
 		perClassMetadata[k] = metadata
 	}

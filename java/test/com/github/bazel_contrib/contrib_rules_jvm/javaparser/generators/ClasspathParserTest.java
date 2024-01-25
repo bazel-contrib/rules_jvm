@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -191,8 +193,26 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
-            treeSet("com.example.FlakyTest")),
-        parser.getAnnotatedClasses());
+            new ClasspathParser.PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>())),
+        parser.perClassData);
+  }
+
+  @Test
+  public void testAnnotationAfterImportOnMethod() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/AnnotationAfterImportOnMethod.java"));
+    parser.parseClasses(files);
+
+    TreeMap<String, SortedSet<String>> expectedPerMethodAnnotations = new TreeMap<>();
+    expectedPerMethodAnnotations.put("someTest", treeSet("org.junit.jupiter.api.Test"));
+
+    assertEquals(
+        Map.of(
+            "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImportOnMethod",
+            new ClasspathParser.PerClassData(new TreeSet<>(), expectedPerMethodAnnotations)),
+        parser.perClassData);
   }
 
   @Test
@@ -208,8 +228,8 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
-            treeSet("Deprecated")),
-        parser.getAnnotatedClasses());
+            new ClasspathParser.PerClassData(treeSet("Deprecated"), new TreeMap<>())),
+        parser.perClassData);
   }
 
   @Test
@@ -225,8 +245,8 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
-            treeSet("WhoKnowsWhereIAmFrom")),
-        parser.getAnnotatedClasses());
+            new ClasspathParser.PerClassData(treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>())),
+        parser.perClassData);
   }
 
   @Test
