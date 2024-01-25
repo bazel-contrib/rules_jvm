@@ -33,7 +33,15 @@ func (s *SortedMultiSet[K, V]) Keys() []K {
 	return s.keys.SortedSlice()
 }
 
-func (s *SortedMultiSet[K, V]) Values(key K) []V {
+func (s *SortedMultiSet[K, V]) Values(key K) *sorted_set.SortedSet[V] {
+	if s == nil {
+		return sorted_set.NewSortedSet[V](nil)
+	}
+
+	return s.ms[key]
+}
+
+func (s *SortedMultiSet[K, V]) SortedValues(key K) []V {
 	if s == nil {
 		return nil
 	}
