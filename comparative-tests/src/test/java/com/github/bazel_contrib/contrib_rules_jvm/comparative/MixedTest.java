@@ -6,20 +6,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class SuiteTest1 {
+public class MixedTest {
 
   private static Stream<Arguments> argsProvider() {
     return Stream.of(Arguments.of("alpha"), Arguments.of("beta"), Arguments.of("gamma"));
   }
 
-  @Test
-  void doSomething() {
-    System.out.println("Hello, World!");
-  }
-
   @ParameterizedTest
   @MethodSource("argsProvider")
-  void testSuiteParameters(String goGreek) {
-    System.out.println("Suite Test 1: " + goGreek);
+  public void bootstrap(String goGreek) {
+    System.out.println(goGreek);
+  }
+
+  @Test
+  void empty() {
+    // Does nothing
   }
 }

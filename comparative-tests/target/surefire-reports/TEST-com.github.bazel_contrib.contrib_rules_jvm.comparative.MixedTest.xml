@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.019" tests="4" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.github.bazel_contrib.contrib_rules_jvm.comparative.MixedTest" time="0.017" tests="4" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="11"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
-\\   <property name="java.vm.specification.version" value="11"/>
+    <property name="java.vm.specification.version" value="11"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="US"/>
     <property name="jdk.debug" value="release"/>
@@ -22,24 +22,21 @@
     <property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
     <property name="java.version" value="11.0.20"/>
     <property name="os.arch" value="x86_64"/>
-    <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="native.encoding" value="UTF-8"/>
     <property name="sun.io.unicode.encoding" value="UnicodeBig"/>
     <property name="java.class.version" value="55.0"/>
   </properties>
-  <testcase name="testSuiteParameters(String)[1]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.001">
-    <system-out><![CDATA[Suite Test 1: alpha
+  <testcase name="bootstrap(String)[1]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.MixedTest" time="0.002">
+    <system-out><![CDATA[alpha
 ]]></system-out>
   </testcase>
-  <testcase name="testSuiteParameters(String)[2]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.001">
-    <system-out><![CDATA[Suite Test 1: beta
+  <testcase name="bootstrap(String)[2]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.MixedTest" time="0.001">
+    <system-out><![CDATA[beta
 ]]></system-out>
   </testcase>
-  <testcase name="testSuiteParameters(String)[3]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.002">
-    <system-out><![CDATA[Suite Test 1: gamma
+  <testcase name="bootstrap(String)[3]" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.MixedTest" time="0.001">
+    <system-out><![CDATA[gamma
 ]]></system-out>
   </testcase>
-  <testcase name="doSomething" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.SuiteTest1" time="0.0">
-    <system-out><![CDATA[Hello, World!
-]]></system-out>
-  </testcase>
+  <testcase name="empty" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.MixedTest" time="0.001"/>
 </testsuite>

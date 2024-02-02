@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.PathologicalTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2023-11-08T12:49:19" hostname="Simons-Chunky-MBP.local" time="0.0">
+<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.PathologicalTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2024-02-02T18:14:16" hostname="MacBook-Pro.local" time="0.0">
   <properties/>
   <testcase name="bootstrap(String)" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.PathologicalTest" time="0.0">
     <skipped/>
