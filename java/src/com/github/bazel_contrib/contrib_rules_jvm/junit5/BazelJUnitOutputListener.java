@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -77,14 +78,48 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
 
     // Find the containing test suites for the test cases.
     for (TestData testCase : testCases) {
-      TestData parent = testCase.getId().getParentIdObject().map(results::get).orElse(null);
-      if (parent == null) {
-        // Something has gone wildly wrong. I really hope people file some
-        // bugs with us if they run into this....
-        LOG.warning("Unable to find parent test for " + testCase.getId());
-        throw new IllegalStateException("Unable to find parent test for " + testCase.getId());
-      }
 
+      TestData parent;
+
+      // The number of segments in the test case Unique ID depends upon the nature of the test:
+      // 3 segments : Simple tests (engine, class, method)
+      // 4 segments : Parameterized Tests (engine, class, template, invocation)
+      // 5 segments : Suite running simple tests (suite-engine, suite, engine, class, method)
+      // 6 segments : Suite running parameterized test (suite-engine, suite, engine, class,
+      // template, invocation)
+      // In all cases we're looking for the "class" segment, pull the UniqueID and map that from the
+      // results
+      List<UniqueId.Segment> segments = testCase.getId().getUniqueIdObject().getSegments();
+
+      if (segments.size() == 3 || segments.size() == 5) {
+        // get class / test data up one level
+        parent =
+            testCase
+                .getId()
+                .getParentIdObject()
+                .map(results::get)
+                .orElseThrow(NoSuchElementException::new);
+      } else if (segments.size() == 4 || segments.size() == 6) {
+        // get class / test data up two levels
+        parent =
+            testCase
+                .getId()
+                .getParentIdObject()
+                .map(results::get)
+                .orElseThrow(NoSuchElementException::new);
+        parent =
+            parent
+                .getId()
+                .getParentIdObject()
+                .map(results::get)
+                .orElseThrow(NoSuchElementException::new);
+      } else {
+        // Something is missing from our understanding of test organization,
+        // Ask people to send us a report about what we broke here.
+        LOG.warning("Unexpected test organization for " + testCase.getId());
+        throw new IllegalStateException(
+            "Unexpected test organization for test Case: " + testCase.getId());
+      }
       knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
     }
 

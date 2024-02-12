@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.DynamicTests" tests="3" skipped="0" failures="0" errors="0" timestamp="2023-11-08T12:49:19" hostname="Simons-Chunky-MBP.local" time="0.002">
+<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.DynamicTests" tests="3" skipped="0" failures="0" errors="0" timestamp="2024-02-02T18:14:16" hostname="MacBook-Pro.local" time="0.001">
   <properties/>
   <testcase name="Test of one" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.DynamicTests" time="0.001"/>
   <testcase name="Test of two" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.DynamicTests" time="0.0"/>
