@@ -16,7 +16,9 @@ class TestData {
   private final TestIdentifier id;
   private final List<ReportEntry> reportEntries = Collections.synchronizedList(new ArrayList<>());
   private Instant started = Instant.now();
-  private Instant finished = Instant.now();
+  // Commented out to avoid pulling in the dependency, but present for documentation purposes.
+  // @Nullable
+  private Instant finished = null;
   private String reason;
   private TestExecutionResult result;
   private boolean dynamic;
@@ -36,8 +38,6 @@ class TestData {
 
   public TestData mark(TestExecutionResult result) {
     if (result.getStatus() == TestExecutionResult.Status.ABORTED) {
-      skipReason("");
-
       Optional<Throwable> maybeThrowable = result.getThrowable();
       if (maybeThrowable.isPresent() && maybeThrowable.get() instanceof TestAbortedException) {
         skipReason(maybeThrowable.get().getMessage());
@@ -62,7 +62,13 @@ class TestData {
     return result;
   }
 
+  /** Returns how long the test took to run - will be absent if the test has not yet completed. */
+  // Commented out to avoid pulling in the dependency, but present for documentation purposes.
+  // @Nullable
   public Duration getDuration() {
+    if (finished == null) {
+      return null;
+    }
     return Duration.between(started, finished);
   }
 
@@ -83,6 +89,9 @@ class TestData {
         || result.getStatus() == TestExecutionResult.Status.SUCCESSFUL
         || isSkipped()) {
       return false;
+    }
+    if (result.getStatus() == TestExecutionResult.Status.ABORTED) {
+      return true;
     }
 
     return result.getThrowable().map(thr -> (!(thr instanceof AssertionError))).orElse(false);
@@ -132,5 +141,9 @@ class TestData {
 
   public boolean isDynamic() {
     return dynamic;
+  }
+
+  public Instant getStarted() {
+    return this.started;
   }
 }

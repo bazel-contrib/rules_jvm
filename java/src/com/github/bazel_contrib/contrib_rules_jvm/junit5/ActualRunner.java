@@ -44,6 +44,13 @@ public class ActualRunner implements RunsTest {
     }
 
     try (BazelJUnitOutputListener bazelJUnitXml = new BazelJUnitOutputListener(xmlOut)) {
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    bazelJUnitXml.closeForInterrupt();
+                  }));
+
       CommandLineSummary summary = new CommandLineSummary();
       FailFastExtension failFastExtension = new FailFastExtension();
 

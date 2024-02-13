@@ -142,6 +142,51 @@ public class BazelJUnitOuputListenerTest {
   }
 
   @Test
+  public void interruptedTestsAreMarkedAsFailed() {
+    TestData suite = new TestData(identifier);
+
+    TestPlan testPlan = Mockito.mock(TestPlan.class);
+
+    TestIdentifier completedChild =
+        TestIdentifier.from(new StubbedTestDescriptor(createId("complete-child")));
+    TestData completedChildResult = new TestData(completedChild).started();
+    completedChildResult.mark(TestExecutionResult.successful());
+
+    TestIdentifier interruptedChild =
+        TestIdentifier.from(new StubbedTestDescriptor(createId("interrupted-child")));
+    TestData interruptedChildResult = new TestData(interruptedChild).started();
+
+    Document xml =
+        generateTestXml(testPlan, suite, List.of(completedChildResult, interruptedChildResult));
+
+    // Because of the way we generated the XML, the root element is the `testsuite` one
+    Element root = xml.getDocumentElement();
+    assertEquals("testsuite", root.getTagName());
+    assertEquals("2", root.getAttribute("tests"));
+    assertEquals("0", root.getAttribute("disabled"));
+    assertEquals("0", root.getAttribute("errors"));
+    assertEquals("0", root.getAttribute("skipped"));
+    assertEquals("1", root.getAttribute("failures"));
+
+    NodeList allTestCases = root.getElementsByTagName("testcase");
+    assertEquals(2, allTestCases.getLength());
+    Node testCaseZero = allTestCases.item(0);
+    Node testCaseOne = allTestCases.item(1);
+
+    Node failureZero = getChild("failure", testCaseZero);
+    Node failureOne = getChild("failure", testCaseOne);
+
+    if (!(failureZero == null ^ failureOne == null)) {
+      fail(
+          String.format("Expected exactly one failure but got %s and %s", failureZero, failureOne));
+    }
+
+    Node failure = failureZero == null ? failureOne : failureZero;
+
+    assertEquals("Test timed out and was interrupted", failure.getTextContent());
+  }
+
+  @Test
   void throwablesWithNullMessageAreSerialized() {
     var test = new TestData(identifier).mark(TestExecutionResult.failed(new Throwable()));
 

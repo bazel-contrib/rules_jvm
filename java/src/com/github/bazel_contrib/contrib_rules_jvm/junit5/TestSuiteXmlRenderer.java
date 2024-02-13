@@ -27,17 +27,24 @@ class TestSuiteXmlRenderer {
     int disabled = 0;
     int skipped = 0;
     for (TestData result : tests) {
-      if (result.isError()) {
-        errors++;
-      }
-      if (result.isFailure()) {
+      // Tests which didn't complete are considered to be failures.
+      // The caller is expected to filter out still-running tests, so if we got here,
+      // it's because the test has been cancelled (e.g. because of a timeout).
+      if (result.getDuration() == null) {
         failures++;
-      }
-      if (result.isDisabled()) {
-        disabled++;
-      }
-      if (result.isSkipped()) {
-        skipped++;
+      } else {
+        if (result.isError()) {
+          errors++;
+        }
+        if (result.isFailure()) {
+          failures++;
+        }
+        if (result.isDisabled()) {
+          disabled++;
+        }
+        if (result.isSkipped()) {
+          skipped++;
+        }
       }
     }
     xml.writeAttribute("failures", String.valueOf(failures));
