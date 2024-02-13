@@ -20,7 +20,7 @@ class TestData {
   // @Nullable
   private Instant finished = null;
   private String reason;
-  TestExecutionResult result;
+  private TestExecutionResult result;
   private boolean dynamic;
 
   TestData(TestIdentifier id) {
