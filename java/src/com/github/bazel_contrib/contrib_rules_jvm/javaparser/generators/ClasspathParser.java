@@ -402,7 +402,7 @@ public class ClasspathParser {
   }
 
   private String fullyQualify(String packageName, String className) {
-    if (packageName.isEmpty()) {
+    if (packageName == null || packageName.isEmpty()) {
       return className;
     }
     return packageName + "." + className;
