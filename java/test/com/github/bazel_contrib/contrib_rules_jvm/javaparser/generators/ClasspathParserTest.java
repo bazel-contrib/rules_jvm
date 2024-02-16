@@ -93,7 +93,7 @@ public class ClasspathParserTest {
   @Test
   public void verifyNoPackageWithAnnotation() throws IOException {
     List<? extends JavaFileObject> files =
-            List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/NoPackage.java"));
+        List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/NoPackage.java"));
     parser.parseClasses(files);
     assertEquals(Set.of(), parser.getPackages());
   }
