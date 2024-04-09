@@ -266,6 +266,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		Str("package", imp.Name).
 		Str("from rule", from.String()).
 		Msg("Unable to find package for import in any dependency")
+	jr.lang.hasHadErrors = true
 
 	return label.NoLabel, nil
 }
