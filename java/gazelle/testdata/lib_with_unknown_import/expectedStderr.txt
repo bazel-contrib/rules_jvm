@@ -1,0 +1,3 @@
+{"level":"warn","_c":"maven-resolver","error":"open %WORKSPACEPATH%/maven_install.json: no such file or directory","message":"not loading maven dependencies"}
+{"level":"warn","package":"com.idonotexist","from rule":"//src/main/java/com/example/hello","message":"Unable to find package for import in any dependency"}
+{"level":"fatal","message":"the java extension encontered errors that will create invalid build files"}

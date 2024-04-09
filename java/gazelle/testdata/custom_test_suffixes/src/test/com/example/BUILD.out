@@ -3,4 +3,5 @@ load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 java_test_suite(
     name = "example",
     srcs = ["FooTest.java"],
+    deps = ["@maven//:junit_junit"],
 )

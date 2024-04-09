@@ -9,4 +9,5 @@ java_test_suite(
         "FooTest.java",
         "BarTest.java",
     ],
+    deps = ["@maven//:junit_junit"],
 )
