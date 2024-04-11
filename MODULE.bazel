@@ -51,7 +51,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_jvm_external",
-    version = "5.3",
+    version = "6.0",
 )
 bazel_dep(
     name = "rules_proto",
@@ -175,6 +175,7 @@ maven.install(
     ] + IO_GRPC_GRPC_JAVA_ARTIFACTS,
     fail_if_repin_required = True,
     generate_compat_repositories = True,
+    lock_file = "//:contrib_rules_jvm_deps_install.json",
     strict_visibility = False,
 )
 
@@ -200,6 +201,7 @@ use_repo(
     "com_google_j2objc_j2objc_annotations",
     "contrib_rules_jvm_deps",
     "org_apache_tomcat_annotations_api",
+    "unpinned_contrib_rules_jvm_deps",
 )
 
 dev_maven = use_extension(

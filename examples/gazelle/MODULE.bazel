@@ -18,7 +18,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_jvm_external",
-    version = "5.3",
+    version = "6.0",
 )
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
@@ -30,6 +30,7 @@ maven.install(
         "org.junit.platform:junit-platform-launcher:1.8.2",
         "org.junit.platform:junit-platform-reporting:1.8.2",
     ],
+    fetch_sources = True,
     lock_file = "//:maven_install.json",
 )
 use_repo(
