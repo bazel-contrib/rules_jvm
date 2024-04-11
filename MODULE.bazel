@@ -174,8 +174,8 @@ maven.install(
         "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
     ] + IO_GRPC_GRPC_JAVA_ARTIFACTS,
     fail_if_repin_required = True,
-    lock_file = "//:contrib_rules_jvm_deps_install.json",
     generate_compat_repositories = True,
+    lock_file = "//:contrib_rules_jvm_deps_install.json",
     strict_visibility = False,
 )
 
@@ -200,8 +200,8 @@ use_repo(
     "com_google_guava_guava",
     "com_google_j2objc_j2objc_annotations",
     "contrib_rules_jvm_deps",
-    "unpinned_contrib_rules_jvm_deps",
     "org_apache_tomcat_annotations_api",
+    "unpinned_contrib_rules_jvm_deps",
 )
 
 dev_maven = use_extension(
