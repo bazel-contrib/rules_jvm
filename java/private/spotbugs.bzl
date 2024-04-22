@@ -31,7 +31,7 @@ def _spotbugs_impl(ctx):
         runfiles.append(exclude_filter)
 
     if plugin_list:
-        plugin_list_cli_flag = ";".join([plugin.short_path for plugin in plugin_list])
+        plugin_list_cli_flag = ":".join([plugin.short_path for plugin in plugin_list])
         flags.extend(["-pluginList", plugin_list_cli_flag])
         runfiles.extend(plugin_list)
 
