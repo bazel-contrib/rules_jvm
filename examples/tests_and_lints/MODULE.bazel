@@ -37,6 +37,7 @@ maven.install(
         "org.junit.platform:junit-platform-reporting:1.8.2",
         "com.github.spotbugs:spotbugs:4.7.3",
         "com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0",
+        "com.mebigfatguy.sb-contrib:sb-contrib:7.6.4",
     ],
     fetch_sources = True,
     lock_file = "//:maven_install.json",

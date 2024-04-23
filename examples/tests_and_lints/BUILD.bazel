@@ -6,6 +6,7 @@ spotbugs_config(
     fail_on_warning = True,
     plugin_list = [
         "@maven//:com_h3xstream_findsecbugs_findsecbugs_plugin",
+        "@maven//:com_mebigfatguy_sb_contrib_sb_contrib",
     ],
     visibility = ["//visibility:public"],
 )
