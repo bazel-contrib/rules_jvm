@@ -7,6 +7,7 @@ bcr_test_module:
       working_directory: "examples/gazelle"
       name: "Gazelle"
       platform: ${{ platform }}
+      bazel: "7.x"
       run_targets:
         - "//:gazelle"
       test_targets:
@@ -15,5 +16,6 @@ bcr_test_module:
       working_directory: "examples/tests_and_lints"
       name: "Tests and lints"
       platform: ${{ platform }}
+      bazel: "7.x"
       test_targets:
         - "//..."
