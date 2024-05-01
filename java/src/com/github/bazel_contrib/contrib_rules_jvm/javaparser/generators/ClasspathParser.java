@@ -180,7 +180,7 @@ public class ClasspathParser {
     @Override
     public Void visitCompilationUnit(CompilationUnitTree t, Void v) {
       compileUnit = t;
-      fileName = Paths.get(compileUnit.getSourceFile().toUri().getPath()).getFileName().toString();
+      fileName = Paths.get(compileUnit.getSourceFile().toUri()).getFileName().toString();
       currentClassName = null;
       currentFileImports = new HashMap<>();
 
