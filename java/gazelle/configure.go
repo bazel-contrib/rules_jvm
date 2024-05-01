@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"path/filepath"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
@@ -78,11 +79,11 @@ func (jc *Configurer) initRootConfig(c *config.Config) javaconfig.Configs {
 
 func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	cfgs := jc.initRootConfig(c)
-	cfg, exists := cfgs[rel]
+	cfg, exists := cfgs[filepath.FromSlash(rel)]
 	if !exists {
 		parent := cfgs.ParentForPackage(rel)
 		cfg = parent.NewChild()
-		cfgs[rel] = cfg
+		cfgs[filepath.FromSlash(rel)] = cfg
 	}
 
 	if f != nil {

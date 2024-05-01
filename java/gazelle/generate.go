@@ -48,7 +48,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	log := l.logger.With().Str("step", "GenerateRules").Str("rel", args.Rel).Logger()
 
 	cfgs := args.Config.Exts[languageName].(javaconfig.Configs)
-	cfg := cfgs[args.Rel]
+	cfg := cfgs[filepath.FromSlash(args.Rel)]
 
 	var res language.GenerateResult
 	if !cfg.ExtensionEnabled() {

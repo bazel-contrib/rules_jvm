@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"path/filepath"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -84,7 +85,7 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 	resolveInput := imports.(types.ResolveInput)
 
-	packageConfig := c.Exts[languageName].(javaconfig.Configs)[from.Pkg]
+	packageConfig := c.Exts[languageName].(javaconfig.Configs)[filepath.FromSlash(from.Pkg)]
 	if packageConfig == nil {
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
