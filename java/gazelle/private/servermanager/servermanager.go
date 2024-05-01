@@ -95,7 +95,7 @@ func locateJavaparser() (string, error) {
 	javaparserPath := "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
 	loc, err := rf.Rlocation(javaparserPath)
 	if err != nil {
-	  loc, err = rf.Rlocation(javaparserPath + ".exe")
+		loc, err = rf.Rlocation(javaparserPath + ".exe")
 	}
 
 	if err != nil {
