@@ -3,8 +3,8 @@ package gazelle
 import (
 	"flag"
 	"fmt"
-	"strings"
 	"path/filepath"
+	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"

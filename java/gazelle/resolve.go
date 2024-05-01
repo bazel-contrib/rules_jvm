@@ -3,8 +3,8 @@ package gazelle
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"path/filepath"
+	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
