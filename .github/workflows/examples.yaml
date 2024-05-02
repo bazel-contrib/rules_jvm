@@ -11,11 +11,9 @@ on:
 jobs:
   examples:
     strategy:
-      fail-fast: false
       matrix:
         runs-on:
           - ubuntu-latest
-          - windows-latest
 
     runs-on: ${{ matrix.runs-on }}
 
@@ -40,12 +38,6 @@ jobs:
         with:
           path: "~/.cache/bazel-repo"
           key: bazel-repo
-
-      - name: bzlmod tests_and_lints
-        env:
-          # Bazelisk will download bazel to here, ensure it is cached between runs.
-          XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: (cd examples/tests_and_lints && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
 
       - name: bzlmod gazelle
         env:

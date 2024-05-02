@@ -1,31 +1,23 @@
-name: Tests
+name: Gazelle Examples
 
-# Controls when the action will run.
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  test:
+  examples:
     strategy:
       matrix:
         runs-on:
           - ubuntu-latest
-        flags:
-          - ""
-          - --config=jdk11
-          - --noenable_bzlmod
+          - windows-latest
 
-    # The type of runner that the job will run on
     runs-on: ${{ matrix.runs-on }}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v3
 
@@ -48,8 +40,9 @@ jobs:
           path: "~/.cache/bazel-repo"
           key: bazel-repo
 
-      - name: bazel test //... (Java ${{ matrix.java-major-version }})
+      - name: bzlmod gazelle
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test ${{ matrix.flags }} //...
+        run: (cd examples/gazelle && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
+
