@@ -9,8 +9,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  examples:
     strategy:
+      fail-fast: false
       matrix:
         runs-on:
           - ubuntu-latest
