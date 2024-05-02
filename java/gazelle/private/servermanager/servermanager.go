@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -92,11 +93,15 @@ func locateJavaparser() (string, error) {
 	}
 
 	// We want //java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main
-	loc, err := rf.Rlocation("contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main")
+	javaparserPath := "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
+	if runtime.GOOS == "windows" {
+		javaparserPath += ".exe"
+	}
+	loc, err := rf.Rlocation(javaparserPath)
+
 	if err != nil {
 		return "", fmt.Errorf("failed to call RLocation: %w", err)
 	}
-
 	return loc, nil
 }
 
