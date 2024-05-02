@@ -39,11 +39,10 @@ jobs:
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: (cd examples/tests_and_lints && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
+        run: (cd examples/tests_and_lints && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
 
       - name: bzlmod gazelle
         env:
           # Bazelisk will download bazel to here, ensure it is cached between runs.
           XDG_CACHE_HOME: ~/.cache/bazel-repo
-        run: (cd examples/gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
-
+        run: (cd examples/gazelle && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc run --enable_bzlmod //:gazelle && bazelisk --bazelrc=../../.github/workflows/ci.bazelrc test --enable_bzlmod //...)
