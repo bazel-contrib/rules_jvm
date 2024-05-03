@@ -2,6 +2,7 @@ package javaconfig
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -78,7 +79,7 @@ func (c *Config) NewChild() *Config {
 
 // ParentForPackage returns the parent Config for the given Bazel package.
 func (c *Configs) ParentForPackage(pkg string) *Config {
-	dir := filepath.Dir(pkg)
+	dir := path.Dir(pkg)
 	if dir == "." {
 		dir = ""
 	}
