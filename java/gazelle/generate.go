@@ -257,7 +257,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			srcs := make([]string, 0, allTestRelatedSrcs.Len())
 			for _, src := range allTestRelatedSrcs.SortedSlice() {
 				if _, ok := separateTestJavaFiles[src]; !ok {
-					srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src.pathRelativeToBazelWorkspaceRoot), filepath.ToSlash(args.Rel+"/")))
+					srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src.pathRelativeToBazelWorkspaceRoot), args.Rel+"/"))
 				}
 			}
 			if len(srcs) > 0 {
