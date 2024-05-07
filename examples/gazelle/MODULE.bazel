@@ -43,3 +43,8 @@ bazel_dep(
     name = "gazelle",
     version = "0.36.0",
 )
+git_override(
+    module_name = "gazelle",
+    commit = "ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+)
