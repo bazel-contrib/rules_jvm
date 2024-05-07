@@ -257,7 +257,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			srcs := make([]string, 0, allTestRelatedSrcs.Len())
 			for _, src := range allTestRelatedSrcs.SortedSlice() {
 				if _, ok := separateTestJavaFiles[src]; !ok {
-					srcs = append(srcs, strings.TrimPrefix(src.pathRelativeToBazelWorkspaceRoot, args.Rel+"/"))
+					srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src.pathRelativeToBazelWorkspaceRoot), args.Rel+"/"))
 				}
 			}
 			if len(srcs) > 0 {
@@ -459,7 +459,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
 	for _, src := range srcsRelativeToBazelWorkspace {
-		srcs = append(srcs, strings.TrimPrefix(src, pathToPackageRelativeToBazelWorkspace+"/"))
+		srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src), filepath.ToSlash(pathToPackageRelativeToBazelWorkspace+"/")))
 	}
 	sort.Strings(srcs)
 
@@ -547,7 +547,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		r.AddArg(&bzl.Ident{Name: javaRuleKind})
 	}
 
-	path := strings.TrimPrefix(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace+"/")
+	path := strings.TrimPrefix(filepath.ToSlash(f.pathRelativeToBazelWorkspaceRoot), filepath.ToSlash(pathToPackageRelativeToBazelWorkspace+"/"))
 	r.SetAttr("srcs", []string{path})
 	r.SetAttr("test_class", fullyQualifiedTestClass)
 	r.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(f.pkg, true, false)})
