@@ -111,7 +111,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		ImportedPackagesWithoutSpecificClasses: importedPackages,
 		Mains:                                  mains,
 		Files:                                  sorted_set.NewSortedSet(in.Files),
-		TestPackage:                            java.IsTestPath(in.Rel),
+		TestPackage:                            java.IsTestPackage(in.Rel),
 		PerClassMetadata:                       perClassMetadata,
 	}, nil
 }

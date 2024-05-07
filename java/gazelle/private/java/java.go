@@ -6,21 +6,22 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 )
 
-// IsTestPath tries to detect if the directory would contain test files of not.
-func IsTestPath(dir string) bool {
-	if strings.HasPrefix(dir, "javatests/") {
+// IsTestPackage tries to detect if the directory would contain test files of not.
+// It assumes dir is a forward-slashed package name, not a possibly-back-slashed filepath.
+func IsTestPackage(pkg string) bool {
+	if strings.HasPrefix(pkg, "javatests/") {
 		return true
 	}
 
-	if strings.Contains(dir, "src/") {
-		afterSrc := strings.SplitAfterN(dir, "src/", 2)[1]
+	if strings.Contains(pkg, "src/") {
+		afterSrc := strings.SplitAfterN(pkg, "src/", 2)[1]
 		firstDir := strings.Split(afterSrc, "/")[0]
 		if strings.HasSuffix(strings.ToLower(firstDir), "test") {
 			return true
 		}
 	}
 
-	return strings.Contains(dir, "/test/")
+	return strings.Contains(pkg, "/test/")
 }
 
 // This list was derived from a script along the lines of:
