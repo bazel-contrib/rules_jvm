@@ -1,5 +1,5 @@
-load(":spotbugs_config.bzl", "SpotBugsInfo")
 load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
+load(":spotbugs_config.bzl", "SpotBugsInfo")
 
 """
 Spotbugs integration logic

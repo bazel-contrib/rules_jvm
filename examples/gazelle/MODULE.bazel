@@ -41,5 +41,5 @@ use_repo(
 
 bazel_dep(
     name = "gazelle",
-    version = "0.34.0",
+    version = "0.36.0",
 )

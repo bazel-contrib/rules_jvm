@@ -1,6 +1,6 @@
-load(":checkstyle_config.bzl", "CheckStyleInfo")
 load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load(":checkstyle_config.bzl", "CheckStyleInfo")
 
 """
 Checkstyle rule implementation
