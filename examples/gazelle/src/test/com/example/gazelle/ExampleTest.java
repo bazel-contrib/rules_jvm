@@ -1,4 +1,4 @@
-package com.github.bazel_contrib.contrib_rules_jvm.examples.gazelle;
+package com.example.gazelle;
 
 import org.junit.jupiter.api.Test;
 

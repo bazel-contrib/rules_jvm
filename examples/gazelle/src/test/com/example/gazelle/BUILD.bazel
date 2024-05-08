@@ -1,10 +1,11 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 
 genquery(
     name = "generated_targets",
-    expression = "kind(java_test, deps(//src/test/com/github/bazel_contrib/contrib_rules_jvm/examples/gazelle:gazelle))",
+    expression = "kind(java_test, deps(//src/test/com/example/gazelle:gazelle))",
     opts = ["--output=label_kind"],
-    scope = ["//src/test/com/github/bazel_contrib/contrib_rules_jvm/examples/gazelle"],
+    scope = ["//src/test/com/example/gazelle"],
 )
 
 diff_test(
