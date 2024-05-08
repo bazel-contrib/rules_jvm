@@ -111,11 +111,7 @@ func (jr Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule
 	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
-		dep, err := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
-		if err != nil {
-			jr.lang.logger.Error().Str("import", dep.String()).Err(err).Msg("error converting import")
-			panic(fmt.Sprintf("error converting import: %s", err))
-		}
+		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
 		if dep == label.NoLabel {
 			continue
 		}
@@ -163,16 +159,16 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
+func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
-		return ol, nil
+		return ol
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
 	if len(matches) == 1 {
-		return matches[0].Label, nil
+		return matches[0].Label
 	}
 
 	if len(matches) > 1 {
@@ -189,19 +185,19 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}
 
 	if v, ok := jr.internalCache.Get(cacheKey); ok {
-		return simplifyLabel(c.RepoName, v.(label.Label), from), nil
+		return simplifyLabel(c.RepoName, v.(label.Label), from)
 	}
 
 	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
 
 	defer func() {
-		if err == nil && out != label.NoLabel {
+		if out != label.NoLabel {
 			jr.internalCache.Add(cacheKey, out)
 		}
 	}()
 
 	if java.IsStdlib(imp) {
-		return label.NoLabel, nil
+		return label.NoLabel
 	}
 
 	// As per https://github.com/bazelbuild/bazel/blob/347407a88fd480fc5e0fbd42cc8196e4356a690b/tools/java/runfiles/Runfiles.java#L41
@@ -209,9 +205,10 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		runfilesLabel := "@bazel_tools//tools/java/runfiles"
 		l, err := label.Parse(runfilesLabel)
 		if err != nil {
-			return label.NoLabel, fmt.Errorf("failed to parse known-good runfiles label %s: %w", runfilesLabel, err)
+			jr.lang.logger.Fatal().Str("label", runfilesLabel).Err(err).Msg("failed to parse known-good runfiles label")
+			return label.NoLabel
 		}
-		return l, nil
+		return l
 	}
 
 	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
@@ -230,7 +227,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
 		}
 	} else {
-		return l, nil
+		return l
 	}
 
 	if isTestRule {
@@ -240,7 +237,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		testonlyMatches := ix.FindRulesByImportWithConfig(c, testonlyImportSpec, languageName)
 		if len(testonlyMatches) == 1 {
 			cacheKey = testonlyCacheKey
-			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from), nil
+			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from)
 		}
 
 		// If there's exactly one testonly match, use it
@@ -252,14 +249,14 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 			l := testsuiteMatches[0].Label
 			if l != from {
 				l.Name += "-test-lib"
-				return simplifyLabel(c.RepoName, l, from), nil
+				return simplifyLabel(c.RepoName, l, from)
 			}
 		}
 	}
 
 	if isTestRule && ownPackageNames.Contains(imp) {
 		// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
-		return label.NoLabel, nil
+		return label.NoLabel
 	}
 
 	jr.lang.logger.Warn().
@@ -268,7 +265,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		Msg("Unable to find package for import in any dependency")
 	jr.lang.hasHadErrors = true
 
-	return label.NoLabel, nil
+	return label.NoLabel
 }
 
 func isJavaLibrary(kind string) bool {
