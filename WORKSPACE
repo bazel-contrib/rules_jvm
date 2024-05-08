@@ -36,8 +36,8 @@ load("//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
 
 contrib_rules_jvm_gazelle_setup()
 
-load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS")
+load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("//third_party:protobuf_version.bzl", "PROTOBUF_JAVA_VERSION")
 
 # This only exists to give us a target to use with `./tools/update-dependencies.sh`.
@@ -143,8 +143,8 @@ load("@io_bazel_stardoc//:setup.bzl", "stardoc_repositories")
 
 stardoc_repositories()
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 

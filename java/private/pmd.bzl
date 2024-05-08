@@ -1,5 +1,5 @@
-load(":pmd_ruleset.bzl", "PmdInfo")
 load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
+load(":pmd_ruleset.bzl", "PmdInfo")
 
 def _pmd_test_impl(ctx):
     pmd_info = ctx.attr.ruleset[PmdInfo]
