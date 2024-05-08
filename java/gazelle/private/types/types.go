@@ -97,6 +97,7 @@ type ResolveInput struct {
 	PackageNames         *sorted_set.SortedSet[PackageName]
 	ImportedPackageNames *sorted_set.SortedSet[PackageName]
 	ExportedPackageNames *sorted_set.SortedSet[PackageName]
+	AnnotationProcessors *sorted_set.SortedSet[ClassName]
 }
 
 type ResolvableJavaPackage struct {

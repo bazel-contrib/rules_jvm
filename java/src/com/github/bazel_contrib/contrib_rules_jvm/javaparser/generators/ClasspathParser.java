@@ -16,6 +16,7 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.PackageTree;
 import com.sun.source.tree.ParameterizedTypeTree;
@@ -31,6 +32,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,7 +75,7 @@ public class ClasspathParser {
 
   static class PerClassData {
     public PerClassData() {
-      this(new TreeSet<>(), new TreeMap<>());
+      this(new TreeSet<>(), new TreeMap<>(), new TreeMap<>());
     }
 
     @Override
@@ -83,18 +85,24 @@ public class ClasspathParser {
           + annotations
           + ", perMethodAnnotations="
           + perMethodAnnotations
+          + ", perFieldAnnotations="
+          + perFieldAnnotations
           + '}';
     }
 
     public PerClassData(
-        SortedSet<String> annotations, SortedMap<String, SortedSet<String>> perMethodAnnotations) {
+        SortedSet<String> annotations,
+        SortedMap<String, SortedSet<String>> perMethodAnnotations,
+        SortedMap<String, SortedSet<String>> perFieldAnnotations) {
       this.annotations = annotations;
       this.perMethodAnnotations = perMethodAnnotations;
+      this.perFieldAnnotations = perFieldAnnotations;
     }
 
     final SortedSet<String> annotations;
 
     final SortedMap<String, SortedSet<String>> perMethodAnnotations;
+    final SortedMap<String, SortedSet<String>> perFieldAnnotations;
 
     @Override
     public boolean equals(Object o) {
@@ -102,12 +110,13 @@ public class ClasspathParser {
       if (o == null || getClass() != o.getClass()) return false;
       PerClassData that = (PerClassData) o;
       return Objects.equals(annotations, that.annotations)
-          && Objects.equals(perMethodAnnotations, that.perMethodAnnotations);
+          && Objects.equals(perMethodAnnotations, that.perMethodAnnotations)
+          && Objects.equals(perFieldAnnotations, that.perFieldAnnotations);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(annotations, perMethodAnnotations);
+      return Objects.hash(annotations, perMethodAnnotations, perFieldAnnotations);
     }
   }
 
@@ -178,7 +187,8 @@ public class ClasspathParser {
     @Nullable private String currentPackage;
 
     // Stack of possibly-nested contexts we may currently be in.
-    // First element is the outer-most context (e.g. top-level class), last element is the inner-most context (e.g. inner class).
+    // First element is the outer-most context (e.g. top-level class), last element is the
+    // inner-most context (e.g. inner class).
     // Currently tracks classes, so that we can know what outer and inner classes we may be in.
     private final Deque<Tree> stack = new ArrayDeque<>();
 
@@ -187,7 +197,8 @@ public class ClasspathParser {
     void popOrThrow(Tree expected) {
       Tree popped = stack.removeLast();
       if (!expected.equals(popped)) {
-        throw new IllegalStateException(String.format("Expected to pop %s but got %s", expected, popped));
+        throw new IllegalStateException(
+            String.format("Expected to pop %s but got %s", expected, popped));
       }
     }
 
@@ -256,6 +267,7 @@ public class ClasspathParser {
 
     @Override
     public Void visitMethod(com.sun.source.tree.MethodTree m, Void v) {
+      stack.addLast(m);
       boolean isVoidReturn = false;
 
       // Check the return type on the method.
@@ -303,7 +315,9 @@ public class ClasspathParser {
         }
       }
 
-      return super.visitMethod(m, v);
+      Void ret = super.visitMethod(m, v);
+      popOrThrow(m);
+      return ret;
     }
 
     private void handleAnnotations(List<? extends AnnotationTree> annotations) {
@@ -356,6 +370,23 @@ public class ClasspathParser {
       if (node.getType() != null) {
         checkFullyQualifiedType(node.getType());
       }
+
+      // Local variables inside methods shouldn't be treated as fields.
+      if (isDirectlyInClass()) {
+        for (AnnotationTree annotation : node.getModifiers().getAnnotations()) {
+          String annotationClassName = annotation.getAnnotationType().toString();
+          String importedFullyQualified = currentFileImports.get(annotationClassName);
+          String currentFullyQualifiedClass = currentFullyQualifiedClassName();
+          if (importedFullyQualified != null) {
+            noteAnnotatedField(
+                currentFullyQualifiedClass, node.getName().toString(), importedFullyQualified);
+          } else {
+            noteAnnotatedField(
+                currentFullyQualifiedClass, node.getName().toString(), annotationClassName);
+          }
+        }
+      }
+
       return super.visitVariable(node, unused);
     }
 
@@ -386,6 +417,20 @@ public class ClasspathParser {
         types.addAll(checkFullyQualifiedType(baseType));
       }
       return types;
+    }
+
+    private boolean isDirectlyInClass() {
+      Iterator<Tree> treeIterator = stack.descendingIterator();
+      while (treeIterator.hasNext()) {
+        Tree tree = treeIterator.next();
+        if (tree instanceof ClassTree) {
+          return true;
+        }
+        if (tree instanceof MethodTree) {
+          return false;
+        }
+      }
+      return false;
     }
 
     @Nullable
@@ -442,5 +487,19 @@ public class ClasspathParser {
       data.perMethodAnnotations.put(methodName, new TreeSet<>());
     }
     data.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
+  }
+
+  private void noteAnnotatedField(
+      String annotatedFullyQualifiedClassName,
+      String fieldName,
+      String annotationFullyQualifiedClassName) {
+    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    }
+    PerClassData data = perClassData.get(annotatedFullyQualifiedClassName);
+    if (!data.perFieldAnnotations.containsKey(fieldName)) {
+      data.perFieldAnnotations.put(fieldName, new TreeSet<>());
+    }
+    data.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
   }
 }

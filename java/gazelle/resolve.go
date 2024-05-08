@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -97,18 +98,12 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+
+	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
 }
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
-
-	for _, implicitDep := range r.AttrStrings(attrName) {
-		l, err := label.Parse(implicitDep)
-		if err != nil {
-			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, implicitDep, err))
-		}
-		labels.Add(l)
-	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
 		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
@@ -119,18 +114,26 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 		labels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
-	var exprs []build.Expr
-	if labels.Len() > 0 {
-		for _, l := range labels.SortedSlice() {
-			if l.Relative && l.Name == from.Name {
-				continue
-			}
-			exprs = append(exprs, &build.StringExpr{Value: l.String()})
+	setLabelAttrIncludingExistingValues(r, attrName, labels)
+}
+
+func (jr *Resolver) populatePluginsAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, packageConfig *javaconfig.Config, from label.Label, isTestRule bool, r *rule.Rule) {
+	pluginLabels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
+	for _, annotationProcessor := range resolveInput.AnnotationProcessors.SortedSlice() {
+		dep := jr.resolveSinglePackage(c, packageConfig, annotationProcessor.PackageName(), ix, from, isTestRule, resolveInput.PackageNames)
+		if dep == label.NoLabel {
+			continue
 		}
+
+		// Use the naming scheme for plugins as per https://github.com/bazelbuild/rules_jvm_external/pull/1102
+		// In the case of overrides (i.e. # gazelle:resolve targets) we require that they follow the same name-mangling scheme for the java_plugin target as rules_jvm_external uses.
+		// Ideally this would be a call to `java_plugin_artifact(dep.String(), annotationProcessor.FullyQualifiedClassName())` but we don't have function calls working in attributes.
+		dep.Name += "__java_plugin__" + strings.NewReplacer(".", "_", "$", "_").Replace(annotationProcessor.FullyQualifiedClassName())
+
+		pluginLabels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
-	if len(exprs) > 0 {
-		r.SetAttr(attrName, exprs)
-	}
+
+	setLabelAttrIncludingExistingValues(r, "plugins", pluginLabels)
 }
 
 func labelLess(l, r label.Label) bool {
@@ -157,6 +160,30 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 		}
 	}
 	return l
+}
+
+// Note: This function may modify labels.
+func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *sorted_set.SortedSet[label.Label]) {
+	for _, implicitDep := range r.AttrStrings(attrName) {
+		l, err := label.Parse(implicitDep)
+		if err != nil {
+			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, implicitDep, err))
+		}
+		labels.Add(l)
+	}
+
+	var exprs []build.Expr
+	if labels.Len() > 0 {
+		for _, l := range labels.SortedSlice() {
+			if l.Relative && l.Name == r.Name() {
+				continue
+			}
+			exprs = append(exprs, &build.StringExpr{Value: l.String()})
+		}
+	}
+	if len(exprs) > 0 {
+		r.SetAttr(attrName, exprs)
+	}
 }
 
 func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label) {

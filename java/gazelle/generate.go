@@ -127,6 +127,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// All java packages present in this bazel package.
 	allPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
+	annotationProcessorClasses := sorted_set.NewSortedSetFn(nil, types.ClassNameLess)
+
 	if isModule {
 		for mRel, mJavaPkg := range l.javaPackageCache {
 			if !strings.HasPrefix(mRel, args.Rel) {
@@ -152,6 +154,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					accumulateJavaFile(cfg, testJavaFiles, testHelperJavaFiles, separateTestJavaFiles, file, mJavaPkg.PerClassMetadata, log)
 				}
 			}
+			for _, annotationClass := range mJavaPkg.AllAnnotations().SortedSlice() {
+				annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
+			}
 		}
 	} else {
 		allPackageNames.Add(javaPkg.Name)
@@ -174,6 +179,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				productionJavaFiles.Add(path)
 			}
 		}
+		for _, annotationClass := range javaPkg.AllAnnotations().SortedSlice() {
+			annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
+		}
 	}
 
 	allPackageNamesSlice := allPackageNames.SortedSlice()
@@ -192,7 +200,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	if productionJavaFiles.Len() > 0 {
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, false, javaLibraryKind, &res)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res)
 	}
 
 	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
@@ -228,7 +236,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, nonLocalJavaExports, true, javaLibraryKind, &res)
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res)
 		}
 	}
 
@@ -240,7 +248,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				separateJavaTestReasons := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 
 		case "suite":
@@ -268,6 +276,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					packageNames,
 					cfg.MavenRepositoryName(),
 					testJavaImportsWithHelpers,
+					annotationProcessorClasses,
 					cfg.GetCustomJavaTestFileSuffixes(),
 					testHelperJavaFiles.Len() > 0,
 					&res,
@@ -284,7 +293,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperDep = ptr(testHelperLibname(suiteName))
 				}
 				separateJavaTestReasons := separateTestJavaFiles[src]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 		}
 	}
@@ -453,7 +462,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], exports *sorted_set.SortedSet[types.PackageName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult) {
 	const ruleKind = "java_library"
 	r := rule.NewRule(ruleKind, name)
 
@@ -487,6 +496,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 		PackageNames:         packages,
 		ImportedPackageNames: imports,
 		ExportedPackageNames: exports,
+		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
 }
@@ -511,7 +521,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -571,6 +581,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	resolveInput := types.ResolveInput{
 		PackageNames:         sorted_set.NewSortedSetFn([]types.PackageName{f.pkg}, types.PackageNameLess),
 		ImportedPackageNames: testImports,
+		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
 }
@@ -598,7 +609,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
@@ -636,6 +647,7 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	resolveInput := types.ResolveInput{
 		PackageNames:         packageNames,
 		ImportedPackageNames: suiteImports,
+		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
 }

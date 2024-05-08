@@ -84,9 +84,20 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 				methodAnnotationClassNames.Add(method, *annotationClassName)
 			}
 		}
+		fieldAnnotationClassNames := sorted_multiset.NewSortedMultiSetFn[string, types.ClassName](types.ClassNameLess)
+		for field, perField := range v.GetPerFieldMetadata() {
+			for _, annotation := range perField.AnnotationClassNames {
+				annotationClassName, err := types.ParseClassName(annotation)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse annotation name %q as a class name in %s: %w", k, annotation, err)
+				}
+				fieldAnnotationClassNames.Add(field, *annotationClassName)
+			}
+		}
 		metadata := java.PerClassMetadata{
 			AnnotationClassNames:       annotationClassNames,
 			MethodAnnotationClassNames: methodAnnotationClassNames,
+			FieldAnnotationClassNames:  fieldAnnotationClassNames,
 		}
 		perClassMetadata[k] = metadata
 	}
