@@ -42,11 +42,11 @@ func NewResolver(lang *javaLang) *Resolver {
 	}
 }
 
-func (Resolver) Name() string {
+func (*Resolver) Name() string {
 	return languageName
 }
 
-func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
 	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
@@ -64,7 +64,7 @@ func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resol
 	return out
 }
 
-func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isJavaProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
@@ -81,7 +81,7 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return embedLabels
 }
 
-func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 	resolveInput := imports.(types.ResolveInput)
 
 	packageConfig := c.Exts[languageName].(javaconfig.Configs)[from.Pkg]
@@ -99,7 +99,7 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 }
 
-func (jr Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
+func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
 
 	for _, implicitDep := range r.AttrStrings(attrName) {
