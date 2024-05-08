@@ -22,6 +22,6 @@ type Package struct {
 }
 
 type PerClassMetadata struct {
-	AnnotationClassNames       *sorted_set.SortedSet[string]
-	MethodAnnotationClassNames *sorted_multiset.SortedMultiSet[string, string]
+	AnnotationClassNames       *sorted_set.SortedSet[types.ClassName]
+	MethodAnnotationClassNames *sorted_multiset.SortedMultiSet[string, types.ClassName]
 }

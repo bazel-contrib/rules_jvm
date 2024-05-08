@@ -65,14 +65,27 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 
 	perClassMetadata := make(map[string]java.PerClassMetadata, len(resp.GetPerClassMetadata()))
 	for k, v := range resp.GetPerClassMetadata() {
-		methodAnnotationClassNames := sorted_multiset.NewSortedMultiSet[string, string]()
+		annotationClassNames := sorted_set.NewSortedSetFn(nil, types.ClassNameLess)
+		for _, annotation := range v.GetAnnotationClassNames() {
+			annotationClassName, err := types.ParseClassName(annotation)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse annotation name %q as a class name in %s: %w", k, annotation, err)
+			}
+			annotationClassNames.Add(*annotationClassName)
+		}
+
+		methodAnnotationClassNames := sorted_multiset.NewSortedMultiSetFn[string, types.ClassName](types.ClassNameLess)
 		for method, perMethod := range v.GetPerMethodMetadata() {
 			for _, annotation := range perMethod.AnnotationClassNames {
-				methodAnnotationClassNames.Add(method, annotation)
+				annotationClassName, err := types.ParseClassName(annotation)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse annotation name %q as a class name in %s: %w", k, annotation, err)
+				}
+				methodAnnotationClassNames.Add(method, *annotationClassName)
 			}
 		}
 		metadata := java.PerClassMetadata{
-			AnnotationClassNames:       sorted_set.NewSortedSet(v.GetAnnotationClassNames()),
+			AnnotationClassNames:       annotationClassNames,
 			MethodAnnotationClassNames: methodAnnotationClassNames,
 		}
 		perClassMetadata[k] = metadata

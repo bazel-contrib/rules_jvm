@@ -415,7 +415,7 @@ func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from
 
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]separateJavaTestReasons, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
 	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
-		annotationClassNames := sorted_set.NewSortedSet[string](nil)
+		annotationClassNames := sorted_set.NewSortedSetFn[types.ClassName](nil, types.ClassNameLess)
 		metadataForClass := perClassMetadata[file.ClassName().FullyQualifiedClassName()]
 		annotationClassNames.AddAll(metadataForClass.AnnotationClassNames)
 		for _, key := range metadataForClass.MethodAnnotationClassNames.Keys() {
@@ -425,7 +425,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 		perFileAttrs := make(map[string]bzl.Expr)
 		wrapper := ""
 		for _, annotationClassName := range annotationClassNames.SortedSlice() {
-			if attrs, ok := cfg.AttributesForAnnotation(annotationClassName); ok {
+			if attrs, ok := cfg.AttributesForAnnotation(annotationClassName.FullyQualifiedClassName()); ok {
 				for k, v := range attrs {
 					if old, ok := perFileAttrs[k]; ok {
 						log.Error().Str("file", file.pathRelativeToBazelWorkspaceRoot).Msgf("Saw conflicting attr overrides from annotations for attribute %v: %v and %v. Picking one at random.", k, old, v)
@@ -433,7 +433,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 					perFileAttrs[k] = v
 				}
 			}
-			newWrapper, ok := cfg.WrapperForAnnotation(annotationClassName)
+			newWrapper, ok := cfg.WrapperForAnnotation(annotationClassName.FullyQualifiedClassName())
 			if ok {
 				if wrapper != "" {
 					log.Error().Str("file", file.pathRelativeToBazelWorkspaceRoot).Msgf("Saw conflicting wrappers from annotations: %v and %v. Picking one at random.", wrapper, newWrapper)
