@@ -100,12 +100,13 @@ def contrib_rules_jvm_gazelle_deps():
         ],
     )
 
-    # We need https://github.com/bazelbuild/bazel-gazelle/pull/1686
+    # We need https://github.com/bazelbuild/bazel-gazelle/pull/1798
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "75df288c4b31c81eb50f51e2e14f4763cb7548daae126817247064637fd9ea62",
-        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.36.0/bazel-gazelle-v0.36.0.tar.gz",
+        sha256 = "d1d72a9abd6dee362354274fa9b60ced8f50ee1f10f9b9fef90b4acfb98d477b",
+        strip_prefix = "bazel-gazelle-ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
+        url = "https://github.com/bazelbuild/bazel-gazelle/archive/ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb.zip",
     )
 
     maybe(

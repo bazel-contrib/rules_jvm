@@ -1,0 +1,4 @@
+# Make things work on Windows
+common --enable_platform_specific_config
+startup --windows_enable_symlinks
+build:windows --enable_runfiles

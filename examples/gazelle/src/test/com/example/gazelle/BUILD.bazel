@@ -1,5 +1,5 @@
-load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
 genquery(
     name = "generated_targets",

@@ -15,5 +15,7 @@ build --tool_java_language_version=17
 test --verbose_failures
 test --test_output=errors
 
+import %workspace%/.bazelrc.windows
+
 # Load any settings specific to the current user.
 try-import %workspace%/.bazelrc.user
