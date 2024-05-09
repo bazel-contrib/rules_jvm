@@ -4,6 +4,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -26,6 +27,9 @@ import com.sun.source.util.TreeScanner;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,17 +175,26 @@ public class ClasspathParser {
   class ClassScanner extends TreeScanner<Void, Void> {
     private CompilationUnitTree compileUnit;
     private String fileName;
-
     @Nullable private String currentPackage;
-    @Nullable private String currentClassName;
+
+    // Stack of possibly-nested contexts we may currently be in.
+    // First element is the outer-most context (e.g. top-level class), last element is the inner-most context (e.g. inner class).
+    // Currently tracks classes, so that we can know what outer and inner classes we may be in.
+    private final Deque<Tree> stack = new ArrayDeque<>();
 
     @Nullable private Map<String, String> currentFileImports;
+
+    void popOrThrow(Tree expected) {
+      Tree popped = stack.removeLast();
+      if (!expected.equals(popped)) {
+        throw new IllegalStateException(String.format("Expected to pop %s but got %s", expected, popped));
+      }
+    }
 
     @Override
     public Void visitCompilationUnit(CompilationUnitTree t, Void v) {
       compileUnit = t;
       fileName = Paths.get(compileUnit.getSourceFile().toUri()).getFileName().toString();
-      currentClassName = null;
       currentFileImports = new HashMap<>();
 
       return super.visitCompilationUnit(t, v);
@@ -225,21 +238,20 @@ public class ClasspathParser {
 
     @Override
     public Void visitClass(ClassTree t, Void v) {
-      // Set class name for the top level classes only
-      if (currentClassName == null) {
-        currentClassName = t.getSimpleName().toString();
-      }
+      stack.addLast(t);
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
-        String currentFullyQualifiedClass = fullyQualify(currentPackage, currentClassName);
+        String currentFullyQualifiedClass = currentFullyQualifiedClassName();
         if (importedFullyQualified != null) {
           noteAnnotatedClass(currentFullyQualifiedClass, importedFullyQualified);
         } else {
           noteAnnotatedClass(currentFullyQualifiedClass, annotationClassName);
         }
       }
-      return super.visitClass(t, v);
+      Void ret = super.visitClass(t, v);
+      popOrThrow(t);
+      return ret;
     }
 
     @Override
@@ -267,6 +279,7 @@ public class ClasspathParser {
       if (m.getName().toString().equals("main")
           && m.getModifiers().getFlags().containsAll(Set.of(STATIC, PUBLIC))
           && isVoidReturn) {
+        String currentClassName = currentNestedClassNameWithoutPackage();
         logger.debug("JavaTools: Found main method for {}", currentClassName);
         mainClasses.add(currentClassName);
       }
@@ -280,7 +293,7 @@ public class ClasspathParser {
       for (AnnotationTree annotation : m.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
-        String currentFullyQualifiedClass = fullyQualify(currentPackage, currentClassName);
+        String currentFullyQualifiedClass = currentFullyQualifiedClassName();
         if (importedFullyQualified != null) {
           noteAnnotatedMethod(
               currentFullyQualifiedClass, m.getName().toString(), importedFullyQualified);
@@ -374,6 +387,36 @@ public class ClasspathParser {
       }
       return types;
     }
+
+    @Nullable
+    private String currentNestedClassNameWithoutPackage() {
+      List<String> parts = new ArrayList<>();
+      boolean sawClass = false;
+      for (Tree tree : stack) {
+        if (tree instanceof ClassTree) {
+          sawClass = true;
+          parts.add(((ClassTree) tree).getSimpleName().toString());
+        }
+      }
+      if (!sawClass) {
+        return null;
+      }
+      return Joiner.on('.').join(parts);
+    }
+
+    @Nullable
+    private String currentFullyQualifiedClassName() {
+      String nestedClassName = currentNestedClassNameWithoutPackage();
+      if (nestedClassName == null) {
+        return null;
+      }
+      List<String> parts = new ArrayList<>();
+      if (currentPackage != null) {
+        parts.add(currentPackage);
+      }
+      parts.add(nestedClassName);
+      return Joiner.on('.').join(parts);
+    }
   }
 
   private void noteAnnotatedClass(
@@ -399,12 +442,5 @@ public class ClasspathParser {
       data.perMethodAnnotations.put(methodName, new TreeSet<>());
     }
     data.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
-  }
-
-  private String fullyQualify(String packageName, String className) {
-    if (packageName == null || packageName.isEmpty()) {
-      return className;
-    }
-    return packageName + "." + className;
   }
 }

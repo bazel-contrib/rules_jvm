@@ -206,6 +206,21 @@ public class ClasspathParserTest {
   }
 
   @Test
+  public void testAnnotationAfterImportOnNestedClass() throws IOException {
+    List<? extends JavaFileObject> files =
+            List.of(
+                    testFiles.get(
+                            "/workspace/com/gazelle/java/javaparser/generators/NestedClassAnnotations.java"));
+    parser.parseClasses(files);
+
+    assertEquals(
+            Map.of(
+                    "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
+                    new ClasspathParser.PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>())),
+            parser.perClassData);
+  }
+
+  @Test
   public void testAnnotationAfterImportOnMethod() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(
