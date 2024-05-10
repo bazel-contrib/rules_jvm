@@ -8,6 +8,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
@@ -64,6 +65,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestMode,
 		javaconfig.JavaGenerateProto,
 		javaconfig.JavaMavenRepositoryName,
+		javaconfig.JavaAnnotationProcessorPlugin,
 	}
 }
 
@@ -129,6 +131,21 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
 						javaconfig.JavaGenerateProto, d.Value)
 				}
+			case javaconfig.JavaAnnotationProcessorPlugin:
+				// Format: # gazelle:java_annotation_processor_plugin com.example.AnnotationName com.example.AnnotationProcessorImpl
+				parts := strings.Split(d.Value, " ")
+				if len(parts) != 2 {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: expected an annotation class-name followed by a processor class-name", javaconfig.JavaAnnotationProcessorPlugin, d.Value)
+				}
+				annotationClassName, err := types.ParseClassName(parts[0])
+				if err != nil {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor annotation class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[0], err)
+				}
+				processorClassName, err := types.ParseClassName(parts[1])
+				if err != nil {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[1], err)
+				}
+				cfg.AddAnnotationProcessorPlugin(*annotationClassName, *processorClassName)
 			}
 		}
 	}

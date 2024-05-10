@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -42,11 +43,11 @@ func NewResolver(lang *javaLang) *Resolver {
 	}
 }
 
-func (Resolver) Name() string {
+func (*Resolver) Name() string {
 	return languageName
 }
 
-func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
 	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
@@ -64,7 +65,7 @@ func (jr Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resol
 	return out
 }
 
-func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isJavaProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
@@ -81,7 +82,7 @@ func (Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return embedLabels
 }
 
-func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 	resolveInput := imports.(types.ResolveInput)
 
 	packageConfig := c.Exts[languageName].(javaconfig.Configs)[from.Pkg]
@@ -97,25 +98,15 @@ func (jr Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Rem
 
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+
+	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
 }
 
-func (jr Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
+func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
 
-	for _, implicitDep := range r.AttrStrings(attrName) {
-		l, err := label.Parse(implicitDep)
-		if err != nil {
-			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, implicitDep, err))
-		}
-		labels.Add(l)
-	}
-
 	for _, imp := range requiredPackageNames.SortedSlice() {
-		dep, err := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
-		if err != nil {
-			jr.lang.logger.Error().Str("import", dep.String()).Err(err).Msg("error converting import")
-			panic(fmt.Sprintf("error converting import: %s", err))
-		}
+		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
 		if dep == label.NoLabel {
 			continue
 		}
@@ -123,18 +114,26 @@ func (jr Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule
 		labels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
-	var exprs []build.Expr
-	if labels.Len() > 0 {
-		for _, l := range labels.SortedSlice() {
-			if l.Relative && l.Name == from.Name {
-				continue
-			}
-			exprs = append(exprs, &build.StringExpr{Value: l.String()})
+	setLabelAttrIncludingExistingValues(r, attrName, labels)
+}
+
+func (jr *Resolver) populatePluginsAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, packageConfig *javaconfig.Config, from label.Label, isTestRule bool, r *rule.Rule) {
+	pluginLabels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
+	for _, annotationProcessor := range resolveInput.AnnotationProcessors.SortedSlice() {
+		dep := jr.resolveSinglePackage(c, packageConfig, annotationProcessor.PackageName(), ix, from, isTestRule, resolveInput.PackageNames)
+		if dep == label.NoLabel {
+			continue
 		}
+
+		// Use the naming scheme for plugins as per https://github.com/bazelbuild/rules_jvm_external/pull/1102
+		// In the case of overrides (i.e. # gazelle:resolve targets) we require that they follow the same name-mangling scheme for the java_plugin target as rules_jvm_external uses.
+		// Ideally this would be a call to `java_plugin_artifact(dep.String(), annotationProcessor.FullyQualifiedClassName())` but we don't have function calls working in attributes.
+		dep.Name += "__java_plugin__" + strings.NewReplacer(".", "_", "$", "_").Replace(annotationProcessor.FullyQualifiedClassName())
+
+		pluginLabels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
-	if len(exprs) > 0 {
-		r.SetAttr(attrName, exprs)
-	}
+
+	setLabelAttrIncludingExistingValues(r, "plugins", pluginLabels)
 }
 
 func labelLess(l, r label.Label) bool {
@@ -163,16 +162,40 @@ func simplifyLabel(repoName string, l label.Label, from label.Label) label.Label
 	return l
 }
 
-func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label, err error) {
+// Note: This function may modify labels.
+func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *sorted_set.SortedSet[label.Label]) {
+	for _, implicitDep := range r.AttrStrings(attrName) {
+		l, err := label.Parse(implicitDep)
+		if err != nil {
+			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, implicitDep, err))
+		}
+		labels.Add(l)
+	}
+
+	var exprs []build.Expr
+	if labels.Len() > 0 {
+		for _, l := range labels.SortedSlice() {
+			if l.Relative && l.Name == r.Name() {
+				continue
+			}
+			exprs = append(exprs, &build.StringExpr{Value: l.String()})
+		}
+	}
+	if len(exprs) > 0 {
+		r.SetAttr(attrName, exprs)
+	}
+}
+
+func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
-		return ol, nil
+		return ol
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
 	if len(matches) == 1 {
-		return matches[0].Label, nil
+		return matches[0].Label
 	}
 
 	if len(matches) > 1 {
@@ -189,19 +212,19 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}
 
 	if v, ok := jr.internalCache.Get(cacheKey); ok {
-		return simplifyLabel(c.RepoName, v.(label.Label), from), nil
+		return simplifyLabel(c.RepoName, v.(label.Label), from)
 	}
 
 	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
 
 	defer func() {
-		if err == nil && out != label.NoLabel {
+		if out != label.NoLabel {
 			jr.internalCache.Add(cacheKey, out)
 		}
 	}()
 
 	if java.IsStdlib(imp) {
-		return label.NoLabel, nil
+		return label.NoLabel
 	}
 
 	// As per https://github.com/bazelbuild/bazel/blob/347407a88fd480fc5e0fbd42cc8196e4356a690b/tools/java/runfiles/Runfiles.java#L41
@@ -209,9 +232,10 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		runfilesLabel := "@bazel_tools//tools/java/runfiles"
 		l, err := label.Parse(runfilesLabel)
 		if err != nil {
-			return label.NoLabel, fmt.Errorf("failed to parse known-good runfiles label %s: %w", runfilesLabel, err)
+			jr.lang.logger.Fatal().Str("label", runfilesLabel).Err(err).Msg("failed to parse known-good runfiles label")
+			return label.NoLabel
 		}
-		return l, nil
+		return l
 	}
 
 	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
@@ -230,7 +254,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
 		}
 	} else {
-		return l, nil
+		return l
 	}
 
 	if isTestRule {
@@ -240,7 +264,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		testonlyMatches := ix.FindRulesByImportWithConfig(c, testonlyImportSpec, languageName)
 		if len(testonlyMatches) == 1 {
 			cacheKey = testonlyCacheKey
-			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from), nil
+			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from)
 		}
 
 		// If there's exactly one testonly match, use it
@@ -252,14 +276,14 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 			l := testsuiteMatches[0].Label
 			if l != from {
 				l.Name += "-test-lib"
-				return simplifyLabel(c.RepoName, l, from), nil
+				return simplifyLabel(c.RepoName, l, from)
 			}
 		}
 	}
 
 	if isTestRule && ownPackageNames.Contains(imp) {
 		// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
-		return label.NoLabel, nil
+		return label.NoLabel
 	}
 
 	jr.lang.logger.Warn().
@@ -268,7 +292,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		Msg("Unable to find package for import in any dependency")
 	jr.lang.hasHadErrors = true
 
-	return label.NoLabel, nil
+	return label.NoLabel
 }
 
 func isJavaLibrary(kind string) bool {

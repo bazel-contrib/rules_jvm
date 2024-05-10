@@ -7,6 +7,7 @@ import com.gazelle.java.javaparser.v0.Package;
 import com.gazelle.java.javaparser.v0.Package.Builder;
 import com.gazelle.java.javaparser.v0.ParsePackageRequest;
 import com.gazelle.java.javaparser.v0.PerClassMetadata;
+import com.gazelle.java.javaparser.v0.PerFieldMetadata;
 import com.gazelle.java.javaparser.v0.PerMethodMetadata;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
@@ -166,6 +167,14 @@ public class GrpcServer {
               methodEntry.getKey(),
               PerMethodMetadata.newBuilder()
                   .addAllAnnotationClassNames(methodEntry.getValue())
+                  .build());
+        }
+        for (Map.Entry<String, SortedSet<String>> fieldEntry :
+            classEntry.getValue().perFieldAnnotations.entrySet()) {
+          perClassMetadata.putPerFieldMetadata(
+              fieldEntry.getKey(),
+              PerFieldMetadata.newBuilder()
+                  .addAllAnnotationClassNames(fieldEntry.getValue())
                   .build());
         }
         packageBuilder.putPerClassMetadata(classEntry.getKey(), perClassMetadata.build());
