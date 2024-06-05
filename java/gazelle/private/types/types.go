@@ -43,6 +43,15 @@ func (c *ClassName) BareOuterClassName() string {
 	return c.bareOuterClassName
 }
 
+func (c *ClassName) FullyQualifiedOuterClassName() string {
+	var parts []string
+	if c.packageName.Name != "" {
+		parts = append(parts, strings.Split(c.packageName.Name, ".")...)
+	}
+	parts = append(parts, c.bareOuterClassName)
+	return strings.Join(parts, ".")
+}
+
 func (c *ClassName) FullyQualifiedClassName() string {
 	var parts []string
 	if c.packageName.Name != "" {
@@ -68,7 +77,12 @@ func ParseClassName(fullyQualified string) (*ClassName, error) {
 
 	indexOfOuterClassName := len(parts) - 1
 	for i := len(parts) - 1; i >= 0; i-- {
-		if unicode.IsUpper([]rune(parts[i])[0]) {
+		runes := []rune(parts[i])
+		if len(runes) == 0 {
+			// Anonymous inner classes end up getting parsed as having name "", so we need to do an "empty" check before looking at the first letter.
+			// This means we skip over empty class names when trying to find outer classes.
+			continue
+		} else if unicode.IsUpper(runes[0]) {
 			indexOfOuterClassName = i
 		} else {
 			break
