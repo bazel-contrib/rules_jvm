@@ -425,10 +425,19 @@ func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from
 func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFiles *sorted_set.SortedSet[javaFile], separateTestJavaFiles map[javaFile]separateJavaTestReasons, file javaFile, perClassMetadata map[string]java.PerClassMetadata, log zerolog.Logger) {
 	if cfg.IsJavaTestFile(filepath.Base(file.pathRelativeToBazelWorkspaceRoot)) {
 		annotationClassNames := sorted_set.NewSortedSetFn[types.ClassName](nil, types.ClassNameLess)
-		metadataForClass := perClassMetadata[file.ClassName().FullyQualifiedClassName()]
-		annotationClassNames.AddAll(metadataForClass.AnnotationClassNames)
-		for _, key := range metadataForClass.MethodAnnotationClassNames.Keys() {
-			annotationClassNames.AddAll(metadataForClass.MethodAnnotationClassNames.Values(key))
+		// We attribute annotations on inner classes as if they apply to the outer class, so we need to strip inner class names when comparing.
+		for class, metadataForClass := range perClassMetadata {
+			className, err := types.ParseClassName(class)
+			if err != nil {
+				log.Warn().Err(err).Str("class-name", class).Msg("Failed to parse class name which was seen to have an annotation")
+				continue
+			}
+			if className.FullyQualifiedOuterClassName() == file.ClassName().FullyQualifiedOuterClassName() {
+				annotationClassNames.AddAll(metadataForClass.AnnotationClassNames)
+				for _, key := range metadataForClass.MethodAnnotationClassNames.Keys() {
+					annotationClassNames.AddAll(metadataForClass.MethodAnnotationClassNames.Values(key))
+				}
+			}
 		}
 
 		perFileAttrs := make(map[string]bzl.Expr)

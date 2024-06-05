@@ -41,6 +41,14 @@ func TestParseClassName(t *testing.T) {
 				innerClassNames:    []string{"Inner", "Nested"},
 			},
 		},
+		"anonymous inner": {
+			from: "com.example.Simple.",
+			want: &ClassName{
+				packageName:        NewPackageName("com.example"),
+				bareOuterClassName: "Simple",
+				innerClassNames:    []string{""},
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := ParseClassName(tc.from)

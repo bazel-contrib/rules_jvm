@@ -337,10 +337,21 @@ public class ClasspathParserTest {
                 "/workspace/com/gazelle/java/javaparser/generators/AnonymousInnerClass.java"));
     parser.parseClasses(files);
 
-    Set<String> expected =
+    Set<String> expectedTypes =
         Set.of(
             "java.util.HashMap", "javax.annotation.Nullable", "org.jetbrains.annotations.Nullable");
-    assertEquals(expected, parser.getUsedTypes());
+    assertEquals(expectedTypes, parser.getUsedTypes());
+
+    Map<String, ClasspathParser.PerClassData> expectedPerClassMetadata = new TreeMap<>();
+    TreeMap<String, SortedSet<String>> expectedPerMethodAnnotations = new TreeMap<>();
+    expectedPerMethodAnnotations.put(
+        "containsValue", treeSet("Override", "javax.annotation.Nullable"));
+    // This anonymous inner class really has a name like $1, but we don't know what number it will
+    // end up getting given, so we just use the empty string for anonymous inner classes.
+    expectedPerClassMetadata.put(
+        "workspace.com.gazelle.java.javaparser.generators.AnonymousInnerClass.",
+        new ClasspathParser.PerClassData(treeSet(), expectedPerMethodAnnotations, new TreeMap<>()));
+    assertEquals(expectedPerClassMetadata, parser.perClassData);
   }
 
   @Test
