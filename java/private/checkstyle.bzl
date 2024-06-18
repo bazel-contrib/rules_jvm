@@ -9,7 +9,6 @@ Checkstyle rule implementation
 def _checkstyle_impl(ctx):
     info = ctx.attr.config[CheckStyleInfo]
     config = info.config_file
-    output_format = info.output_format
 
     config_dir = paths.dirname(config.short_path)
     maybe_cd_config_dir = ["cd {}".format(config_dir)] if config_dir else []
@@ -22,7 +21,6 @@ def _checkstyle_impl(ctx):
     ] + maybe_cd_config_dir + [
         "$OLDPWD/{lib} -o checkstyle.xml -f xml -c {config} {srcs}".format(
             lib = info.checkstyle.short_path,
-            output_format = output_format,
             config = config.basename,
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
@@ -72,11 +70,6 @@ _checkstyle_test = rule(
             providers = [
                 [CheckStyleInfo],
             ],
-        ),
-        "output_format": attr.string(
-            doc = "Output Format can be plain or xml. Defaults to plain",
-            values = ["plain", "xml"],
-            default = "plain",
         ),
         "xslt": attr.label(
             doc = "Path to the checkstyle2junit.xslt file",
