@@ -27,12 +27,12 @@ def _checkstyle_impl(ctx):
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
         "checkstyle_exit_code=$?",
-        "cat checkstyle.xml",
         # Apply sed to the file in place
         "sed s:$OLDPWD/::g checkstyle.xml > checkstyle-stripped.xml",
-        # Run xsltproc to convert the XML
-        "xsltproc {xslt} checkstyle-stripped.xml > $XML_OUTPUT_FILE".format(
-            xslt = ctx.file.xslt.basename,
+        # Run the Java XSLT transformation tool
+        "$OLDPWD/{xslt_transformer} checkstyle-stripped.xml $OLDPWD/{xslt} > $XML_OUTPUT_FILE".format(
+            xslt_transformer = ctx.executable._xslt_transformer.short_path,
+            xslt = ctx.file.xslt.short_path,
         ),
         "exit $checkstyle_exit_code",
     ])
@@ -44,8 +44,8 @@ def _checkstyle_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = ctx.files.srcs + [info.checkstyle] + [ctx.file.xslt],
-    )
+        files = ctx.files.srcs + [info.checkstyle, ctx.file.xslt],
+    ).merge(ctx.attr._xslt_transformer[DefaultInfo].default_runfiles)
 
     return [
         DefaultInfo(
@@ -82,6 +82,11 @@ _checkstyle_test = rule(
             doc = "Path to the checkstyle2junit.xslt file",
             allow_single_file = True,
             default = "@contrib_rules_jvm//java:checkstyle2junit.xslt",
+        ),
+        "_xslt_transformer": attr.label(
+            default = "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/xml:xslt_transformer",
+            executable=True,
+            cfg = "host"
         ),
     },
     executable = True,
