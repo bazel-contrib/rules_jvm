@@ -183,6 +183,7 @@ maven.install(
     generate_compat_repositories = True,
     lock_file = "//:contrib_rules_jvm_deps_install.json",
     strict_visibility = False,
+    duplicate_version_warning = "none",
 )
 
 # Spotbugs deps
