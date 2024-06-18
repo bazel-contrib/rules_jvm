@@ -4,6 +4,9 @@
 
   <xsl:template match="/">
     <testsuite>
+      <xsl:attribute name="name">
+        <xsl:value-of select="//checkstyle/file/@name" />
+      </xsl:attribute>
       <xsl:attribute name="tests">
         <xsl:value-of select="count(.//error)" />
       </xsl:attribute>
@@ -19,8 +22,7 @@
   <xsl:template match="error">
     <testcase>
       <xsl:attribute name="name">
-        <xsl:value-of select="@name" />
-        <xsl:value-of select="../@name" />
+        <xsl:value-of select="@source" />
       </xsl:attribute>
       <xsl:attribute name="classname">
         <xsl:value-of select="../@name" />

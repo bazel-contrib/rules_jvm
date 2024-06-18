@@ -27,6 +27,7 @@ def _checkstyle_impl(ctx):
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
         "checkstyle_exit_code=$?",
+        "cat checkstyle.xml",
         # Apply sed to the file in place
         "sed s:$OLDPWD/::g checkstyle.xml > checkstyle-stripped.xml",
         # Run xsltproc to convert the XML
