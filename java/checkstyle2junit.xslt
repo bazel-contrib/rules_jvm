@@ -8,7 +8,7 @@
         <xsl:value-of select="count(.//file)" />
       </xsl:attribute>
       <xsl:attribute name="failures">
-        <xsl:value-of select="count(.//error[@severity='error'])" />
+        <xsl:value-of select="count(.//error)" />
       </xsl:attribute>
       <xsl:for-each select="//checkstyle">
         <xsl:apply-templates />
@@ -16,29 +16,23 @@
     </testsuite>
   </xsl:template>
 
-  <xsl:template match="file">
+  <xsl:template match="error">
     <testcase>
       <xsl:attribute name="classname">
-        <xsl:value-of select="@name" />
+        <xsl:value-of select="../@name" />
       </xsl:attribute>
-      <xsl:attribute name="name">
-        <xsl:value-of select="@name" />
-      </xsl:attribute>
-      <xsl:apply-templates select="node()" />
+      <failure>
+        <xsl:attribute name="type">
+          <xsl:value-of select="@source" />
+        </xsl:attribute>
+        <xsl:attribute name="message">
+          <xsl:text>Line </xsl:text>
+          <xsl:value-of select="@line" />
+          <xsl:text>: </xsl:text>
+          <xsl:value-of select="@message" />
+        </xsl:attribute>
+      </failure>
     </testcase>
   </xsl:template>
-
-  <xsl:template match="error">
-    <error>
-      <xsl:attribute name="type">
-        <xsl:value-of select="@source" />
-      </xsl:attribute>
-      <xsl:attribute name="message">
-        <xsl:text>Line </xsl:text>
-        <xsl:value-of select="@line" />
-        <xsl:text>: </xsl:text>
-        <xsl:value-of select="@message" />
-      </xsl:attribute>
-    </error>
-  </xsl:template>
+  
 </xsl:stylesheet>
