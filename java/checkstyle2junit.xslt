@@ -29,7 +29,7 @@
   </xsl:template>
 
   <xsl:template match="error">
-    <failure>
+    <error>
       <xsl:attribute name="type">
         <xsl:value-of select="@source" />
       </xsl:attribute>
@@ -39,6 +39,6 @@
         <xsl:text>: </xsl:text>
         <xsl:value-of select="@message" />
       </xsl:attribute>
-    </failure>
+    </error>
   </xsl:template>
 </xsl:stylesheet>
