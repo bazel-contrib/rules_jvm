@@ -84,6 +84,7 @@ var kindWithRuntimeDeps = rule.KindInfo{
 	MergeableAttrs: map[string]bool{"srcs": true},
 	ResolveAttrs: map[string]bool{
 		"deps":         true,
+		"plugins":      true,
 		"runtime_deps": true,
 	},
 }
@@ -94,7 +95,8 @@ var kindWithoutRuntimeDeps = rule.KindInfo{
 	},
 	MergeableAttrs: map[string]bool{"srcs": true},
 	ResolveAttrs: map[string]bool{
-		"deps": true,
+		"deps":    true,
+		"plugins": true,
 	},
 }
 
@@ -108,6 +110,7 @@ var javaLibraryKind = rule.KindInfo{
 	ResolveAttrs: map[string]bool{
 		"deps":         true,
 		"exports":      true,
+		"plugins":      true,
 		"runtime_deps": true,
 	},
 }

@@ -1,0 +1,16 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+java_library(
+    name = "example",
+    srcs = ["Main.java"],
+    plugins = ["@maven//:com_google_auto_value_auto_value__java_plugin__com_google_auto_value_processor_AutoValueProcessor"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@maven//:com_google_auto_value_auto_value_annotations"],
+)
+
+java_binary(
+    name = "Main",
+    main_class = "com.example.Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":example"],
+)
