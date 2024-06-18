@@ -17,15 +17,24 @@ def _checkstyle_impl(ctx):
     script = "\n".join([
         "#!/usr/bin/env bash",
         "set -o pipefail",
-        "set -e",
+        "set +e",
         "OLDPWD=$PWD",
     ] + maybe_cd_config_dir + [
-        "$OLDPWD/{lib} -f {output_format} -c {config} {srcs} |sed s:$OLDPWD/::g".format(
+        "$OLDPWD/{lib} -o checkstyle.xml -f xml -c {config} {srcs}".format(
             lib = info.checkstyle.short_path,
             output_format = output_format,
             config = config.basename,
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
+        "checkstyle_exit_code=$?",
+        "cat checkstyle.xml",
+        # Apply sed to the file in place
+        "sed s:$OLDPWD/::g checkstyle.xml > checkstyle-stripped.xml",
+        # Run xsltproc to convert the XML
+        "xsltproc {xslt} checkstyle-stripped.xml > $XML_OUTPUT_FILE".format(
+            xslt = ctx.file.xslt.basename,
+        ),
+        "exit $checkstyle_exit_code",
     ])
     out = ctx.actions.declare_file(ctx.label.name + "exec")
 
@@ -35,7 +44,7 @@ def _checkstyle_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = ctx.files.srcs + [info.checkstyle],
+        files = ctx.files.srcs + [info.checkstyle] + [ctx.file.xslt],
     )
 
     return [
@@ -68,6 +77,11 @@ _checkstyle_test = rule(
             doc = "Output Format can be plain or xml. Defaults to plain",
             values = ["plain", "xml"],
             default = "plain",
+        ),
+        "xslt": attr.label(
+            doc = "Path to the checkstyle2junit.xslt file",
+            allow_single_file = True,
+            default = "@contrib_rules_jvm//java:checkstyle2junit.xslt",
         ),
     },
     executable = True,
