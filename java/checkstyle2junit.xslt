@@ -5,9 +5,9 @@
   <xsl:template match="/">
     <testsuite>
       <xsl:attribute name="tests">
-        <xsl:value-of select="count(.//file)" />
+        <xsl:value-of select="count(.//error)" />
       </xsl:attribute>
-      <xsl:attribute name="failures">
+      <xsl:attribute name="errors">
         <xsl:value-of select="count(.//error)" />
       </xsl:attribute>
       <xsl:for-each select="//checkstyle">
@@ -18,10 +18,14 @@
 
   <xsl:template match="error">
     <testcase>
+      <xsl:attribute name="name">
+        <xsl:value-of select="@name" />
+        <xsl:value-of select="../@name" />
+      </xsl:attribute>
       <xsl:attribute name="classname">
         <xsl:value-of select="../@name" />
       </xsl:attribute>
-      <failure>
+      <error>
         <xsl:attribute name="type">
           <xsl:value-of select="@source" />
         </xsl:attribute>
@@ -31,7 +35,7 @@
           <xsl:text>: </xsl:text>
           <xsl:value-of select="@message" />
         </xsl:attribute>
-      </failure>
+      </error>
     </testcase>
   </xsl:template>
   
