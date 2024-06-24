@@ -263,6 +263,38 @@ public class BazelJUnitOuputListenerTest {
     assertEquals("&#27;[31mAlso bad!&#27;[0m", text);
   }
 
+  @Test
+  public void ensureTestCaseNamesAreProperlyEscaped() {
+    var testDescriptor = new StubbedTestDescriptor(createId("Weird\bname"));
+    var identifier = TestIdentifier.from(testDescriptor);
+
+    var testCaseData = new TestData(identifier);
+    testCaseData.mark(TestExecutionResult.successful());
+
+    Document xml = generateTestXml(Mockito.mock(TestPlan.class), testCaseData);
+
+    Node item = xml.getElementsByTagName("testcase").item(0);
+    String testName = item.getAttributes().getNamedItem("name").getNodeValue();
+
+    assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name", testName);
+  }
+
+  @Test
+  public void ensureTestSuiteNamesAreProperlyEscaped() {
+    var testDescriptor = new StubbedTestDescriptor(createId("Weird\bname"));
+    var identifier = TestIdentifier.from(testDescriptor);
+
+    var testSuiteData = new TestData(identifier);
+    testSuiteData.mark(TestExecutionResult.successful());
+
+    Document xml = generateTestXml(Mockito.mock(TestPlan.class), testSuiteData, List.of());
+
+    Node item = xml.getElementsByTagName("testsuite").item(0);
+    String testName = item.getAttributes().getNamedItem("name").getNodeValue();
+
+    assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name()]", testName);
+  }
+
   private Document generateTestXml(TestPlan testPlan, TestData testCase) {
     return generateDocument(xml -> new TestCaseXmlRenderer(testPlan).toXml(xml, testCase));
   }
