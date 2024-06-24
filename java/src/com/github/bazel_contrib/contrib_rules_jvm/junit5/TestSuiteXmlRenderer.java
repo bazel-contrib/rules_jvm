@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.escapeIllegalCharacters;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTextElement;
 
 import java.util.Collection;
@@ -19,7 +20,7 @@ class TestSuiteXmlRenderer {
       throws XMLStreamException {
     xml.writeStartElement("testsuite");
 
-    xml.writeAttribute("name", suite.getId().getLegacyReportingName());
+    xml.writeAttribute("name", escapeIllegalCharacters(suite.getId().getLegacyReportingName()));
     xml.writeAttribute("tests", String.valueOf(tests.size()));
 
     int errors = 0;
