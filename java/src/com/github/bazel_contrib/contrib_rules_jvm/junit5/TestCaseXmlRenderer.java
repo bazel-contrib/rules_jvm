@@ -47,7 +47,7 @@ class TestCaseXmlRenderer {
     }
 
     xml.writeStartElement("testcase");
-    xml.writeAttribute("name", name);
+    xml.writeAttribute("name", escapeIllegalCharacters(name));
     xml.writeAttribute("classname", LegacyReportingUtils.getClassName(testPlan, id));
 
     /* @Nullable */ Duration maybeDuration = test.getDuration();
