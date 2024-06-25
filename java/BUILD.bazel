@@ -17,7 +17,7 @@ alias(
 exports_files([
     "checkstyle-strict.xml",
     "google-checks.xml",
-    "checkstyle2junit.xslt"
+    "checkstyle2junit.xslt",
 ])
 
 checkstyle_config(
