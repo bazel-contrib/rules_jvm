@@ -78,8 +78,8 @@ _checkstyle_test = rule(
         ),
         "_xslt_transformer": attr.label(
             default = "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/xml:xslt_transformer",
-            executable=True,
-            cfg = "host"
+            executable = True,
+            cfg = "host",
         ),
     },
     executable = True,
