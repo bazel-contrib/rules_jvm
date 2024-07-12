@@ -27,6 +27,14 @@ gazelle_binary(
 # `cd subdir && for f in $(fd BUILD.out); do mv ${f} $(dirname ${f})/BUILD.bazel; done && bazel run @unpinned_maven//:pin && rm -rf bazel-* && for f in $(fd BUILD.bazel); do mv ${f} $(dirname ${f})/BUILD.out; done`
 #
 # Other tests just use `gazelle:resolve` comments to resolve maven artifacts, or just don't (and get warnings to stderr as a result.
+
+SKIPPED_ON_WINDOWS = [
+    "lib_with_invalid_label_in_runtime_deps",
+    "lib_with_runtime_deps_and_map_kind",
+    "maven_with_collision_and_resolve",
+    "module_granularity_with_sources",
+]
+
 [
     gazelle_generation_test(
         name = file[0:-len("/WORKSPACE")],
@@ -37,6 +45,7 @@ gazelle_binary(
         },
         gazelle_binary = ":gazelle",
         gazelle_timeout_seconds = 30,
+        tags = ["skip-windows"] if file[0:-len("/WORKSPACE")] in SKIPPED_ON_WINDOWS else [],
         test_data = glob(
             include = [file[0:-len("/WORKSPACE")] + "/**"],
         ),
