@@ -7,7 +7,7 @@ dependencies are loaded using a call to `maven_install`, but we don't
 want to force users to remember to load our own dependencies for
 us. Instead, to add a new dependency to the project:
 
-1. Update `frozen_deps` in the `WORKSPACE` file
+1. Update `contrib_rules_jvm_deps` in the `MODULE.bazel` file
 2. Run `./tools/update-dependencies.sh`
 3. Commit the updated files.
 
