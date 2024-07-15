@@ -81,7 +81,6 @@ def java_test_suite(
         define_library = _define_library,
         # Default to bazel's default test runner if we don't know what people want
         define_test = _TEST_GENERATORS.get(runner, _define_junit4_test),
-        runner = runner,
         deps = deps,
         runtime_deps = runtime_deps,
         size = size,

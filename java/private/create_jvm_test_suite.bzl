@@ -9,13 +9,6 @@ def _is_test(src, test_suffixes, test_suffixes_excludes):
             return True
     return False
 
-# If you modify this list, please also update the `_TEST_GENERATORS`
-# map in `java_test_suite.bzl`.
-_RUNNERS = [
-    "junit4",
-    "junit5",
-]
-
 _LIBRARY_ATTRS = [
     "data",
     "javacopts",
@@ -31,7 +24,6 @@ def create_jvm_test_suite(
         define_library,
         define_test,
         library_attributes = _LIBRARY_ATTRS,
-        runner = "junit4",
         deps = None,
         runtime_deps = [],
         tags = [],
@@ -64,15 +56,11 @@ def create_jvm_test_suite(
       define_library: A function that creates a `*_library` target.
       define_test: A function that creates a `*_test` target and returns the name of the created target.
         (See java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5/suite_tags for example use)
-      runner: The junit runner to use. Either "junit4" or "junit5".
       deps: The list of dependencies to use when compiling.
       runtime_deps: The list of runtime deps to use when running tests.
       tags: Tags to use for generated targets.
       size: Bazel test size
     """
-
-    if runner not in _RUNNERS:
-        fail("Unknown java_test_suite runner. Must be one of {}".format(_RUNNERS))
 
     # First, grab any interesting attrs
     library_attrs = {attr: kwargs[attr] for attr in library_attributes if attr in kwargs}
