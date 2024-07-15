@@ -29,7 +29,6 @@ def java_test_suite(
         package = package,
         define_test = _define_junit5_test,
         define_library = _define_library,
-        runner = runner,
         duplicate_test_name = name,
         **kwargs
     )
