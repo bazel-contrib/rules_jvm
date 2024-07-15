@@ -77,9 +77,9 @@ _checkstyle_test = rule(
             default = "@contrib_rules_jvm//java:checkstyle2junit.xslt",
         ),
         "_xslt_transformer": attr.label(
-            default = "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/xml:xslt_transformer",
+            default = "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/xml:XSLTTransformer",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
     },
     executable = True,
