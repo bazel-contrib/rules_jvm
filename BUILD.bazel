@@ -7,7 +7,7 @@ buildifier(
     visibility = ["//visibility:private"],
 )
 
-# gazelle:java_maven_install_file frozen_deps_install.json
+# gazelle:java_maven_install_file contrib_rules_jvm_deps_install.json
 # gazelle:prefix github.com/bazel-contrib/rules_jvm
 
 # gazelle:repository go_repository name=org_golang_x_tools_go_vcs importpath=golang.org/x/tools/go/vcs

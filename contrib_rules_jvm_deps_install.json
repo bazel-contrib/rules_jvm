@@ -2581,5 +2581,259 @@
       "xml-apis:xml-apis"
     ]
   },
+  "services": {
+    "com.fasterxml.jackson.core:jackson-core": {
+      "com.fasterxml.jackson.core.JsonFactory": [
+        "com.fasterxml.jackson.core.JsonFactory"
+      ]
+    },
+    "com.google.auto.value:auto-value": {
+      "com.google.auto.value.extension.AutoValueExtension": [
+        "com.google.auto.value.extension.memoized.processor.MemoizeExtension",
+        "com.google.auto.value.extension.serializable.processor.SerializableAutoValueExtension",
+        "com.google.auto.value.extension.toprettystring.processor.ToPrettyStringExtension"
+      ],
+      "com.google.auto.value.extension.serializable.serializer.interfaces.SerializerExtension": [
+        "com.google.auto.value.extension.serializable.serializer.impl.ImmutableListSerializerExtension",
+        "com.google.auto.value.extension.serializable.serializer.impl.ImmutableMapSerializerExtension",
+        "com.google.auto.value.extension.serializable.serializer.impl.OptionalSerializerExtension"
+      ],
+      "javax.annotation.processing.Processor": [
+        "com.google.auto.value.extension.memoized.processor.MemoizedValidator",
+        "com.google.auto.value.extension.toprettystring.processor.ToPrettyStringValidator",
+        "com.google.auto.value.processor.AutoAnnotationProcessor",
+        "com.google.auto.value.processor.AutoBuilderProcessor",
+        "com.google.auto.value.processor.AutoOneOfProcessor",
+        "com.google.auto.value.processor.AutoValueBuilderProcessor",
+        "com.google.auto.value.processor.AutoValueProcessor"
+      ]
+    },
+    "com.google.googlejavaformat:google-java-format": {
+      "java.util.spi.ToolProvider": [
+        "com.google.googlejavaformat.java.GoogleJavaFormatToolProvider"
+      ]
+    },
+    "io.grpc:grpc-core": {
+      "io.grpc.LoadBalancerProvider": [
+        "io.grpc.internal.PickFirstLoadBalancerProvider",
+        "io.grpc.util.SecretRoundRobinLoadBalancerProvider$Provider"
+      ],
+      "io.grpc.NameResolverProvider": [
+        "io.grpc.internal.DnsNameResolverProvider"
+      ]
+    },
+    "io.grpc:grpc-netty": {
+      "io.grpc.ManagedChannelProvider": [
+        "io.grpc.netty.NettyChannelProvider"
+      ],
+      "io.grpc.ServerProvider": [
+        "io.grpc.netty.NettyServerProvider"
+      ]
+    },
+    "io.grpc:grpc-services": {
+      "io.grpc.LoadBalancerProvider": [
+        "io.grpc.protobuf.services.internal.HealthCheckingRoundRobinLoadBalancerProvider"
+      ]
+    },
+    "io.netty:netty-common": {
+      "reactor.blockhound.integration.BlockHoundIntegration": [
+        "io.netty.util.internal.Hidden$NettyBlockHoundIntegration"
+      ]
+    },
+    "net.sf.saxon:Saxon-HE": {
+      "javax.xml.transform.TransformerFactory": [
+        "net.sf.saxon.TransformerFactoryImpl"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-core": {
+      "net.sourceforge.pmd.cpd.Language": [],
+      "net.sourceforge.pmd.lang.Language": []
+    },
+    "net.sourceforge.pmd:pmd-cpp": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.CPPLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.cpp.CppLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-cs": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.CsLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.cs.CsLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-dart": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.DartLanguage"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-fortran": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.FortranLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.fortran.FortranLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-go": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.GoLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.go.GoLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-groovy": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.GroovyLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.groovy.GroovyLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-java": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.JavaLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.java.JavaLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-jsp": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.JSPLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.jsp.JspLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-kotlin": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.KotlinLanguage"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-lua": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.LuaLanguage"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-matlab": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.MatlabLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.matlab.MatlabLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-modelica": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.ModelicaLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.modelica.ModelicaLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-objectivec": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.ObjectiveCLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.objectivec.ObjectiveCLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-perl": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.PerlLanguage"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-php": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.PHPLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.php.PhpLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-plsql": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.PLSQLLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.plsql.PLSQLLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-python": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.PythonLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.python.PythonLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-ruby": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.RubyLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.ruby.RubyLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-swift": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.cpd.SwiftLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.swift.SwiftLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-vm": {
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.vm.VmLanguageModule"
+      ]
+    },
+    "net.sourceforge.pmd:pmd-xml": {
+      "net.sourceforge.pmd.cpd.Language": [
+        "net.sourceforge.pmd.xml.cpd.XmlLanguage"
+      ],
+      "net.sourceforge.pmd.lang.Language": [
+        "net.sourceforge.pmd.lang.pom.PomLanguageModule",
+        "net.sourceforge.pmd.lang.wsdl.WsdlLanguageModule",
+        "net.sourceforge.pmd.lang.xml.XmlLanguageModule",
+        "net.sourceforge.pmd.lang.xsl.XslLanguageModule"
+      ]
+    },
+    "net.sourceforge.saxon:saxon": {
+      "javax.xml.transform.TransformerFactory": [
+        "net.sf.saxon.TransformerFactoryImpl"
+      ]
+    },
+    "org.codehaus.groovy:groovy": {
+      "org.codehaus.groovy.source.Extensions": [
+        "groovy"
+      ],
+      "org.codehaus.groovy.transform.ASTTransformation": [
+        "groovy.grape.GrabAnnotationTransformation",
+        "org.codehaus.groovy.ast.builder.AstBuilderTransformation"
+      ]
+    },
+    "org.junit.jupiter:junit-jupiter-engine": {
+      "org.junit.platform.engine.TestEngine": [
+        "org.junit.jupiter.engine.JupiterTestEngine"
+      ]
+    },
+    "org.junit.platform:junit-platform-launcher": {
+      "org.junit.platform.launcher.TestExecutionListener": [
+        "org.junit.platform.launcher.listeners.UniqueIdTrackingListener"
+      ]
+    },
+    "org.junit.vintage:junit-vintage-engine": {
+      "org.junit.platform.engine.TestEngine": [
+        "org.junit.vintage.engine.VintageTestEngine"
+      ]
+    }
+  },
   "version": "2"
 }
