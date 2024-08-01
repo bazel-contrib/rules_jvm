@@ -1,0 +1,14 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+java_library(
+    name = "xml",
+    srcs = ["XSLTTransformer.java"],
+    visibility = ["//:__subpackages__"],
+)
+
+java_binary(
+    name = "XSLTTransformer",
+    main_class = "XSLTTransformer",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":xml"],
+)
