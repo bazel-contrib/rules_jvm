@@ -19,6 +19,10 @@ public class JUnit5Runner {
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.Java17SystemExitToggle";
 
   public static void main(String[] args) {
+    new JUnit5Runner().run();
+  }
+
+  public void run() {
     String testSuite = System.getProperty("bazel.test_suite");
 
     SystemExitToggle systemExitToggle = getSystemExitToggle();
@@ -33,9 +37,7 @@ public class JUnit5Runner {
     systemExitToggle.prevent();
 
     try {
-      Constructor<? extends RunsTest> constructor =
-          Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
-      RunsTest runsTest = constructor.newInstance();
+      RunsTest runsTest = getRunner();
       if (!runsTest.run(testSuite)) {
         exit(systemExitToggle, 2);
       }
@@ -50,7 +52,13 @@ public class JUnit5Runner {
     exit(systemExitToggle, 0);
   }
 
-  private static SystemExitToggle getSystemExitToggle() {
+  protected RunsTest getRunner() throws ReflectiveOperationException {
+    Constructor<? extends RunsTest> constructor =
+            Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
+    return constructor.newInstance();
+  }
+
+  protected SystemExitToggle getSystemExitToggle() {
     // In Java 8 and lower, the first part of the version is a 1.
     // In Java 9 and higher, the first part of the version is the feature version.
     // Major versions of early Access builds have an "-ea" suffix.

@@ -22,9 +22,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.engine.Constants;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.Filter;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherConstants;
+import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.TagFilter;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -60,65 +62,12 @@ public class ActualRunner implements RunsTest {
               .addPostDiscoveryFilters(TestSharding.makeShardFilter())
               .build();
 
-      final Class<?> testClass;
-      try {
-        testClass = Class.forName(testClassName, false, getClass().getClassLoader());
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Failed to find testClass", e);
-      }
-
-      // We only allow for one level of nesting at the moment
-      boolean enclosed = isRunWithEnclosed(testClass);
-      List<DiscoverySelector> classSelectors =
-          enclosed
-              ? new ArrayList<>()
-              : Arrays.stream(testClass.getDeclaredClasses())
-                  .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
-                  .map(DiscoverySelectors::selectClass)
-                  .collect(Collectors.toList());
-
-      classSelectors.add(DiscoverySelectors.selectClass(testClassName));
-
-      LauncherDiscoveryRequestBuilder request =
-          LauncherDiscoveryRequestBuilder.request()
-              .selectors(classSelectors)
-              .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
-              .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
-              .configurationParameter(
-                  Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true");
-
-      String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
-      request.filters(new PatternFilter(filter));
-
-      String includeTags = System.getProperty("JUNIT5_INCLUDE_TAGS");
-      if (includeTags != null && !includeTags.isEmpty()) {
-        request.filters(TagFilter.includeTags(includeTags.split(",")));
-      }
-
-      String excludeTags = System.getProperty("JUNIT5_EXCLUDE_TAGS");
-      if (excludeTags != null && !excludeTags.isEmpty()) {
-        request.filters(TagFilter.excludeTags(excludeTags.split(",")));
-      }
-
-      List<String> includeEngines =
-          System.getProperty("JUNIT5_INCLUDE_ENGINES") == null
-              ? null
-              : Arrays.asList(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
-      List<String> excludeEngines =
-          System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null
-              ? null
-              : Arrays.asList(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
-      if (includeEngines != null) {
-        request.filters(includeEngines(includeEngines));
-      }
-      if (excludeEngines != null) {
-        request.filters(excludeEngines(excludeEngines));
-      }
+      LauncherDiscoveryRequest request = getRequest(testClassName);
 
       File exitFile = getExitFile();
 
       Launcher launcher = LauncherFactory.create(config);
-      launcher.execute(request.build());
+      launcher.execute(request);
 
       deleteExitFile(exitFile);
 
@@ -128,6 +77,72 @@ public class ActualRunner implements RunsTest {
 
       return summary.getFailureCount() == 0;
     }
+  }
+
+  protected LauncherDiscoveryRequest getRequest(String testClassName) {
+    final Class<?> testClass;
+    try {
+      testClass = Class.forName(testClassName, false, getClass().getClassLoader());
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Failed to find testClass", e);
+    }
+
+    // We only allow for one level of nesting at the moment
+    boolean enclosed = isRunWithEnclosed(testClass);
+    List<DiscoverySelector> classSelectors =
+            enclosed
+                    ? new ArrayList<>()
+                    : Arrays.stream(testClass.getDeclaredClasses())
+                    .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
+                    .map(DiscoverySelectors::selectClass)
+                    .collect(Collectors.toList());
+
+    classSelectors.add(DiscoverySelectors.selectClass(testClassName));
+
+    LauncherDiscoveryRequestBuilder request =
+            LauncherDiscoveryRequestBuilder.request()
+                    .selectors(classSelectors)
+                    .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
+                    .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
+                    .configurationParameter(
+                            Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true")
+                    .filters(getFilters().toArray(new Filter[0]));
+
+    return request.build();
+  }
+
+  protected List<Filter<?>> getFilters() {
+    List<Filter<?>> filters = new ArrayList<>();
+
+    String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
+    filters.add(new PatternFilter(filter));
+
+    String includeTags = System.getProperty("JUNIT5_INCLUDE_TAGS");
+    if (includeTags != null && !includeTags.isEmpty()) {
+      filters.add(TagFilter.includeTags(includeTags.split(",")));
+    }
+
+    String excludeTags = System.getProperty("JUNIT5_EXCLUDE_TAGS");
+    if (excludeTags != null && !excludeTags.isEmpty()) {
+      filters.add(TagFilter.excludeTags(excludeTags.split(",")));
+    }
+
+    List<String> includeEngines =
+            System.getProperty("JUNIT5_INCLUDE_ENGINES") == null
+                    ? null
+                    : Arrays.asList(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
+    List<String> excludeEngines =
+            System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null
+                    ? null
+                    : Arrays.asList(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
+    if (includeEngines != null) {
+      filters.add(includeEngines(includeEngines));
+    }
+    if (excludeEngines != null) {
+      filters.add(excludeEngines(excludeEngines));
+    }
+
+    return filters;
   }
 
   /**
