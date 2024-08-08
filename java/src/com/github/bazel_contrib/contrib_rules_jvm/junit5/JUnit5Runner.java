@@ -54,7 +54,7 @@ public class JUnit5Runner {
 
   protected RunsTest getRunner() throws ReflectiveOperationException {
     Constructor<? extends RunsTest> constructor =
-            Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
+        Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
     return constructor.newInstance();
   }
 

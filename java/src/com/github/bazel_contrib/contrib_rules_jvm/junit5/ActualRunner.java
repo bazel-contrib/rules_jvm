@@ -90,23 +90,23 @@ public class ActualRunner implements RunsTest {
     // We only allow for one level of nesting at the moment
     boolean enclosed = isRunWithEnclosed(testClass);
     List<DiscoverySelector> classSelectors =
-            enclosed
-                    ? new ArrayList<>()
-                    : Arrays.stream(testClass.getDeclaredClasses())
-                    .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
-                    .map(DiscoverySelectors::selectClass)
-                    .collect(Collectors.toList());
+        enclosed
+            ? new ArrayList<>()
+            : Arrays.stream(testClass.getDeclaredClasses())
+                .filter(clazz -> Modifier.isStatic(clazz.getModifiers()))
+                .map(DiscoverySelectors::selectClass)
+                .collect(Collectors.toList());
 
     classSelectors.add(DiscoverySelectors.selectClass(testClassName));
 
     LauncherDiscoveryRequestBuilder request =
-            LauncherDiscoveryRequestBuilder.request()
-                    .selectors(classSelectors)
-                    .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
-                    .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
-                    .configurationParameter(
-                            Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true")
-                    .filters(getFilters().toArray(new Filter[0]));
+        LauncherDiscoveryRequestBuilder.request()
+            .selectors(classSelectors)
+            .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
+            .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
+            .configurationParameter(
+                Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true")
+            .filters(getFilters().toArray(new Filter[0]));
 
     return request.build();
   }
@@ -128,13 +128,13 @@ public class ActualRunner implements RunsTest {
     }
 
     List<String> includeEngines =
-            System.getProperty("JUNIT5_INCLUDE_ENGINES") == null
-                    ? null
-                    : Arrays.asList(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
+        System.getProperty("JUNIT5_INCLUDE_ENGINES") == null
+            ? null
+            : Arrays.asList(System.getProperty("JUNIT5_INCLUDE_ENGINES").split(","));
     List<String> excludeEngines =
-            System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null
-                    ? null
-                    : Arrays.asList(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
+        System.getProperty("JUNIT5_EXCLUDE_ENGINES") == null
+            ? null
+            : Arrays.asList(System.getProperty("JUNIT5_EXCLUDE_ENGINES").split(","));
     if (includeEngines != null) {
       filters.add(includeEngines(includeEngines));
     }
