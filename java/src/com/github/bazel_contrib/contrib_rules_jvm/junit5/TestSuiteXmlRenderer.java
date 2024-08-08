@@ -3,6 +3,8 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.escapeIllegalCharacters;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTextElement;
 
+import java.net.InetAddress;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -21,6 +23,8 @@ class TestSuiteXmlRenderer {
     xml.writeStartElement("testsuite");
 
     xml.writeAttribute("name", escapeIllegalCharacters(suite.getId().getLegacyReportingName()));
+    xml.writeAttribute("timestamp", DateTimeFormatter.ISO_INSTANT.format(suite.getStarted()));
+    xml.writeAttribute("hostname", getHostname());
     xml.writeAttribute("tests", String.valueOf(tests.size()));
 
     int errors = 0;
@@ -66,5 +70,13 @@ class TestSuiteXmlRenderer {
     writeTextElement(xml, "system-err", suite.getStdErr());
 
     xml.writeEndElement();
+  }
+
+  private String getHostname() {
+    try {
+      return InetAddress.getLocalHost().getHostName();
+    } catch (Exception e) {
+      return "localhost";
+    }
   }
 }
