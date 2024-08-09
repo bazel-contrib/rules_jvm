@@ -57,7 +57,7 @@ public class ActualRunner implements RunsTest {
       FailFastExtension failFastExtension = new FailFastExtension();
 
       LauncherConfig config =
-          LauncherConfig.builder()
+          getLauncherConfigBuilder()
               .addTestExecutionListeners(bazelJUnitXml, summary, failFastExtension)
               .addPostDiscoveryFilters(TestSharding.makeShardFilter())
               .build();
@@ -79,6 +79,17 @@ public class ActualRunner implements RunsTest {
     }
   }
 
+  /** Create and LauncherConfig.Builder instance for use in the launcher */
+  protected LauncherConfig.Builder getLauncherConfigBuilder() {
+    return LauncherConfig.builder();
+  }
+
+  /**
+   * Creates a LauncherDiscoveryRequest for the test class provided from bazel
+   *
+   * @param testClassName the fqn of the test class provided from the test_class argument
+   * @return the LauncherDiscoveryRequest for the run
+   */
   protected LauncherDiscoveryRequest getRequest(String testClassName) {
     final Class<?> testClass;
     try {
@@ -106,12 +117,17 @@ public class ActualRunner implements RunsTest {
             .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
             .configurationParameter(
                 Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true")
-            .filters(getFilters().toArray(new Filter[0]));
+            .filters(getFilters());
 
     return request.build();
   }
 
-  protected List<Filter<?>> getFilters() {
+  /**
+   * Returns an array of filters to filter tests for the run. This implementation returns filters
+   * constructed from bazel --test_filter option in addition to include/exclude arguments part of
+   * java_junit5_test
+   */
+  protected Filter<?>[] getFilters() {
     List<Filter<?>> filters = new ArrayList<>();
 
     String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
@@ -142,7 +158,7 @@ public class ActualRunner implements RunsTest {
       filters.add(excludeEngines(excludeEngines));
     }
 
-    return filters;
+    return filters.toArray(new Filter[0]);
   }
 
   /**

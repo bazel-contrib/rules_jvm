@@ -52,6 +52,7 @@ public class JUnit5Runner {
     exit(systemExitToggle, 0);
   }
 
+  /** Returns an instance of RunsTest which handles creating and invoking the test runner */
   protected RunsTest getRunner() throws ReflectiveOperationException {
     Constructor<? extends RunsTest> constructor =
         Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
