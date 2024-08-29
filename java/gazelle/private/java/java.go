@@ -21,7 +21,7 @@ func IsTestPackage(pkg string) bool {
 		}
 	}
 
-	return strings.Contains(pkg, "/test/")
+	return strings.Contains(pkg, "/test")
 }
 
 // This list was derived from a script along the lines of:
