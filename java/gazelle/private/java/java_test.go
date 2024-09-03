@@ -18,6 +18,8 @@ func TestIsTestPackage(t *testing.T) {
 		"src/test/java/com/example/myproject":          true,
 		"src/main/com/example/perftest":                false,
 		"test-utils/src/main/com/example/project":      false,
+		"foo/bar/test":                                 true,
+		"project1/testutils/src/main":                  false,
 	}
 
 	for pkg, want := range tests {
