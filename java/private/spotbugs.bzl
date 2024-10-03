@@ -58,7 +58,7 @@ def _spotbugs_impl(ctx):
     test = [
         "#!/usr/bin/env bash",
         "ERRORLOG=$(mktemp)",
-        "RES=`{lib} {flags} {jars} 2>$ERRORLOG`".format(
+        "RES=`{lib} {flags} \"${{@}}\" {jars} 2>$ERRORLOG`".format(
             lib = info.binary.short_path,
             flags = " ".join(flags),
             jars = " ".join([jar.short_path for jar in jars]),
