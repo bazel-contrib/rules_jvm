@@ -38,7 +38,6 @@ def _spotbugs_impl(ctx):
 
     if len(baseline_files) > 0:
         baseline_file = baseline_files[0].files.to_list()[0]
-        print(baseline_file)
         flags.extend(["-excludeBugs", baseline_file.short_path])
         runfiles.append(baseline_file)
 
