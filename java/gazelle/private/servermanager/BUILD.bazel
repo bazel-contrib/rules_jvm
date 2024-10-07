@@ -9,6 +9,6 @@ go_library(
     deps = [
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
         "@io_bazel_rules_go//go/runfiles:go_default_library",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
     ],
 )
