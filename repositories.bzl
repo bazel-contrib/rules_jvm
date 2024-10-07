@@ -69,9 +69,9 @@ def contrib_rules_jvm_deps():
             http_archive,
             name = "rules_java",
             urls = [
-                "https://github.com/bazelbuild/rules_java/releases/download/7.3.2/rules_java-7.3.2.tar.gz",
+                "https://github.com/bazelbuild/rules_java/releases/download/7.12.1/rules_java-7.12.1.tar.gz",
             ],
-            sha256 = "3121a00588b1581bd7c1f9b550599629e5adcc11ba9c65f482bbd5cfe47fdf30",
+            sha256 = "dfbadbb37a79eb9e1cc1e156ecb8f817edf3899b28bc02410a6c1eb88b1a6862",
         )
 
     maybe(
@@ -80,12 +80,32 @@ def contrib_rules_jvm_deps():
         path = "@contrib_rules_jvm//java/private:contrib_rules_jvm_deps.zip",
     )
 
+    # This is required by `rules_jvm_external`
+    maybe(
+        http_archive,
+        name = "rules_license",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
+            "https://github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
+        ],
+        sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
+    )
+
+    # This is required by `rules_jvm_external`
+    maybe(
+        http_archive,
+        name = "bazel_features",
+        sha256 = "b4b145c19e08fd48337f53c383db46398d0a810002907ff0c590762d926e05be",
+        strip_prefix = "bazel_features-1.18.0",
+        url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.18.0/bazel_features-v1.18.0.tar.gz",
+    )
+
     maybe(
         http_archive,
         name = "rules_jvm_external",
-        sha256 = "808cb5c30b5f70d12a2a745a29edc46728fd35fa195c1762a596b63ae9cebe05",
-        strip_prefix = "rules_jvm_external-6.2",
-        url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/6.2/rules_jvm_external-6.2.tar.gz",
+        sha256 = "85776be6d8fe64abf26f463a8e12cd4c15be927348397180a01693610da7ec90",
+        strip_prefix = "rules_jvm_external-6.4",
+        url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.4/rules_jvm_external-6.4.tar.gz",
     )
 
 def contrib_rules_jvm_gazelle_deps():

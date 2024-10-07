@@ -53,11 +53,11 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_java",
-    version = "6.1.1",
+    version = "7.12.1",
 )
 bazel_dep(
     name = "rules_jvm_external",
-    version = "6.2",
+    version = "6.4",
 )
 bazel_dep(
     name = "rules_proto",

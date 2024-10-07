@@ -1,9 +1,11 @@
 load("@apple_rules_lint//lint:setup.bzl", "ruleset_lint_setup")
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
 load("@contrib_rules_jvm_deps//:compat.bzl", "compat_repositories")
 load("@contrib_rules_jvm_deps//:defs.bzl", "pinned_maven_install")
 load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
 
 def contrib_rules_jvm_setup():
+    bazel_features_deps()
     ruleset_lint_setup()
 
     # When using bazel 5, we have undefined toolchains from rules_java. This should be fine to skip, since we only need
