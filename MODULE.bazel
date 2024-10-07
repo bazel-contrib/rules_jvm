@@ -31,7 +31,6 @@ bazel_dep(
     version = "0.39.1",
     repo_name = "bazel_gazelle",
 )
-
 bazel_dep(
     name = "protobuf",
     version = "27.2",
