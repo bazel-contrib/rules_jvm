@@ -13,30 +13,24 @@ PROTOBUF_JAVA_VERSION = "3.{}".format(PROTOBUF_VERSION)
 
 bazel_dep(
     name = "apple_rules_lint",
-    version = "0.3.2",
+    version = "0.4.0",
 )
 bazel_dep(
     name = "bazel_skylib",
-    version = "1.4.2",
+    version = "1.7.1",
 )
 
 bazel_dep(
     name = "bazel_skylib_gazelle_plugin",
-    version = "1.4.2",
+    version = "1.7.1",
     dev_dependency = True,
 )
 
 bazel_dep(
     name = "gazelle",
-    version = "0.36.0",
+    version = "0.39.1",
     repo_name = "bazel_gazelle",
 )
-git_override(
-    module_name = "gazelle",
-    commit = "ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-)
-
 bazel_dep(
     name = "protobuf",
     version = "27.2",
@@ -44,20 +38,20 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_cc",
-    version = "0.0.9",
+    version = "0.0.11",
 )
 bazel_dep(
     name = "rules_go",
-    version = "0.48.1",
+    version = "0.50.1",
     repo_name = "io_bazel_rules_go",
 )
 bazel_dep(
     name = "rules_java",
-    version = "6.1.1",
+    version = "7.12.1",
 )
 bazel_dep(
     name = "rules_jvm_external",
-    version = "6.2",
+    version = "6.4",
 )
 bazel_dep(
     name = "rules_proto",
@@ -66,7 +60,7 @@ bazel_dep(
 
 bazel_dep(
     name = "stardoc",
-    version = "0.5.6",
+    version = "0.7.1",
     dev_dependency = True,
     repo_name = "io_bazel_stardoc",
 )
