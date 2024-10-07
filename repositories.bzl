@@ -7,30 +7,16 @@ def contrib_rules_jvm_deps():
     maybe(
         http_archive,
         name = "apple_rules_lint",
-        sha256 = "7c3cc45a95e3ef6fbc484a4234789a027e11519f454df63cbb963ac499f103f9",
-        strip_prefix = "apple_rules_lint-0.3.2",
-        url = "https://github.com/apple/apple_rules_lint/archive/refs/tags/0.3.2.tar.gz",
-    )
-
-    maybe(
-        http_archive,
-        name = "io_bazel_stardoc",
-        sha256 = "dfbc364aaec143df5e6c52faf1f1166775a5b4408243f445f44b661cfdc3134f",
-        url = "https://github.com/bazelbuild/stardoc/releases/download/0.5.6/stardoc-0.5.6.tar.gz",
+        strip_prefix = "apple_rules_lint-0.4.0",
+        sha256 = "483ea03d73d5fb33275d029da8d36811243fc32dfa4dc73a43acbb6f4b1af621",
+        url = "https://github.com/apple/apple_rules_lint/releases/download/0.4.0/apple_rules_lint-0.4.0.tar.gz",
     )
 
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
-        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
-    )
-
-    maybe(
-        http_archive,
-        name = "bazel_skylib_gazelle_plugin",
-        sha256 = "3327005dbc9e49cc39602fb46572525984f7119a9c6ffe5ed69fbe23db7c1560",
-        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-gazelle-plugin-1.4.2.tar.gz",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
     )
 
     maybe(

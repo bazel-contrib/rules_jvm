@@ -13,16 +13,16 @@ PROTOBUF_JAVA_VERSION = "3.{}".format(PROTOBUF_VERSION)
 
 bazel_dep(
     name = "apple_rules_lint",
-    version = "0.3.2",
+    version = "0.4.0",
 )
 bazel_dep(
     name = "bazel_skylib",
-    version = "1.4.2",
+    version = "1.7.1",
 )
 
 bazel_dep(
     name = "bazel_skylib_gazelle_plugin",
-    version = "1.4.2",
+    version = "1.7.1",
     dev_dependency = True,
 )
 
@@ -44,7 +44,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_cc",
-    version = "0.0.9",
+    version = "0.0.11",
 )
 bazel_dep(
     name = "rules_go",
@@ -66,7 +66,7 @@ bazel_dep(
 
 bazel_dep(
     name = "stardoc",
-    version = "0.5.6",
+    version = "0.7.1",
     dev_dependency = True,
     repo_name = "io_bazel_stardoc",
 )
