@@ -106,13 +106,11 @@ def contrib_rules_jvm_gazelle_deps():
         ],
     )
 
-    # We need https://github.com/bazelbuild/bazel-gazelle/pull/1798
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "d1d72a9abd6dee362354274fa9b60ced8f50ee1f10f9b9fef90b4acfb98d477b",
-        strip_prefix = "bazel-gazelle-ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
-        url = "https://github.com/bazelbuild/bazel-gazelle/archive/ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb.zip",
+        sha256 = "b760f7fe75173886007f7c2e616a21241208f3d90e8657dc65d36a771e916b6a",
+        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.39.1/bazel-gazelle-v0.39.1.tar.gz",
     )
 
     maybe(
@@ -126,8 +124,8 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "io_bazel_rules_go",
-        sha256 = "d6ab6b57e48c09523e93050f13698f708428cfd5e619252e369d377af6597707",
-        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.43.0/rules_go-v0.43.0.zip",
+        sha256 = "f4a9314518ca6acfa16cc4ab43b0b8ce1e4ea64b81c38d8a3772883f153346b8",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.50.1/rules_go-v0.50.1.zip",
     )
 
     maybe(
