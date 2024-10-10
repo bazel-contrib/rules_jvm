@@ -109,7 +109,9 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       // results
       List<UniqueId.Segment> segments = testCase.getId().getUniqueIdObject().getSegments();
 
-      if (segments.size() == 3 || segments.size() == 5) {
+      if (segments.size() == 2) {
+        parent = results.get(testCase.getId().getUniqueIdObject());
+      } else if (segments.size() == 3 || segments.size() == 5) {
         // get class / test data up one level
         parent =
             testCase
@@ -161,7 +163,7 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
               // are identified by the fact that they have no child test cases in the
               // test plan, or they are marked as tests.
               TestIdentifier id = result.getId();
-              return id.isTest() || testPlan.getChildren(id).isEmpty();
+              return id.getSource() != null || id.isTest() || testPlan.getChildren(id).isEmpty();
             })
         .collect(Collectors.toList());
   }

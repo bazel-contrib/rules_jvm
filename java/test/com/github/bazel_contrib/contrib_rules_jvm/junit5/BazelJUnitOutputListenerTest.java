@@ -5,29 +5,40 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.launcher.LauncherConstants.STDERR_REPORT_ENTRY_KEY;
 import static org.junit.platform.launcher.LauncherConstants.STDOUT_REPORT_ENTRY_KEY;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
+import org.junit.platform.launcher.core.LauncherConfig;
+import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.launcher.core.LauncherFactory;
+import org.junit.platform.testkit.engine.EngineTestKit;
 import org.mockito.Mockito;
 import org.opentest4j.TestAbortedException;
 import org.w3c.dom.Document;
@@ -37,10 +48,71 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-public class BazelJUnitOuputListenerTest {
+public class BazelJUnitOutputListenerTest {
 
   private TestDescriptor testDescriptor = new StubbedTestDescriptor(createId("descriptors"));
   private TestIdentifier identifier = TestIdentifier.from(testDescriptor);
+
+  /** This latch is used in TestAfterAllFails for testAfterAllFailuresAreReported */
+  private static final AtomicBoolean causeFailure = new AtomicBoolean(false);
+
+  static final class TestAfterAllFails {
+
+    @SuppressFBWarnings(value = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION")
+    @AfterAll
+    static void afterAll() {
+      if (causeFailure.get()) {
+        throw new RuntimeException("I always fail.");
+      }
+    }
+
+    @Test
+    void test() {}
+  }
+
+  @Test
+  public void testAfterAllFailuresAreReported() throws IOException {
+    causeFailure.set(true);
+
+    // First let's do a sanity test that we have the expected failures for the @AfterAll
+    EngineTestKit.engine("junit-jupiter")
+        .selectors(selectClass(TestAfterAllFails.class))
+        .execute()
+        .containerEvents()
+        .assertStatistics(stats -> stats.skipped(0).started(2).succeeded(1).aborted(0).failed(1));
+
+    // Now let's run the same test. Unfortunately we cannot use EngineTestKit since it has no way
+    // to register a listener.
+    File xmlFile = File.createTempFile("junit-report", "xml");
+    BazelJUnitOutputListener listener = new BazelJUnitOutputListener(xmlFile.toPath());
+    LauncherConfig config = LauncherConfig.builder().addTestExecutionListeners(listener).build();
+
+    Launcher launcher = LauncherFactory.create(config);
+
+    LauncherDiscoveryRequestBuilder request =
+        LauncherDiscoveryRequestBuilder.request().selectors(selectClass(TestAfterAllFails.class));
+
+    launcher.discover(request.build());
+
+    launcher.execute(request.build());
+    listener.close();
+
+    // now write an assertion to validate the XML file has an error
+    String[] expectedStrings = {
+      "<failure message=\"I always fail.\" type=\"java.lang.RuntimeException\">", "failures=\"1\"",
+    };
+
+    // Useful for debugging the expected output
+    // System.out.println(Files.readString(xmlFile.toPath()));
+
+    for (String expected : expectedStrings) {
+      assertTrue(
+          Files.lines(xmlFile.toPath()).anyMatch(line -> line.contains(expected)),
+          "Expected to find " + expected + " in " + xmlFile);
+    }
+
+    causeFailure.set(false);
+  }
 
   @Test
   public void testResultCanBeDisabled() {
