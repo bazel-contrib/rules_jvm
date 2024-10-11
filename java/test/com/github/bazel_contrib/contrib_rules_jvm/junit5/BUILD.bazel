@@ -38,6 +38,7 @@ java_test_suite(
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
         artifact("org.junit.jupiter:junit-jupiter-params", "contrib_rules_jvm_tests"),
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
+        artifact("org.junit.platform:junit-platform-testkit", "contrib_rules_jvm_tests"),
         artifact("org.mockito:mockito-core", "contrib_rules_jvm_tests"),
         artifact("org.opentest4j:opentest4j", "contrib_rules_jvm_tests"),
     ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
