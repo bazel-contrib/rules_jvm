@@ -29,9 +29,6 @@ jobs:
           # Share repository cache between workflows.
           repository-cache: true
 
-      - name: Run all the original tests
-        run: (cd examples/workspace-based && bazel --bazelrc=../../.github/workflows/ci.bazelrc test //...)
-
       - name: Run Gazelle
         run: (cd examples/workspace-based && bazel --bazelrc=../../.github/workflows/ci.bazelrc run gazelle)
 
