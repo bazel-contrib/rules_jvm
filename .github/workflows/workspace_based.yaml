@@ -36,4 +36,4 @@ jobs:
         run: (cd examples/workspace-based && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --test_tag_filters=lint //...)
 
       - name: Execute the passing test
-        run: (cd examples/workspace-based && bazel --bazelrc=../../.github/workflows/ci.bazelrc test --test_tag_filters=lint //java/test/com/github/bazelcontrib/rulesjvm/example:PassingTest)
+        run: (cd examples/workspace-based && bazel --bazelrc=../../.github/workflows/ci.bazelrc test //java/test/com/github/bazelcontrib/rulesjvm/example:PassingTest)
