@@ -21,7 +21,6 @@ jobs:
         flags:
           - ""
           - --config=jdk11
-          - --noenable_bzlmod
 
     # The type of runner that the job will run on
     runs-on: ${{ matrix.runs-on }}
@@ -46,3 +45,6 @@ jobs:
       
       - name: bazel test //... (Java ${{ matrix.java-major-version }})
         run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test ${{ matrix.flags }} //...
+
+      - name: example workspace-based build
+        run: cd examples/workspace-based && bazel run gazelle && bazel test //java/test/com/github/bazelcontrib/rulesjvm/example:PassingTest

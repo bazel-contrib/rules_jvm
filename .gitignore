@@ -3,5 +3,8 @@ bazel-*
 .idea
 .ijwb
 .eclipse
+*~
 /comparative-tests/.gradle/
 /MODULE.bazel.lock
+/examples/workspace-based/java/src/com/github/bazelcontrib/rulesjvm/example/BUILD.bazel
+/examples/workspace-based/java/test/com/github/bazelcontrib/rulesjvm/example/BUILD.bazel

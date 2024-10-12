@@ -1,0 +1,24 @@
+load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
+
+# We can choose where the `maven_install` lock file is read from
+#
+# gazelle:java_maven_install_file java/maven_install.json
+
+# And this maps common types to the ones from `contrib_rules_jvm`. By
+# doing this we can use the integration with `apple_rules_lint`.
+#
+# gazelle:map_kind java_binary java_binary @contrib_rules_jvm//java:defs.bzl
+# gazelle:map_kind java_library java_library @contrib_rules_jvm//java:defs.bzl
+# gazelle:map_kind java_test java_test @contrib_rules_jvm//java:defs.bzl
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_bin",
+)
+
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = DEFAULT_LANGUAGES + [
+        "@contrib_rules_jvm//java/gazelle",
+    ],
+)
