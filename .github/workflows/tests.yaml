@@ -45,6 +45,3 @@ jobs:
       
       - name: bazel test //... (Java ${{ matrix.java-major-version }})
         run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test ${{ matrix.flags }} //...
-
-      - name: example workspace-based build
-        run: cd examples/workspace-based && bazel run gazelle && bazel test //java/test/com/github/bazelcontrib/rulesjvm/example:PassingTest && bazel test --test_tag_filters=lint //...
