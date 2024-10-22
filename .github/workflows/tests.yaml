@@ -21,7 +21,6 @@ jobs:
         flags:
           - ""
           - --config=jdk11
-          - --noenable_bzlmod
 
     # The type of runner that the job will run on
     runs-on: ${{ matrix.runs-on }}

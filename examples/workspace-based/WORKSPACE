@@ -1,0 +1,88 @@
+workspace(name = "contrib_rules_jvm_workspace_example")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+local_repository(
+    name = "contrib_rules_jvm",
+    path = "../..",
+)
+
+http_archive(
+    name = "apple_rules_lint",
+    sha256 = "483ea03d73d5fb33275d029da8d36811243fc32dfa4dc73a43acbb6f4b1af621",
+    strip_prefix = "apple_rules_lint-0.4.0",
+    url = "https://github.com/apple/apple_rules_lint/releases/download/0.4.0/apple_rules_lint-0.4.0.tar.gz",
+)
+
+load("@apple_rules_lint//lint:repositories.bzl", "lint_deps")
+
+lint_deps()
+
+load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
+
+lint_setup({
+    "java-checkstyle": "@contrib_rules_jvm//java:checkstyle-default-config",
+    "java-pmd": "@contrib_rules_jvm//java:pmd-config",
+    "java-spotbugs": "@contrib_rules_jvm//java:spotbugs-default-config",
+})
+
+load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
+
+contrib_rules_jvm_deps()
+
+load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
+
+contrib_rules_jvm_setup()
+
+load("@rules_jvm_external//:defs.bzl", "maven_install")
+
+maven_install(
+    artifacts = [
+        "com.google.guava:guava:33.3.1-jre",
+        "org.junit.jupiter:junit-jupiter-engine:5.8.2",
+        "org.junit.jupiter:junit-jupiter-api:5.8.2",
+        "org.junit.platform:junit-platform-launcher:1.8.2",
+        "org.junit.platform:junit-platform-reporting:1.8.2",
+    ],
+    maven_install_json = "//java:maven_install.json",
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+)
+
+load("@maven//:defs.bzl", "pinned_maven_install")
+
+pinned_maven_install()
+
+http_archive(
+    name = "io_bazel_rules_go",
+    integrity = "sha256-M6zErg9wUC20uJPJ/B3Xqb+ZjCPn/yxFF3QdQEmpdvg=",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.48.0/rules_go-v0.48.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.48.0/rules_go-v0.48.0.zip",
+    ],
+)
+
+http_archive(
+    name = "bazel_gazelle",
+    integrity = "sha256-12v3pg/YsFBEQJDfooN6Tq+YKeEWVhjuNdzspcvfWNU=",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.37.0/bazel-gazelle-v0.37.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.37.0/bazel-gazelle-v0.37.0.tar.gz",
+    ],
+)
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+contrib_rules_jvm_gazelle_deps()
+
+load("@contrib_rules_jvm//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
+
+contrib_rules_jvm_gazelle_setup()
+
+go_rules_dependencies()
+
+go_register_toolchains(version = "1.23.2")
+
+gazelle_dependencies()

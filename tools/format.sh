@@ -28,4 +28,4 @@ bazel run //:buildifier
 
 section "Docs"
 echo "    readme" >&2
-bazel run --noenable_bzlmod //tools:update-docs
+bazel run //tools:update-docs
