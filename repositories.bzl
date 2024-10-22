@@ -81,17 +81,6 @@ def contrib_rules_jvm_deps():
     # This is required by `rules_jvm_external`
     maybe(
         http_archive,
-        name = "rules_license",
-        urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
-            "https://github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
-        ],
-        sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
-    )
-
-    # This is required by `rules_jvm_external`
-    maybe(
-        http_archive,
         name = "bazel_features",
         sha256 = "b4b145c19e08fd48337f53c383db46398d0a810002907ff0c590762d926e05be",
         strip_prefix = "bazel_features-1.18.0",
@@ -150,16 +139,6 @@ def contrib_rules_jvm_gazelle_deps():
 
     # We need to expand the contents of `@rules_proto//proto:repositories.bzl" here so
     # we can continue the two-step initialisation process
-    maybe(
-        http_archive,
-        name = "rules_license",
-        urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
-            "https://github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
-        ],
-        sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
-    )
-
     maybe(
         http_archive,
         name = "rules_cc",
