@@ -66,6 +66,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaGenerateProto,
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
+		javaconfig.JvmKotlinEnabled,
 	}
 }
 
@@ -146,6 +147,16 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[1], err)
 				}
 				cfg.AddAnnotationProcessorPlugin(*annotationClassName, *processorClassName)
+			case javaconfig.JvmKotlinEnabled:
+				switch d.Value {
+				case "true":
+					cfg.SetKotlinEnabled(true)
+				case "false":
+					cfg.SetKotlinEnabled(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JvmKotlinEnabled, d.Value)
+				}
 			}
 		}
 	}

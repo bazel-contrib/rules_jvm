@@ -53,6 +53,11 @@ const (
 	// JavaAnnotationProcessorPlugin tells the code generator about specific java_plugin targets needed to process
 	// specific annotations.
 	JavaAnnotationProcessorPlugin = "java_annotation_processor_plugin"
+
+	// JvmKotlinEnabled tells the code generator whether to support `kt_jvm_library` rules for Kotlin sources.
+	// Can be either "true" or "false". Defaults to "false".
+	// This requires importing the `@rules_kotlin` repository into your workspace.
+	JvmKotlinEnabled = "jvm_kotlin_enabled"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -75,6 +80,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		kotlinEnabled:          c.kotlinEnabled,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
 		repoRoot:               c.repoRoot,
@@ -105,6 +111,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	kotlinEnabled                                      bool
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
 	repoRoot                                           string
@@ -128,6 +135,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		kotlinEnabled:          false,
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,
@@ -161,6 +169,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) KotlinEnabled() bool {
+	return c.kotlinEnabled
+}
+
+func (c *Config) SetKotlinEnabled(enabled bool) {
+	c.kotlinEnabled = enabled
 }
 
 func (c *Config) MavenRepositoryName() string {
