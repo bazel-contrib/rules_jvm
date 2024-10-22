@@ -42,6 +42,6 @@ jobs:
           disk-cache: true
           # Share repository cache between workflows.
           repository-cache: true
-
+      
       - name: bazel test //... (Java ${{ matrix.java-major-version }})
-        run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test ${{ matrix.flags }} //... -- -//docs/...
+        run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test ${{ matrix.flags }} //...
