@@ -4,33 +4,30 @@ load("//java/private:zip_repository.bzl", "zip_repository")
 load("//third_party:protobuf_version.bzl", "PROTOBUF_VERSION")
 
 def contrib_rules_jvm_deps():
+    # We need the latest version of `rules_license`, but many of our deps pull in an older version
     maybe(
         http_archive,
-        name = "apple_rules_lint",
-        sha256 = "7c3cc45a95e3ef6fbc484a4234789a027e11519f454df63cbb963ac499f103f9",
-        strip_prefix = "apple_rules_lint-0.3.2",
-        url = "https://github.com/apple/apple_rules_lint/archive/refs/tags/0.3.2.tar.gz",
+        name = "rules_license",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
+            "https://github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
+        ],
+        sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
     )
 
     maybe(
         http_archive,
-        name = "io_bazel_stardoc",
-        sha256 = "dfbc364aaec143df5e6c52faf1f1166775a5b4408243f445f44b661cfdc3134f",
-        url = "https://github.com/bazelbuild/stardoc/releases/download/0.5.6/stardoc-0.5.6.tar.gz",
+        name = "apple_rules_lint",
+        strip_prefix = "apple_rules_lint-0.4.0",
+        sha256 = "483ea03d73d5fb33275d029da8d36811243fc32dfa4dc73a43acbb6f4b1af621",
+        url = "https://github.com/apple/apple_rules_lint/releases/download/0.4.0/apple_rules_lint-0.4.0.tar.gz",
     )
 
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
-        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
-    )
-
-    maybe(
-        http_archive,
-        name = "bazel_skylib_gazelle_plugin",
-        sha256 = "3327005dbc9e49cc39602fb46572525984f7119a9c6ffe5ed69fbe23db7c1560",
-        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-gazelle-plugin-1.4.2.tar.gz",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
     )
 
     maybe(
@@ -69,9 +66,9 @@ def contrib_rules_jvm_deps():
             http_archive,
             name = "rules_java",
             urls = [
-                "https://github.com/bazelbuild/rules_java/releases/download/7.3.2/rules_java-7.3.2.tar.gz",
+                "https://github.com/bazelbuild/rules_java/releases/download/7.12.1/rules_java-7.12.1.tar.gz",
             ],
-            sha256 = "3121a00588b1581bd7c1f9b550599629e5adcc11ba9c65f482bbd5cfe47fdf30",
+            sha256 = "dfbadbb37a79eb9e1cc1e156ecb8f817edf3899b28bc02410a6c1eb88b1a6862",
         )
 
     maybe(
@@ -80,12 +77,21 @@ def contrib_rules_jvm_deps():
         path = "@contrib_rules_jvm//java/private:contrib_rules_jvm_deps.zip",
     )
 
+    # This is required by `rules_jvm_external`
+    maybe(
+        http_archive,
+        name = "bazel_features",
+        sha256 = "b4b145c19e08fd48337f53c383db46398d0a810002907ff0c590762d926e05be",
+        strip_prefix = "bazel_features-1.18.0",
+        url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.18.0/bazel_features-v1.18.0.tar.gz",
+    )
+
     maybe(
         http_archive,
         name = "rules_jvm_external",
-        sha256 = "808cb5c30b5f70d12a2a745a29edc46728fd35fa195c1762a596b63ae9cebe05",
-        strip_prefix = "rules_jvm_external-6.2",
-        url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/6.2/rules_jvm_external-6.2.tar.gz",
+        sha256 = "85776be6d8fe64abf26f463a8e12cd4c15be927348397180a01693610da7ec90",
+        strip_prefix = "rules_jvm_external-6.4",
+        url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.4/rules_jvm_external-6.4.tar.gz",
     )
 
 def contrib_rules_jvm_gazelle_deps():
@@ -100,13 +106,11 @@ def contrib_rules_jvm_gazelle_deps():
         ],
     )
 
-    # We need https://github.com/bazelbuild/bazel-gazelle/pull/1798
     maybe(
         http_archive,
         name = "bazel_gazelle",
-        sha256 = "d1d72a9abd6dee362354274fa9b60ced8f50ee1f10f9b9fef90b4acfb98d477b",
-        strip_prefix = "bazel-gazelle-ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
-        url = "https://github.com/bazelbuild/bazel-gazelle/archive/ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb.zip",
+        sha256 = "b760f7fe75173886007f7c2e616a21241208f3d90e8657dc65d36a771e916b6a",
+        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.39.1/bazel-gazelle-v0.39.1.tar.gz",
     )
 
     maybe(
@@ -120,8 +124,8 @@ def contrib_rules_jvm_gazelle_deps():
     maybe(
         http_archive,
         name = "io_bazel_rules_go",
-        sha256 = "d6ab6b57e48c09523e93050f13698f708428cfd5e619252e369d377af6597707",
-        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.43.0/rules_go-v0.43.0.zip",
+        sha256 = "f4a9314518ca6acfa16cc4ab43b0b8ce1e4ea64b81c38d8a3772883f153346b8",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/v0.50.1/rules_go-v0.50.1.zip",
     )
 
     maybe(
@@ -134,16 +138,6 @@ def contrib_rules_jvm_gazelle_deps():
 
     # We need to expand the contents of `@rules_proto//proto:repositories.bzl" here so
     # we can continue the two-step initialisation process
-    maybe(
-        http_archive,
-        name = "rules_license",
-        urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_license/releases/download/0.0.7/rules_license-0.0.7.tar.gz",
-            "https://github.com/bazelbuild/rules_license/releases/download/0.0.7/rules_license-0.0.7.tar.gz",
-        ],
-        sha256 = "4531deccb913639c30e5c7512a054d5d875698daeb75d8cf90f284375fe7c360",
-    )
-
     maybe(
         http_archive,
         name = "rules_cc",
