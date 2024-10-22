@@ -91,6 +91,26 @@ def create_jvm_test_suite(
 
     tests = []
 
+    # Optimization for classpath, reduces the duplicate dependencies for each test to instead rely on one target
+    deps_lib_name = "%s-test-deps-lib" % name
+    define_library(
+        name = deps_lib_name,
+        exports = deps,
+        visibility = ["//visibility:private"],
+        tags = tags,
+        testonly = True,
+        **library_attrs
+    )
+    runtime_deps_lib_name = "%s-test-runtime-deps-lib" % name
+    define_library(
+        name = runtime_deps_lib_name,
+        exports = runtime_deps,
+        visibility = ["//visibility:private"],
+        tags = tags,
+        testonly = True,
+        **library_attrs
+    )
+
     for src in test_srcs:
         suffix = src.rfind(".")
         test_name = src[:suffix]
@@ -101,9 +121,9 @@ def create_jvm_test_suite(
             size = size,
             srcs = [src],
             test_class = test_class,
-            deps = deps,
+            deps = [":" + deps_lib_name],
             tags = tags,
-            runtime_deps = runtime_deps,
+            runtime_deps = [":" + runtime_deps_lib_name],
             visibility = ["//visibility:private"],
             **kwargs
         )
