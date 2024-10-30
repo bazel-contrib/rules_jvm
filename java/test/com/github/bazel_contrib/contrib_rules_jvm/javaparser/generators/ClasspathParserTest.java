@@ -201,7 +201,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
-            new ClasspathParser.PerClassData(
+            new PerClassData(
                 treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
         parser.perClassData);
   }
@@ -217,7 +217,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
-            new ClasspathParser.PerClassData(
+            new PerClassData(
                 treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
         parser.perClassData);
   }
@@ -239,18 +239,18 @@ public class ClasspathParserTest {
     TreeMap<String, SortedSet<String>> expectedInnerEnumFieldAnnotations = new TreeMap<>();
     expectedInnerEnumFieldAnnotations.put("size", treeSet("lombok.Getter"));
 
-    TreeMap<String, ClasspathParser.PerClassData> expected = new TreeMap<>();
+    TreeMap<String, PerClassData> expected = new TreeMap<>();
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField",
-        new ClasspathParser.PerClassData(
+        new PerClassData(
             new TreeSet<>(), new TreeMap<>(), expectedOuterClassFieldAnnotations));
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField.InnerClass",
-        new ClasspathParser.PerClassData(
+        new PerClassData(
             new TreeSet<>(), new TreeMap<>(), expectedInnerClassFieldAnnotations));
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField.InnerEnum",
-        new ClasspathParser.PerClassData(
+        new PerClassData(
             new TreeSet<>(), new TreeMap<>(), expectedInnerEnumFieldAnnotations));
 
     assertEquals(expected, parser.perClassData);
@@ -270,7 +270,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImportOnMethod",
-            new ClasspathParser.PerClassData(
+            new PerClassData(
                 new TreeSet<>(), expectedPerMethodAnnotations, new TreeMap<>())),
         parser.perClassData);
   }
@@ -288,7 +288,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
-            new ClasspathParser.PerClassData(
+            new PerClassData(
                 treeSet("Deprecated"), new TreeMap<>(), new TreeMap<>())),
         parser.perClassData);
   }
@@ -306,7 +306,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
-            new ClasspathParser.PerClassData(
+            new PerClassData(
                 treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
         parser.perClassData);
   }
@@ -342,7 +342,7 @@ public class ClasspathParserTest {
             "java.util.HashMap", "javax.annotation.Nullable", "org.jetbrains.annotations.Nullable");
     assertEquals(expectedTypes, parser.getUsedTypes());
 
-    Map<String, ClasspathParser.PerClassData> expectedPerClassMetadata = new TreeMap<>();
+    Map<String, PerClassData> expectedPerClassMetadata = new TreeMap<>();
     TreeMap<String, SortedSet<String>> expectedPerMethodAnnotations = new TreeMap<>();
     expectedPerMethodAnnotations.put(
         "containsValue", treeSet("Override", "javax.annotation.Nullable"));
@@ -350,7 +350,7 @@ public class ClasspathParserTest {
     // end up getting given, so we just use the empty string for anonymous inner classes.
     expectedPerClassMetadata.put(
         "workspace.com.gazelle.java.javaparser.generators.AnonymousInnerClass.",
-        new ClasspathParser.PerClassData(treeSet(), expectedPerMethodAnnotations, new TreeMap<>()));
+        new PerClassData(treeSet(), expectedPerMethodAnnotations, new TreeMap<>()));
     assertEquals(expectedPerClassMetadata, parser.perClassData);
   }
 

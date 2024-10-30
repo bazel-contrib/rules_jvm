@@ -112,6 +112,20 @@ var javaLibraryKind = rule.KindInfo{
 	},
 }
 
+var kotlinLibraryKind = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps":    true,
+		"exports": true,
+		"srcs":    true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"exports":      true,
+		"runtime_deps": true,
+	},
+}
+
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	kinds := map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
@@ -121,6 +135,7 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 		"java_test_suite":    kindWithRuntimeDeps,
 		"java_proto_library": kindWithoutRuntimeDeps,
 		"java_grpc_library":  kindWithoutRuntimeDeps,
+		"kt_jvm_library":     kotlinLibraryKind,
 	}
 
 	c := l.Configurer.(*Configurer)
@@ -152,6 +167,12 @@ var baseJavaLoads = []rule.LoadInfo{
 		Symbols: []string{
 			"java_junit5_test",
 			"java_test_suite",
+		},
+	},
+	{
+		Name: "@rules_kotlin//kotlin:jvm.bzl",
+		Symbols: []string{
+			"kt_jvm_library",
 		},
 	},
 }

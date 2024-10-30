@@ -120,8 +120,29 @@ public class GrpcServer {
       logger.debug("Working relative directory: {}", request.getRel());
       logger.debug("processing files: {}", files);
 
-      ClasspathParser parser = new ClasspathParser();
       Path directory = workspace.resolve(request.getRel());
+      // TODO: Make this tidier.
+      if (files.stream().anyMatch(file -> file.endsWith(".kt"))) {
+        KtParser parser = new KtParser();
+        ParsedPackageData data = parser.parseClasses(directory, files);
+
+        Package.Builder packageBuilder = Package.newBuilder();
+        if (data.packages.size() > 1) {
+          throw new StatusRuntimeException(
+              Status.INVALID_ARGUMENT.withDescription(
+                  String.format(
+                      "Expected exactly one java package, but saw %d: %s",
+                      data.packages.size(), Joiner.on(", ").join(data.packages))));
+        } else if (data.packages.isEmpty()) {
+          logger.info(
+              "Set of classes in {} has no package", Paths.get(request.getRel()).toAbsolutePath());
+          data.packages.add("");
+        }
+        packageBuilder.setName(Iterables.getOnlyElement(data.packages));
+        return packageBuilder.build();
+      }
+
+      ClasspathParser parser = new ClasspathParser();
 
       try {
         parser.parseClasses(directory, files);
@@ -156,7 +177,7 @@ public class GrpcServer {
               .addAllImportedPackagesWithoutSpecificClasses(
                   parser.getUsedPackagesWithoutSpecificTypes())
               .addAllMains(parser.getMainClasses());
-      for (Map.Entry<String, ClasspathParser.PerClassData> classEntry :
+      for (Map.Entry<String, PerClassData> classEntry :
           parser.perClassData.entrySet()) {
         PerClassMetadata.Builder perClassMetadata =
             PerClassMetadata.newBuilder()

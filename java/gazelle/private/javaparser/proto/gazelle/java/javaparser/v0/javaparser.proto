@@ -7,9 +7,9 @@ option java_multiple_files = true;
 option java_package = "com.gazelle.java.javaparser.v0";
 
 // JavaParser service is the RPCs between the gazelle java extension and the
-// java parser.
+// java and Kotlin parser's.
 service JavaParser {
-  // Parse a java package.
+  // Parse a Java or Kotlin package.
   rpc ParsePackage(ParsePackageRequest) returns (Package) {}
 }
 
@@ -18,7 +18,7 @@ message ParsePackageRequest {
   // Workspace relative directory to consider.
   string rel = 2;
 
-  // List of Java files in the relative directory.
+  // List of Java or Kotlin files in the relative directory.
   repeated string files = 3;
 }
 

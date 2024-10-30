@@ -55,25 +55,38 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		return res
 	}
 
-	isModule := cfg.ModuleGranularity() == "module"
-
 	if cfg.GenerateProto() {
 		generateProtoLibraries(args, log, &res)
 	}
 
-	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
+	var srcFilenamesRelativeToPackage []string
+	hasKotlinFiles := false
+	if cfg.KotlinEnabled() {
+		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool {
+			ext := filepath.Ext(f)
+			if ext == ".kt" {
+				hasKotlinFiles = true
+				return true
+			} else {
+				return ext == ".java"
+			}
+		})
+	} else {
+		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
+	}
 
-	if len(javaFilenamesRelativeToPackage) == 0 {
+	isModule := cfg.ModuleGranularity() == "module"
+
+	if len(srcFilenamesRelativeToPackage) == 0 {
 		if !isModule || !cfg.IsModuleRoot() {
 			return res
 		}
 	}
 
-	sort.Strings(javaFilenamesRelativeToPackage)
-
+	sort.Strings(srcFilenamesRelativeToPackage)
 	javaPkg, err := l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
 		Rel:   args.Rel,
-		Files: javaFilenamesRelativeToPackage,
+		Files: srcFilenamesRelativeToPackage,
 	})
 	if err != nil {
 		log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
@@ -86,12 +99,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	//     (e.g. inner classes, annotation processor generated classes, etc).
 	// But it will do for now.
 	javaClassNamesFromFileNames := sorted_set.NewSortedSet([]string{})
-	for _, filename := range javaFilenamesRelativeToPackage {
+	for _, filename := range srcFilenamesRelativeToPackage {
 		javaClassNamesFromFileNames.Add(strings.TrimSuffix(filename, ".java"))
 	}
 
 	if isModule {
-		if len(javaFilenamesRelativeToPackage) > 0 {
+		if len(srcFilenamesRelativeToPackage) > 0 {
 			l.javaPackageCache[args.Rel] = javaPkg
 		}
 
@@ -167,7 +180,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
-		for _, f := range javaFilenamesRelativeToPackage {
+		for _, f := range srcFilenamesRelativeToPackage {
 			path := filepath.Join(args.Rel, f)
 			if javaPkg.TestPackage {
 				file := javaFile{
@@ -195,7 +208,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	})
 
 	javaLibraryKind := "java_library"
-	if kindMap, ok := args.Config.KindMap["java_library"]; ok {
+	if hasKotlinFiles {
+		javaLibraryKind = "kt_jvm_library"
+	}
+	if kindMap, ok := args.Config.KindMap[javaLibraryKind]; ok {
 		javaLibraryKind = kindMap.KindName
 	}
 
@@ -472,8 +488,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 }
 
 func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace string, name string, srcsRelativeToBazelWorkspace []string, packages, imports *sorted_set.SortedSet[types.PackageName], exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult) {
-	const ruleKind = "java_library"
-	r := rule.NewRule(ruleKind, name)
+	r := rule.NewRule(javaLibraryRuleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
 	for _, src := range srcsRelativeToBazelWorkspace {
