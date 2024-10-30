@@ -169,6 +169,9 @@ maven.install(
         "org.slf4j:slf4j-api:1.7.32",
         "org.slf4j:slf4j-jdk14:1.7.32",
 
+        # For Kotlin parsing in the Gazelle plugin
+        "org.jetbrains.kotlin:kotlin-compiler:1.9.25",
+
         # We explicitly declare a protobuf runtime version
         # so that it coincides with the one we use to generate the code.
         "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
