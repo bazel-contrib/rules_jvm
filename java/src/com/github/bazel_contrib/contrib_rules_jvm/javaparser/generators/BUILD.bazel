@@ -9,8 +9,8 @@ java_library(
         "KtParser.java",
         "LifecycleService.java",
         "Main.java",
-        "PerClassData.java",
         "ParsedPackageData.java",
+        "PerClassData.java",
         "TimeoutHandler.java",
     ],
     visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
@@ -27,6 +27,7 @@ java_library(
         "@contrib_rules_jvm_deps//:io_grpc_grpc_api",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_services",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_stub",
+        "@contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler",
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
     ],
 )
