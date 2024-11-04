@@ -91,7 +91,7 @@ def contrib_rules_jvm_deps():
         name = "rules_jvm_external",
         sha256 = "3a4d56357851cf5b0dae538b3f3e0612a4f58925dfb3cadb2e0c4e87d51e629e",
         strip_prefix = "rules_jvm_external-6.5",
-        url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.4/rules_jvm_external-6.5.tar.gz",
+        url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.5/rules_jvm_external-6.5.tar.gz",
     )
 
 def contrib_rules_jvm_gazelle_deps():
