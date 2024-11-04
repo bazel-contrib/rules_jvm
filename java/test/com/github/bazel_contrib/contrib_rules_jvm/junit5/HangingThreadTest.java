@@ -17,6 +17,7 @@ public class HangingThreadTest {
               Thread.sleep(Long.MAX_VALUE);
             } catch (InterruptedException e) {
               // Swallow
+              Thread.currentThread().interrupt();
             }
           });
 

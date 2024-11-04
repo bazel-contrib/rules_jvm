@@ -1,6 +1,6 @@
 def pmd_binary(
         name,
-        main_class = "net.sourceforge.pmd.PMD",
+        main_class = "net.sourceforge.pmd.cli.PmdCli",
         deps = None,
         runtime_deps = None,
         srcs = None,
