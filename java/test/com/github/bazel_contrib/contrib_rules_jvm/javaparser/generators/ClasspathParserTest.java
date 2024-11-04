@@ -10,6 +10,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -398,11 +399,7 @@ public class ClasspathParserTest {
   }
 
   private <T> TreeSet<T> treeSet(T... values) {
-    TreeSet<T> set = new TreeSet<>();
-    for (T value : values) {
-      set.add(value);
-    }
-    return set;
+    return new TreeSet<>(Arrays.asList(values));
   }
 
   @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(

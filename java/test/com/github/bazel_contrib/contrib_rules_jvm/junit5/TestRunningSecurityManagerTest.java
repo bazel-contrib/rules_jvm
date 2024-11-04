@@ -26,7 +26,7 @@ public class TestRunningSecurityManagerTest {
         new SecurityManager() {
           @Override
           public void checkPermission(Permission perm) {
-            if (permission == perm) {
+            if (permission.equals(perm)) {
               throw new SecurityException("Oh noes!");
             }
           }

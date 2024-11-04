@@ -6,6 +6,8 @@ def _pmd_test_impl(ctx):
 
     cmd = [
         pmd_info.binary.short_path,
+        "check",
+        "--no-progress",
     ]
 
     # We want to disable the suggestion to use the analysis cache
