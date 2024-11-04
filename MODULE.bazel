@@ -51,7 +51,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "rules_jvm_external",
-    version = "6.5",
+    version = "6.6",
 )
 bazel_dep(
     name = "rules_proto",
@@ -103,28 +103,26 @@ IO_GRPC_GRPC_JAVA_ARTIFACTS = [
     "com.google.auto.value:auto-value:1.9",
     "com.google.code.findbugs:jsr305:3.0.2",
     "com.google.code.gson:gson:2.9.0",
-    "com.google.errorprone:error_prone_annotations:2.11.0",
     "com.google.guava:failureaccess:1.0.1",
-    "com.google.guava:guava:31.0.1-android",
     "com.google.j2objc:j2objc-annotations:1.3",
     "com.google.re2j:re2j:1.6",
     "com.google.truth:truth:1.0.1",
     "com.squareup.okhttp:okhttp:2.7.5",
     "com.squareup.okio:okio:1.17.5",
-    "io.netty:netty-buffer:4.1.87.Final",
-    "io.netty:netty-codec-http2:4.1.87.Final",
-    "io.netty:netty-codec-http:4.1.87.Final",
-    "io.netty:netty-codec-socks:4.1.87.Final",
-    "io.netty:netty-codec:4.1.87.Final",
-    "io.netty:netty-common:4.1.87.Final",
-    "io.netty:netty-handler-proxy:4.1.87.Final",
-    "io.netty:netty-handler:4.1.87.Final",
-    "io.netty:netty-resolver:4.1.87.Final",
+    "io.netty:netty-buffer",
+    "io.netty:netty-codec-http2",
+    "io.netty:netty-codec-http",
+    "io.netty:netty-codec-socks",
+    "io.netty:netty-codec",
+    "io.netty:netty-common",
+    "io.netty:netty-handler-proxy",
+    "io.netty:netty-handler",
+    "io.netty:netty-resolver",
     "io.netty:netty-tcnative-boringssl-static:2.0.56.Final",
     "io.netty:netty-tcnative-classes:2.0.56.Final",
     "io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.87.Final",
-    "io.netty:netty-transport-native-unix-common:4.1.87.Final",
-    "io.netty:netty-transport:4.1.87.Final",
+    "io.netty:netty-transport-native-unix-common",
+    "io.netty:netty-transport",
     "io.opencensus:opencensus-api:0.24.0",
     "io.opencensus:opencensus-contrib-grpc-metrics:0.24.0",
     "io.perfmark:perfmark-api:0.25.0",
@@ -133,49 +131,62 @@ IO_GRPC_GRPC_JAVA_ARTIFACTS = [
     "org.codehaus.mojo:animal-sniffer-annotations:1.21",
 ]
 
+slf4j_version = "1.7.32"
+
+spotbugs_version = "4.8.6"
+
 maven.install(
     name = "contrib_rules_jvm_deps",
     artifacts = [
+        "com.github.spotbugs:spotbugs-annotations:%s" % spotbugs_version,
         "com.google.code.findbugs:jsr305:3.0.2",
-        "com.google.errorprone:error_prone_annotations:2.11.0",
-        "com.google.guava:guava:30.1.1-jre",
-        "commons-cli:commons-cli:1.5.0",
-        "io.grpc:grpc-api:1.40.0",
-        "io.grpc:grpc-core:1.40.0",
-        "io.grpc:grpc-netty:1.40.0",
-        "io.grpc:grpc-services:1.40.0",
-        "io.grpc:grpc-stub:1.40.0",
-        "org.slf4j:slf4j-simple:1.7.32",
-        "com.google.googlejavaformat:google-java-format:1.15.0",
+        "com.google.errorprone:error_prone_annotations:2.35.1",
+        "com.google.googlejavaformat:google-java-format:1.24.0",
+        "com.google.guava:guava:33.3.1-jre",
+        "commons-cli:commons-cli:1.9.0",
+        "io.grpc:grpc-api",
+        "io.grpc:grpc-core",
+        "io.grpc:grpc-netty",
+        "io.grpc:grpc-services",
+        "io.grpc:grpc-stub",
 
         # These can be versioned independently of the versions in `repositories.bzl`
         # so long as the version numbers are higher.
-        "org.junit.jupiter:junit-jupiter-engine:5.8.2",
-        "org.junit.jupiter:junit-jupiter-api:5.8.2",
-        "org.junit.platform:junit-platform-launcher:1.8.2",
-        "org.junit.platform:junit-platform-reporting:1.8.2",
-        "org.junit.vintage:junit-vintage-engine:5.8.2",
+        "org.junit.jupiter:junit-jupiter-engine",
+        "org.junit.jupiter:junit-jupiter-api",
+        "org.junit.platform:junit-platform-launcher",
+        "org.junit.platform:junit-platform-reporting",
+        "org.junit.vintage:junit-vintage-engine",
 
         # Open Test Alliance for the JVM dep
-        "org.opentest4j:opentest4j:1.2.0",
+        "org.opentest4j:opentest4j:1.3.0",
 
         # Checkstyle deps
-        "com.puppycrawl.tools:checkstyle:10.20.0",
+        "com.puppycrawl.tools:checkstyle:10.20.2",
 
         # PMD deps
-        "net.sourceforge.pmd:pmd-dist:7.7.0",
+        "net.sourceforge.pmd:pmd-dist:7.8.0",
 
         # Spotbugs deps
-        "org.slf4j:slf4j-api:1.7.32",
-        "org.slf4j:slf4j-jdk14:1.7.32",
+        "org.slf4j:slf4j-api:%s" % slf4j_version,
+        "org.slf4j:slf4j-jdk14:%s" % slf4j_version,
+
+        # Used by us at runtime
+        "org.slf4j:slf4j-simple:%s" % slf4j_version,
 
         # We explicitly declare a protobuf runtime version
         # so that it coincides with the one we use to generate the code.
         "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
     ] + IO_GRPC_GRPC_JAVA_ARTIFACTS,
+    boms = [
+        "io.grpc:grpc-bom:1.68.2",
+        "io.netty:netty-bom:4.1.87.Final",
+        "org.junit:junit-bom:5.11.3",
+    ],
     fail_if_repin_required = True,
     generate_compat_repositories = True,
     lock_file = "//:contrib_rules_jvm_deps_install.json",
+    resolver = "maven",
     strict_visibility = False,
 )
 
@@ -189,7 +200,7 @@ maven.artifact(
     artifact = "spotbugs",
     exclusions = ["org.slf4j:slf4j-api"],
     group = "com.github.spotbugs",
-    version = "4.7.0",
+    version = spotbugs_version,
 )
 use_repo(
     maven,

@@ -408,6 +408,7 @@ public class ClasspathParserTest {
   static class JavaSource extends SimpleJavaFileObject {
     String fileSource;
 
+    @SuppressFBWarnings
     public JavaSource(Path path) {
       // The superclass requires that the path points at a filesystem not a jar, so we make up a
       // sketchy fake path for it.

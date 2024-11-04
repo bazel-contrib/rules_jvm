@@ -17,6 +17,7 @@ public class TestRunningSecurityManagerTest {
   }
 
   @Test
+  @SuppressFBWarnings()
   void shouldDelegateToExistingSecurityManagerIfPresent() {
     SecurityManager permissive = new TestRunningSecurityManager();
     Permission permission = new RuntimePermission("example.permission");
