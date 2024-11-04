@@ -27,7 +27,7 @@ java_library(
     # available.
     javacopts = [
         "--release",
-        "8",
+        "11",
     ],
     deps = [
         # There must never be dependencies
@@ -52,11 +52,11 @@ java_library(
         ],
     ),
     javacopts = [
-        # Target Java 8, no matter which JDK we're on so that we
+        # Target Java 11, no matter which JDK we're on so that we
         # can be sure that `SecurityManager` is present, even if
         # someone rebuilds on a JDK that doesn't have it.
         "--release",
-        "8",
+        "11",
     ],
     resource_strip_prefix = package_name(),
     resources = ["META-INF/services/org.junit.jupiter.api.extension.Extension"],
