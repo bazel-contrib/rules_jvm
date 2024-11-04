@@ -482,7 +482,7 @@ pmd_binary(
 | Name  | Description | Default Value |
 | :------------- | :------------- | :------------- |
 | <a id="pmd_binary-name"></a>name |  The name of the target   |  none |
-| <a id="pmd_binary-main_class"></a>main_class |  The main class to use for PMD.   |  `"net.sourceforge.pmd.PMD"` |
+| <a id="pmd_binary-main_class"></a>main_class |  The main class to use for PMD.   |  `"net.sourceforge.pmd.cli.PmdCli"` |
 | <a id="pmd_binary-deps"></a>deps |  The deps required for compiling this binary. May be omitted.   |  `None` |
 | <a id="pmd_binary-runtime_deps"></a>runtime_deps |  The deps required by PMD at runtime. May be omitted.   |  `None` |
 | <a id="pmd_binary-srcs"></a>srcs |  If you're compiling your own PMD binary, the sources to use.   |  `None` |
