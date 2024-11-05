@@ -146,4 +146,25 @@ class TestData {
   public Instant getStarted() {
     return this.started;
   }
+
+  @Override
+  public String toString() {
+    return "TestData{"
+        + "id="
+        + id
+        + ", reportEntries="
+        + reportEntries
+        + ", started="
+        + started
+        + ", finished="
+        + finished
+        + ", reason='"
+        + reason
+        + '\''
+        + ", result="
+        + result
+        + ", dynamic="
+        + dynamic
+        + '}';
+  }
 }
