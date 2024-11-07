@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,9 +123,10 @@ public class GrpcServer {
 
       Path directory = workspace.resolve(request.getRel());
       // TODO: Make this tidier.
-      if (files.stream().anyMatch(file -> file.endsWith(".kt"))) {
+      List<Path> kotlinFiles = files.stream().filter(file -> file.endsWith(".kt")).map(file -> directory.resolve(file)).collect(Collectors.toList());
+      if (!kotlinFiles.isEmpty()) {
         KtParser parser = new KtParser();
-        ParsedPackageData data = parser.parseClasses(directory, files);
+        ParsedPackageData data = parser.parseClasses(kotlinFiles);
 
         Package.Builder packageBuilder = Package.newBuilder();
         if (data.packages.size() > 1) {
