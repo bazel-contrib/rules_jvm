@@ -68,12 +68,36 @@ public class KtParserTest {
   }
 
   @Test
-  public void mainTest() throws IOException {
-    ParsedPackageData data = parser.parseClasses(Files.walk(directory).filter(file -> file.getFileName().equals(Path.of("Main.kt"))).toList());
+  public void topLevelMainFunction() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("Main.kt"));
 
     assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators"), data.packages);
     assertEquals(Set.of("MainKt"), data.mainClasses);
-    assertEquals(Set.of("MainKt"), data.exportedTypes);
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.MainKt"), data.perClassData.keySet());
+  }
+
+  @Test
+  public void mainInClass() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("MainInClass.kt"));
+
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators"), data.packages);
+    assertEquals(Set.of("MainInClass"), data.mainClasses);
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.MainInClass", "workspace.com.gazelle.kotlin.javaparser.generators.MainInClass.Companion"), data.perClassData.keySet());
+  }
+
+  @Test
+  public void mainOnCompanion() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("MainOnCompanion.kt"));
+
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators"), data.packages);
+    assertEquals(Set.of("MainOnCompanion.Companion"), data.mainClasses);
+  }
+
+  @Test
+  public void exportingClassTest() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("ExportingClass.kt"));
+
+    assertEquals(Set.of("example.external.InternalReturn", "example.external.ProtectedReturn", "example.external.PublicReturn", "example.external.ParameterizedReturn"), data.exportedTypes);
   }
 
   @Test
@@ -83,8 +107,9 @@ public class KtParserTest {
     assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators"), data.packages);
     assertEquals(Set.of("com.gazelle.java.javaparser.generators.DeleteBookRequest", "com.gazelle.java.javaparser.generators.HelloProto", "com.google.common.primitives.Ints"), data.usedTypes);
     assertEquals(Set.of(), data.usedPackagesWithoutSpecificTypes);
-    assertEquals(Set.of("Hello"), data.exportedTypes);
+    assertEquals(Set.of(), data.exportedTypes);
     assertEquals(Set.of(), data.mainClasses);
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.Hello"), data.perClassData.keySet());
   }
 
   @Test
