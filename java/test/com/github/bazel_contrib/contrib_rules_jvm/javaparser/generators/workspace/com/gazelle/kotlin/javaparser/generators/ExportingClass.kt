@@ -1,5 +1,7 @@
 package workspace.com.gazelle.kotlin.javaparser.generators
 
+import example.external.FinalProperty
+import example.external.VarProperty
 import example.external.ParameterizedReturn
 import example.external.InternalReturn
 import example.external.PrivateReturn
@@ -7,6 +9,9 @@ import example.external.ProtectedReturn
 import example.external.PublicReturn
 
 class ExportingClass {
+  val finalProperty: FinalProperty? = null
+  val varProperty: VarProperty? = null
+
   internal fun getInternal(): InternalReturn? {
     return null
   }

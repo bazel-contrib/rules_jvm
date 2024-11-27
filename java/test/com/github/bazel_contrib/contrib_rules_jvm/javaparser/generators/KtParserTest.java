@@ -97,7 +97,14 @@ public class KtParserTest {
   public void exportingClassTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("ExportingClass.kt"));
 
-    assertEquals(Set.of("example.external.InternalReturn", "example.external.ProtectedReturn", "example.external.PublicReturn", "example.external.ParameterizedReturn"), data.exportedTypes);
+    assertEquals(Set.of(
+      "example.external.FinalProperty",
+      "example.external.VarProperty",
+      "example.external.InternalReturn",
+      "example.external.ProtectedReturn",
+      "example.external.PublicReturn",
+      "example.external.ParameterizedReturn"
+    ), data.exportedTypes);
   }
 
   @Test
@@ -110,6 +117,13 @@ public class KtParserTest {
     assertEquals(Set.of(), data.exportedTypes);
     assertEquals(Set.of(), data.mainClasses);
     assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.Hello"), data.perClassData.keySet());
+  }
+
+  @Test
+  public void constantTest() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("Constant.kt"));
+
+    assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.ConstantKt"), data.perClassData.keySet());
   }
 
   @Test

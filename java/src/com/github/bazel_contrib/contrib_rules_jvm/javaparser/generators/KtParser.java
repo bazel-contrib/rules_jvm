@@ -1,46 +1,40 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-
-import com.intellij.openapi.Disposable;
-import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VirtualFileManager;
-import com.intellij.openapi.vfs.VirtualFile;
-
-import com.intellij.psi.PsiManager;
-import io.grpc.Metadata;
-import io.grpc.StatusRuntimeException;
-import io.grpc.Status;
-import org.jetbrains.kotlin.config.CompilerConfiguration;
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
-import org.jetbrains.kotlin.name.FqName;
-import org.jetbrains.kotlin.name.FqNamesUtilKt;
-import org.jetbrains.kotlin.name.Name;
-import org.jetbrains.kotlin.name.NameUtils;
-import org.jetbrains.kotlin.lexer.KtTokens;
-import org.jetbrains.kotlin.psi.KtAnnotated;
-import org.jetbrains.kotlin.psi.KtClass;
-import org.jetbrains.kotlin.psi.KtClassBody;
-import org.jetbrains.kotlin.psi.KtClassOrObject;
-import org.jetbrains.kotlin.psi.KtObjectDeclaration;
-import org.jetbrains.kotlin.psi.KtFile;
-import org.jetbrains.kotlin.psi.KtImportDirective;
-import org.jetbrains.kotlin.psi.KtNamedFunction;
-import org.jetbrains.kotlin.psi.KtNullableType;
-import org.jetbrains.kotlin.psi.KtPackageDirective;
-import org.jetbrains.kotlin.psi.KtParameter;
-import org.jetbrains.kotlin.psi.KtTreeVisitorVoid;
-import org.jetbrains.kotlin.psi.KtTypeElement;
-import org.jetbrains.kotlin.psi.KtTypeReference;
-import org.jetbrains.kotlin.psi.KtUserType;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
+import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
+import org.jetbrains.kotlin.config.CompilerConfiguration;
+import org.jetbrains.kotlin.lexer.KtTokens;
+import org.jetbrains.kotlin.name.FqName;
+import org.jetbrains.kotlin.name.FqNamesUtilKt;
+import org.jetbrains.kotlin.name.Name;
+import org.jetbrains.kotlin.name.NameUtils;
+import org.jetbrains.kotlin.psi.KtAnnotated;
+import org.jetbrains.kotlin.psi.KtClass;
+import org.jetbrains.kotlin.psi.KtClassBody;
+import org.jetbrains.kotlin.psi.KtFile;
+import org.jetbrains.kotlin.psi.KtImportDirective;
+import org.jetbrains.kotlin.psi.KtNamedFunction;
+import org.jetbrains.kotlin.psi.KtNullableType;
+import org.jetbrains.kotlin.psi.KtObjectDeclaration;
+import org.jetbrains.kotlin.psi.KtPackageDirective;
+import org.jetbrains.kotlin.psi.KtParameter;
+import org.jetbrains.kotlin.psi.KtProperty;
+import org.jetbrains.kotlin.psi.KtTreeVisitorVoid;
+import org.jetbrains.kotlin.psi.KtTypeElement;
+import org.jetbrains.kotlin.psi.KtTypeReference;
+import org.jetbrains.kotlin.psi.KtUserType;
+
+import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.psi.PsiManager;
 
 public class KtParser {
     private final KotlinCoreEnvironment env = KotlinCoreEnvironment.createForProduction(
@@ -84,6 +78,17 @@ public class KtParser {
         }
 
         @Override
+        public void visitKtFile(KtFile file) {
+            if (file.hasTopLevelCallables()) {
+                FqName filePackage = file.getPackageFqName();
+                String outerClassName = NameUtils.getScriptNameForFile(file.getName()) + "Kt";
+                FqName outerClassFqName = filePackage.child(Name.identifier(outerClassName));
+                packageData.perClassData.put(outerClassFqName.toString(), new PerClassData());
+            }
+            super.visitKtFile(file);
+        }
+
+        @Override
         public void visitImportDirective(KtImportDirective importDirective) {
             FqName importName = importDirective.getImportedFqName();
             boolean foundClass = false;
@@ -99,7 +104,7 @@ public class KtParser {
             }
             if (foundClass) {
                 FqName className = importName;
-                if (!isLikelyClassName(className.shortName().toString())) {
+                if (!isLikelyClassName(importName.shortName().asString())) {
                     // If we're directly importing a function from a parent class or object, use the parent.
                     className = importName.parent();
                 }
@@ -111,10 +116,10 @@ public class KtParser {
                 fqImportByNameOrAlias.put(localName, className);
             } else {
                 if (importDirective.isAllUnder()) {
-                    // If it's a wildcard import with no PascalCase component, assume it's a package.
+                    // If it's a wildcard import with no obvious class name, assume it's a package.
                     packageData.usedPackagesWithoutSpecificTypes.add(importName.asString());
                 } else {
-                    // If it's not a wildcard import and lacks a PascalCase component, assume it's a function in a package.
+                    // If it's not a wildcard import and lacks an obvious class name, assume it's a function in a package.
                     packageData.usedPackagesWithoutSpecificTypes.add(importName.parent().asString());
                 }
             }
@@ -124,7 +129,7 @@ public class KtParser {
         @Override
         public void visitClass(KtClass clazz) {
             if (clazz.isLocal() || clazz.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                super.visitClass(clazz);
+                // Don't go further down this branch.
                 return;
             }
             packageData.perClassData.put(clazz.getFqName().toString(), new PerClassData());
@@ -134,55 +139,57 @@ public class KtParser {
         @Override
         public void visitObjectDeclaration(KtObjectDeclaration object) {
             if (object.isLocal() || object.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                super.visitObjectDeclaration(object);
+                // Don't go further down this branch.
                 return;
             }
 
             packageData.perClassData.put(object.getFqName().toString(), new PerClassData());
 
-            Optional<KtNamedFunction> maybeMainFunction = retrievePossibleMainFunction(object);
-            maybeMainFunction.ifPresent(
-                mainFunction -> {
+            super.visitObjectDeclaration(object);
+        }
+
+        @Override
+        public void visitProperty(KtProperty property) {
+            if (property.isLocal() || property.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
+                // Don't go further down this branch.
+                return;
+            }
+
+            KtTypeReference typeReference = property.getTypeReference();
+            if (typeReference != null) {
+                addExportedTypeIfNeeded(typeReference);
+            }
+
+            super.visitProperty(property);
+        }
+
+        @Override
+        public void visitNamedFunction(KtNamedFunction function) {
+            if (function.isLocal() || function.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
+                // Don't go further down this branch.
+                return;
+            }
+
+            if (hasMainFunctionShape(function)) {
+                if (function.isTopLevel()) {
+                    FqName outerClassFqName = javaClassNameForKtFile(function.getContainingKtFile());
+                    String outerClassName = outerClassFqName.shortName().asString();
+                    packageData.mainClasses.add(outerClassName);
+                } else if (function.getParent().getParent() instanceof KtObjectDeclaration) {
+                    // The parent is a class/object body, then the next parent should be a class or object.
+                    KtObjectDeclaration object = (KtObjectDeclaration) function.getParent().getParent();
                     FqName relativeFqName = packageRelativeName(object.getFqName(), object.getContainingKtFile());
-                    if (isStatic(mainFunction)) {
+                    if (isJvmStatic(function)) {
                         packageData.mainClasses.add(relativeFqName.parent().toString());
                     } else {
                         packageData.mainClasses.add(relativeFqName.asString());
                     }
                 }
-            );
-            super.visitObjectDeclaration(object);
-        }
-
-        // TODO: Check for public top-level constants.
-
-        @Override
-        public void visitNamedFunction(KtNamedFunction function) {
-            if (function.isLocal() || function.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                super.visitNamedFunction(function);
-                return;
-            }
-
-            if (function.isTopLevel()) {
-                FqName filePackage = function.getContainingKtFile().getPackageFqName();
-                String outerClassName = NameUtils.getScriptNameForFile(function.getContainingKtFile().getName()) + "Kt";
-                FqName outerClassFqName = filePackage.child(Name.identifier(outerClassName));
-                packageData.perClassData.put(outerClassFqName.toString(), new PerClassData());
-                if (hasMainFunctionShape(function)) {
-                    packageData.mainClasses.add(outerClassName);
-                }
             }
 
             KtTypeReference returnType = function.getTypeReference();
             if (returnType != null) {
-                KtTypeElement typeElement = getRootType(returnType);
-                Optional<String> maybeQualifiedType = tryGetFullyQualifiedName(typeElement);
-                maybeQualifiedType.ifPresent(
-                    qualifiedType -> {
-                        // TODO: Check for java and Kotlin standard library types.
-                        packageData.exportedTypes.add(qualifiedType);
-                    }
-                );
+                addExportedTypeIfNeeded(returnType);
             }
             super.visitNamedFunction(function);
         }
@@ -193,7 +200,7 @@ public class KtParser {
 
         /** Returns true if this simple name is PascalCase. */
         private boolean isLikelyClassName(String name) {
-            if (name.isEmpty() || !Character.isUpperCase(name.charAt(0))) {
+            if (name.isEmpty() || !firstLetterIsUppercase(name)) {
                 return false;
             }
             // If the name is all uppercase, assume it's a constant. At worst, we'll still
@@ -203,6 +210,16 @@ public class KtParser {
                 char c = name.charAt(i);
                 if (Character.isLetter(c) && Character.isLowerCase(c)) {
                     return true;
+                }
+            }
+            return false;
+        }
+        
+        private boolean firstLetterIsUppercase(String value) {
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (Character.isLetter(c)) {
+                    return Character.isUpperCase(c);
                 }
             }
             return false;
@@ -219,8 +236,8 @@ public class KtParser {
         }
 
         private boolean hasMainFunctionShape(KtNamedFunction function) {
-            // TODO: Use lexer.KtTokens to check for public modifier.
-            if (!function.getName().equals("main")) {
+            // TODO: Check return type
+            if (!function.getName().equals("main") || function.hasModifier(KtTokens.INTERNAL_KEYWORD) || function.hasModifier(KtTokens.PROTECTED_KEYWORD) || function.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
                 return false;
             }
             List<KtParameter> parameters = function.getValueParameters();
@@ -237,9 +254,20 @@ public class KtParser {
             return true;
         }
 
-        private boolean isStatic(KtAnnotated annotatedThing) {
+        private boolean isJvmStatic(KtAnnotated annotatedThing) {
             return annotatedThing.getAnnotationEntries().stream().anyMatch(
                 entry -> entry.getTypeReference().getTypeText().equals("JvmStatic"));
+        }
+
+        private void addExportedTypeIfNeeded(KtTypeReference theType) {
+            KtTypeElement typeElement = getRootType(theType);
+            Optional<String> maybeQualifiedType = tryGetFullyQualifiedName(typeElement);
+            maybeQualifiedType.ifPresent(
+                qualifiedType -> {
+                    // TODO: Check for java and Kotlin standard library types.
+                    packageData.exportedTypes.add(qualifiedType);
+                }
+            );
         }
 
         private KtTypeElement getRootType(KtTypeReference typeReference) {
@@ -259,13 +287,18 @@ public class KtParser {
                     if (fqImportByNameOrAlias.containsKey(identifier)) {
                         return Optional.of(fqImportByNameOrAlias.get(identifier).toString());
                     } else {
-                        // TODO: Search the import declarations for this type.
                         return Optional.empty();
                     }
                 }
             } else {
                 return Optional.empty();
             }
+        }
+
+        private FqName javaClassNameForKtFile(KtFile file) {
+            FqName filePackage = file.getPackageFqName();
+            String outerClassName = NameUtils.getScriptNameForFile(file.getName()) + "Kt";
+            return filePackage.child(Name.identifier(outerClassName));
         }
     }
 }
