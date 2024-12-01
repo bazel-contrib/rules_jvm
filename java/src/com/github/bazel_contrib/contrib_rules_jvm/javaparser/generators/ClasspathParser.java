@@ -54,16 +54,7 @@ import org.slf4j.LoggerFactory;
 public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
 
-  private final Set<String> usedTypes = new TreeSet<>();
-  private final Set<String> usedPackagesWithoutSpecificTypes = new TreeSet<>();
-
-  private final Set<String> exportedTypes = new TreeSet<>();
-  private final Set<String> packages = new TreeSet<>();
-  private final Set<String> mainClasses = new TreeSet<>();
-
-  // Mapping from fully-qualified class-name to class-names of annotations on that class.
-  // Annotations will be fully-qualified where that's known, and not where not known.
-  final Map<String, PerClassData> perClassData = new TreeMap<>();
+  private final ParsedPackageData data = new ParsedPackageData();
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -73,24 +64,28 @@ public class ClasspathParser {
     // Doesn't need to do anything currently
   }
 
+  public ParsedPackageData getParsedPackageData() {
+    return data;
+  }
+
   public ImmutableSet<String> getUsedTypes() {
-    return ImmutableSet.copyOf(usedTypes);
+    return ImmutableSet.copyOf(data.usedTypes);
   }
 
   public ImmutableSet<String> getUsedPackagesWithoutSpecificTypes() {
-    return ImmutableSet.copyOf(usedPackagesWithoutSpecificTypes);
+    return ImmutableSet.copyOf(data.usedPackagesWithoutSpecificTypes);
   }
 
   public ImmutableSet<String> getExportedTypes() {
-    return ImmutableSet.copyOf(exportedTypes);
+    return ImmutableSet.copyOf(data.exportedTypes);
   }
 
   public ImmutableSet<String> getPackages() {
-    return ImmutableSet.copyOf(packages);
+    return ImmutableSet.copyOf(data.packages);
   }
 
   public ImmutableSet<String> getMainClasses() {
-    return ImmutableSet.copyOf(mainClasses);
+    return ImmutableSet.copyOf(data.mainClasses);
   }
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
@@ -167,7 +162,7 @@ public class ClasspathParser {
     @Override
     public Void visitPackage(PackageTree p, Void v) {
       logger.debug("JavaTools: Got package {} for class: {}", p.getPackageName(), fileName);
-      packages.add(p.getPackageName().toString());
+      data.packages.add(p.getPackageName().toString());
       currentPackage = p.getPackageName().toString();
       return super.visitPackage(p, v);
     }
@@ -188,14 +183,14 @@ public class ClasspathParser {
       String name = i.getQualifiedIdentifier().toString();
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
-        usedTypes.add(staticPackage);
+        data.usedTypes.add(staticPackage);
       } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
-        usedPackagesWithoutSpecificTypes.add(wildcardPackage);
+        data.usedPackagesWithoutSpecificTypes.add(wildcardPackage);
       } else {
         String[] parts = i.getQualifiedIdentifier().toString().split("\\.");
         currentFileImports.put(parts[parts.length - 1], i.getQualifiedIdentifier().toString());
-        usedTypes.add(name);
+        data.usedTypes.add(name);
       }
       return super.visitImport(i, v);
     }
@@ -234,7 +229,7 @@ public class ClasspathParser {
       } else if (m.getReturnType() != null) {
         Set<String> types = checkFullyQualifiedType(m.getReturnType());
         if (!m.getModifiers().getFlags().contains(PRIVATE)) {
-          exportedTypes.addAll(types);
+          data.exportedTypes.addAll(types);
         }
       }
 
@@ -246,7 +241,7 @@ public class ClasspathParser {
           && isVoidReturn) {
         String currentClassName = currentNestedClassNameWithoutPackage();
         logger.debug("JavaTools: Found main method for {}", currentClassName);
-        mainClasses.add(currentClassName);
+        data.mainClasses.add(currentClassName);
       }
 
       // Check the parameters for the method
@@ -352,10 +347,10 @@ public class ClasspathParser {
         List<String> components = Splitter.on(".").splitToList(typeName);
         if (currentFileImports.containsKey(components.get(0))) {
           String importedType = currentFileImports.get(components.get(0));
-          usedTypes.add(importedType);
+          data.usedTypes.add(importedType);
           types.add(importedType);
         } else if (components.size() > 1) {
-          usedTypes.add(typeName);
+          data.usedTypes.add(typeName);
           types.add(typeName);
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
@@ -419,10 +414,10 @@ public class ClasspathParser {
 
   private void noteAnnotatedClass(
       String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
-    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
     }
-    perClassData
+    data.perClassData
         .get(annotatedFullyQualifiedClassName)
         .annotations
         .add(annotationFullyQualifiedClassName);
@@ -432,27 +427,27 @@ public class ClasspathParser {
       String annotatedFullyQualifiedClassName,
       String methodName,
       String annotationFullyQualifiedClassName) {
-    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
     }
-    PerClassData data = perClassData.get(annotatedFullyQualifiedClassName);
-    if (!data.perMethodAnnotations.containsKey(methodName)) {
-      data.perMethodAnnotations.put(methodName, new TreeSet<>());
+    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+    if (!classData.perMethodAnnotations.containsKey(methodName)) {
+      classData.perMethodAnnotations.put(methodName, new TreeSet<>());
     }
-    data.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
+    classData.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
   }
 
   private void noteAnnotatedField(
       String annotatedFullyQualifiedClassName,
       String fieldName,
       String annotationFullyQualifiedClassName) {
-    if (!perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
     }
-    PerClassData data = perClassData.get(annotatedFullyQualifiedClassName);
-    if (!data.perFieldAnnotations.containsKey(fieldName)) {
-      data.perFieldAnnotations.put(fieldName, new TreeSet<>());
+    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+    if (!classData.perFieldAnnotations.containsKey(fieldName)) {
+      classData.perFieldAnnotations.put(fieldName, new TreeSet<>());
     }
-    data.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
+    classData.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
   }
 }

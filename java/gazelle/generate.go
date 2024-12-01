@@ -92,6 +92,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
 	}
 
+	l.logger.Debug().Msgf("Parsed package: %v", javaPkg.Name.Name)
+	for _, m := range javaPkg.Mains.SortedSlice() {
+		l.logger.Debug().Msgf("Found main file: %v", m)
+	}
+
 	// We exclude intra-package imports to avoid self-dependencies.
 	// This isn't a great heuristic for a few reasons:
 	//  1. We may want to split targets with more granularity than per-package.

@@ -5,70 +5,116 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Stack;
 import java.util.stream.Collectors;
 
+// import org.jetbrains.kotlin.resolve.lazy.JvmResolveUtil;
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector;
+import org.jetbrains.kotlin.config.CommonConfigurationKeys;
+import org.jetbrains.kotlin.analyzer.AnalysisResult;
+import org.jetbrains.kotlin.cli.jvm.compiler.NoScopeRecordCliBindingTrace;
+import org.jetbrains.kotlin.cli.jvm.compiler.TopDownAnalyzerFacadeForJVM;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
 import org.jetbrains.kotlin.config.CompilerConfiguration;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.name.FqNamesUtilKt;
-import org.jetbrains.kotlin.name.Name;
 import org.jetbrains.kotlin.name.NameUtils;
+import org.jetbrains.kotlin.name.Name;
+import org.jetbrains.kotlin.psi.KotlinReferenceProvidersService;
 import org.jetbrains.kotlin.psi.KtAnnotated;
 import org.jetbrains.kotlin.psi.KtClass;
 import org.jetbrains.kotlin.psi.KtClassBody;
+import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.psi.KtImportDirective;
+import org.jetbrains.kotlin.psi.KtModifierListOwner;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.jetbrains.kotlin.psi.KtNullableType;
 import org.jetbrains.kotlin.psi.KtObjectDeclaration;
 import org.jetbrains.kotlin.psi.KtPackageDirective;
 import org.jetbrains.kotlin.psi.KtParameter;
 import org.jetbrains.kotlin.psi.KtProperty;
+import org.jetbrains.kotlin.psi.KtQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtReferenceExpression;
+import org.jetbrains.kotlin.psi.KtSimpleNameExpression;
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid;
 import org.jetbrains.kotlin.psi.KtTypeElement;
 import org.jetbrains.kotlin.psi.KtTypeReference;
 import org.jetbrains.kotlin.psi.KtUserType;
+import org.jetbrains.kotlin.resolve.BindingContext;
+import org.jetbrains.kotlin.types.KotlinType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.search.GlobalSearchScope;
 
 public class KtParser {
+    private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
+
+    private final CompilerConfiguration compilerConf = createCompilerConfiguration();
     private final KotlinCoreEnvironment env = KotlinCoreEnvironment.createForProduction(
         Disposer.newDisposable(),
-        CompilerConfiguration.EMPTY,
+        compilerConf,
         EnvironmentConfigFiles.JVM_CONFIG_FILES);
     private final VirtualFileManager vfm = VirtualFileManager.getInstance();
     private final PsiManager psiManager = PsiManager.getInstance(env.getProject());
 
     public ParsedPackageData parseClasses(List<Path> files) {
-        VirtualFile file = vfm.findFileByNioPath(files.get(0));
-        if (file == null) {
-            throw new IllegalArgumentException("File not found: " + files.get(0));
-        }
-
-        KtFile ktFile = (KtFile) psiManager.findFile(file);
-
-        System.out.println("ktFile: " + ktFile);
-        System.out.println("name: " + ktFile.getName());
-        System.out.println("script: " + ktFile.getScript());
-        System.out.println("declarations: " + ktFile.getDeclarations());
-        System.out.println("classes: " + Arrays.stream(ktFile.getClasses()).map(Object::toString).collect(Collectors.joining(", ")));
-        System.out.println("import directives: " + ktFile.getImportDirectives());
-        System.out.println("import list: " + ktFile.getImportList());
-
         KtFileVisitor visitor = new KtFileVisitor();
-        ktFile.accept(visitor);
+        List<VirtualFile> virtualFiles = files.stream().map(f -> vfm.findFileByNioPath(f)).toList();
+
+        for (VirtualFile virtualFile : virtualFiles) {
+            if (virtualFile == null) {
+                throw new IllegalArgumentException("File not found: " + files.get(0));
+            }
+            KtFile ktFile = (KtFile) psiManager.findFile(virtualFile);
+
+            // AnalysisResult analysis = TopDownAnalyzerFacadeForJVM.analyzeFilesWithJavaIntegration(
+            //     env.getProject(),
+            //     List.of(ktFile),
+            //     new NoScopeRecordCliBindingTrace(),
+            //     compilerConf,
+            //     env::createPackagePartProvider
+            //     // () -> env.createPackagePartProvider(
+            //     //     GlobalSearchScope.filesScope(env.getProject(), List.of(file)))
+            // );
+            // // AnalysisResult analysis = JvmResolveUtil.analyze(ktFile, env);
+            // BindingContext context = analysis.getBindingContext();
+
+            logger.debug("ktFile: {}", ktFile);
+            logger.debug("name: {}", ktFile.getName());
+            logger.debug("script: {}", ktFile.getScript());
+            logger.debug("declarations: {}", ktFile.getDeclarations());
+            logger.debug("classes: {}", Arrays.stream(ktFile.getClasses()).map(Object::toString).collect(Collectors.joining(", ")));
+            logger.debug("import directives: {}", ktFile.getImportDirectives());
+            logger.debug("import list: {}", ktFile.getImportList());
+
+            ktFile.accept(visitor);
+        }
         
         return visitor.packageData;
+    }
+
+    private static CompilerConfiguration createCompilerConfiguration() {
+        CompilerConfiguration conf = new CompilerConfiguration();
+        conf.put(CommonConfigurationKeys.MODULE_NAME, "bazel-module");
+
+        // conf.put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.Companion.getNONE());
+        return conf;
     }
 
     public static class KtFileVisitor extends KtTreeVisitorVoid {
         final ParsedPackageData packageData = new ParsedPackageData();
 
+        private Stack<Visibility> visibilityStack = new Stack<>();
         private HashMap<String, FqName> fqImportByNameOrAlias = new HashMap<>();
 
         @Override
@@ -128,30 +174,38 @@ public class KtParser {
 
         @Override
         public void visitClass(KtClass clazz) {
-            if (clazz.isLocal() || clazz.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                // Don't go further down this branch.
+            pushState(clazz);
+            if (clazz.isLocal() || !isVisible()) {
+                super.visitClass(clazz);
+                popState(clazz);
                 return;
             }
             packageData.perClassData.put(clazz.getFqName().toString(), new PerClassData());
             super.visitClass(clazz);
+            popState(clazz);
         }
 
         @Override
         public void visitObjectDeclaration(KtObjectDeclaration object) {
-            if (object.isLocal() || object.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                // Don't go further down this branch.
+            pushState(object);
+            if (object.isLocal() || !isVisible()) {
+                super.visitObjectDeclaration(object);
+                popState(object);
                 return;
             }
 
             packageData.perClassData.put(object.getFqName().toString(), new PerClassData());
 
             super.visitObjectDeclaration(object);
+            popState(object);
         }
 
         @Override
         public void visitProperty(KtProperty property) {
-            if (property.isLocal() || property.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                // Don't go further down this branch.
+            pushState(property);
+            if (property.isLocal() || !isVisible()) {
+                super.visitProperty(property);
+                popState(property);
                 return;
             }
 
@@ -161,12 +215,15 @@ public class KtParser {
             }
 
             super.visitProperty(property);
+            popState(property);
         }
 
         @Override
         public void visitNamedFunction(KtNamedFunction function) {
-            if (function.isLocal() || function.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
-                // Don't go further down this branch.
+            pushState(function);
+            if (function.isLocal() || !isVisible()) {
+                super.visitNamedFunction(function);
+                popState(function);
                 return;
             }
 
@@ -192,7 +249,64 @@ public class KtParser {
                 addExportedTypeIfNeeded(returnType);
             }
             super.visitNamedFunction(function);
+            popState(function);
         }
+
+        @Override
+        public void visitQualifiedExpression(KtQualifiedExpression expression) {
+            logger.debug("Qualified expression: " + expression.getText());
+
+            super.visitQualifiedExpression(expression);
+        }
+
+        @Override
+        public void visitTypeReference(KtTypeReference reference) {
+            logger.debug("Type reference: " + reference.getText());
+
+            // PsiReference[] references = referenceService.getReferences(
+            //     reference
+            // );
+            // for (PsiReference psiReference : references) {
+            //     logger.info("\tResolved reference: " + psiReference.toString());
+            // }
+            // var ktType = context.get(BindingContext.TYPE, reference);
+            // logger.info("\tResolved KotlinType: " + ktType.toString());
+
+            super.visitTypeReference(reference);
+        }
+
+        @Override
+        public void visitReferenceExpression(KtReferenceExpression reference) {
+            logger.debug("Reference expression: " + reference.getText());
+
+            super.visitReferenceExpression(reference);
+        }
+
+        @Override
+        public void visitSimpleNameExpression(KtSimpleNameExpression expression) {
+            logger.debug("Simple name expression: " + expression.getText());
+            logger.debug("\tReferenced name: " + expression.getReferencedName());
+
+            // PsiReference[] references = referenceService.getReferences(
+            //     expression.getReferencedNameElement()
+            // );
+            // for (PsiReference psiReference : references) {
+            //     logger.info("\tResolved reference for named element: " + psiReference.toString());
+            // }
+
+            // references = referenceService.getReferences(
+            //     expression.getIdentifier()
+            // );
+            // for (PsiReference psiReference : references) {
+            //     logger.info("\tResolved reference for identifier: " + psiReference.toString());
+            // }
+
+            // KotlinType ktType = context.getType(expression);
+            // logger.info("\tResolved KotlinType: " + ktType.toString());
+
+            super.visitSimpleNameExpression(expression);
+        }
+
 
         private FqName packageRelativeName(FqName name, KtFile file) {
             return FqNamesUtilKt.tail(name, file.getPackageFqName());
@@ -254,6 +368,10 @@ public class KtParser {
             return true;
         }
 
+        private boolean isVisible() {
+            return !visibilityStack.contains(Visibility.PRIVATE);
+        }
+
         private boolean isJvmStatic(KtAnnotated annotatedThing) {
             return annotatedThing.getAnnotationEntries().stream().anyMatch(
                 entry -> entry.getTypeReference().getTypeText().equals("JvmStatic"));
@@ -300,5 +418,40 @@ public class KtParser {
             String outerClassName = NameUtils.getScriptNameForFile(file.getName()) + "Kt";
             return filePackage.child(Name.identifier(outerClassName));
         }
+
+        private void pushState(KtElement element) {
+            if (element instanceof KtModifierListOwner modifiedThing) {
+                pushVisibility(modifiedThing);
+            }
+        }
+
+        private void popState(KtElement element) {
+            if (element instanceof KtModifierListOwner modifiedThing) {
+                popVisibility();
+            }
+        }
+
+        private void pushVisibility(KtModifierListOwner modifiedThing) {
+            if (modifiedThing.hasModifier(KtTokens.PROTECTED_KEYWORD)) {
+                visibilityStack.push(Visibility.PROTECTED);
+            } else if (modifiedThing.hasModifier(KtTokens.INTERNAL_KEYWORD)) {
+                visibilityStack.push(Visibility.INTERNAL);
+            } else if (modifiedThing.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
+                visibilityStack.push(Visibility.PRIVATE);
+            } else {
+                visibilityStack.push(Visibility.PUBLIC);
+            }
+        }
+
+        private void popVisibility() {
+            visibilityStack.pop();
+        }
+    }
+
+    private static enum Visibility {
+        PUBLIC,
+        PROTECTED,
+        INTERNAL,
+        PRIVATE,
     }
 }

@@ -203,7 +203,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
             new PerClassData(
                 treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
-        parser.perClassData);
+        parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -219,7 +219,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
             new PerClassData(
                 treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
-        parser.perClassData);
+        parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -253,7 +253,7 @@ public class ClasspathParserTest {
         new PerClassData(
             new TreeSet<>(), new TreeMap<>(), expectedInnerEnumFieldAnnotations));
 
-    assertEquals(expected, parser.perClassData);
+    assertEquals(expected, parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -272,7 +272,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImportOnMethod",
             new PerClassData(
                 new TreeSet<>(), expectedPerMethodAnnotations, new TreeMap<>())),
-        parser.perClassData);
+        parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -290,7 +290,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
             new PerClassData(
                 treeSet("Deprecated"), new TreeMap<>(), new TreeMap<>())),
-        parser.perClassData);
+        parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -308,7 +308,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
             new PerClassData(
                 treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
-        parser.perClassData);
+        parser.getParsedPackageData().perClassData);
   }
 
   @Test
@@ -351,7 +351,7 @@ public class ClasspathParserTest {
     expectedPerClassMetadata.put(
         "workspace.com.gazelle.java.javaparser.generators.AnonymousInnerClass.",
         new PerClassData(treeSet(), expectedPerMethodAnnotations, new TreeMap<>()));
-    assertEquals(expectedPerClassMetadata, parser.perClassData);
+    assertEquals(expectedPerClassMetadata, parser.getParsedPackageData().perClassData);
   }
 
   @Test

@@ -108,6 +108,13 @@ public class KtParserTest {
   }
 
   @Test
+  public void privateExportingClassTest() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("PrivateExportingClass.kt"));
+
+    assertEquals(Set.of(), data.exportedTypes);
+  }
+  
+  @Test
   public void helloTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("Hello.kt"));
 
@@ -125,6 +132,23 @@ public class KtParserTest {
 
     assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators.ConstantKt"), data.perClassData.keySet());
   }
+
+  // @Test
+  // public void fullyQualifiedClassAndFunctionUse() throws IOException {
+  //   ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
+  //   assertEquals(
+  //     Set.of("com.example"),
+  //     data.usedPackagesWithoutSpecificTypes);
+  //   assertEquals(
+  //       Set.of(
+  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
+  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
+  //           "workspace.com.gazelle.java.javaparser.utils.Printer",
+  //           "workspace.com.gazelle.java.javaparser.factories.Factory",
+  //           "java.util.ArrayList",
+  //           "com.example.PrivateArg"),
+  //       data.usedTypes);
+  // }
 
   @Test
   public void staticImportsTest() throws IOException {

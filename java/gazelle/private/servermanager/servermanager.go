@@ -63,8 +63,8 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	//  1. We don't want to pollute our own stdout
 	//  2. Java does some output buffer sniffing where it will block its own progress until the
 	//     stdout buffer is read from, whereas stderr is unbuffered so doesn't hit this issue.
-	// cmd.Stdout = os.Stderr
-	// cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start javaparser sever: %w", err)
 	}
