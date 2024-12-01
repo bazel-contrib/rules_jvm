@@ -48,6 +48,7 @@ SKIPPED_ON_WINDOWS = [
             "GAZELLE_JAVA_LOG_CALLER": "false",
             "GAZELLE_JAVA_LOG_FORMAT": "json",
             "GAZELLE_JAVA_LOG_TIMESTAMP": "false",
+            # "GAZELLE_LANGUAGES_JAVA_LOG_LEVEL": "debug",
         },
         gazelle_binary = ":gazelle",
         gazelle_timeout_seconds = 60,

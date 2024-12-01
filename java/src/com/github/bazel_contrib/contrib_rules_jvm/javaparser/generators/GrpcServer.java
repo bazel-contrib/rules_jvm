@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -124,36 +125,35 @@ public class GrpcServer {
       Path directory = workspace.resolve(request.getRel());
       // TODO: Make this tidier.
       List<Path> kotlinFiles = files.stream().filter(file -> file.endsWith(".kt")).map(file -> directory.resolve(file)).collect(Collectors.toList());
-      if (!kotlinFiles.isEmpty()) {
-        KtParser parser = new KtParser();
-        ParsedPackageData data = parser.parseClasses(kotlinFiles);
+      List<String> javaFiles = files.stream().filter(file -> file.endsWith(".java")).collect(Collectors.toList());
 
-        Package.Builder packageBuilder = Package.newBuilder();
-        if (data.packages.size() > 1) {
-          throw new StatusRuntimeException(
-              Status.INVALID_ARGUMENT.withDescription(
-                  String.format(
-                      "Expected exactly one java package, but saw %d: %s",
-                      data.packages.size(), Joiner.on(", ").join(data.packages))));
-        } else if (data.packages.isEmpty()) {
-          logger.info(
-              "Set of classes in {} has no package", Paths.get(request.getRel()).toAbsolutePath());
-          data.packages.add("");
+      ParsedPackageData data = new ParsedPackageData();
+      if (!kotlinFiles.isEmpty()) {
+        try {
+          KtParser parser = new KtParser();
+          data.merge(parser.parseClasses(kotlinFiles));
+        } catch (Exception ex) {
+          logger.error("Error parsing Kotlin files", ex);
+          throw ex;
         }
-        packageBuilder.setName(Iterables.getOnlyElement(data.packages));
-        return packageBuilder.build();
       }
 
       ClasspathParser parser = new ClasspathParser();
 
-      try {
-        parser.parseClasses(directory, files);
-      } catch (IOException exception) {
-        // If we fail to process a directory, which can happen with the module level processing
-        // or can't parse any of the files, just return an empty response.
-        return Package.newBuilder().setName("").build();
+      if (!javaFiles.isEmpty()) {
+        try {
+          parser.parseClasses(directory, javaFiles);
+          data.merge(parser.getParsedPackageData());
+        } catch (IOException exception) {
+          // If we fail to process a directory, which can happen with the module level processing
+          // or can't parse any of the files, just return an empty response.
+          return Package.newBuilder().setName("").build();
+        } catch (Exception ex) {
+          logger.error("Error parsing Java files", ex);
+          throw ex;
+        }
       }
-      Set<String> packages = parser.getPackages();
+      Set<String> packages = data.packages;
       if (packages.size() > 1) {
         throw new StatusRuntimeException(
             Status.INVALID_ARGUMENT.withDescription(
@@ -166,21 +166,21 @@ public class GrpcServer {
         packages = ImmutableSet.of("");
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
-      logger.debug("Got used types: {}", parser.getUsedTypes());
+      logger.debug("Got used types: {}", data.usedTypes);
       logger.debug(
           "Got used packages without specific types: {}",
-          parser.getUsedPackagesWithoutSpecificTypes());
+          data.usedPackagesWithoutSpecificTypes);
 
       Builder packageBuilder =
           Package.newBuilder()
               .setName(Iterables.getOnlyElement(packages))
-              .addAllImportedClasses(parser.getUsedTypes())
-              .addAllExportedClasses(parser.getExportedTypes())
+              .addAllImportedClasses(data.usedTypes)
+              .addAllExportedClasses(data.exportedTypes)
               .addAllImportedPackagesWithoutSpecificClasses(
-                  parser.getUsedPackagesWithoutSpecificTypes())
-              .addAllMains(parser.getMainClasses());
+                  data.usedPackagesWithoutSpecificTypes)
+              .addAllMains(data.mainClasses);
       for (Map.Entry<String, PerClassData> classEntry :
-          parser.perClassData.entrySet()) {
+          data.perClassData.entrySet()) {
         PerClassMetadata.Builder perClassMetadata =
             PerClassMetadata.newBuilder()
                 .addAllAnnotationClassNames(classEntry.getValue().annotations);

@@ -25,4 +25,20 @@ class ParsedPackageData {
   final Map<String, PerClassData> perClassData = new TreeMap<>();
 
   ParsedPackageData() {}
+
+  void merge(ParsedPackageData other) {
+    packages.addAll(other.packages);
+    usedTypes.addAll(other.usedTypes);
+    usedPackagesWithoutSpecificTypes.addAll(other.usedPackagesWithoutSpecificTypes);
+    exportedTypes.addAll(other.exportedTypes);
+    mainClasses.addAll(other.mainClasses);
+    for (Map.Entry<String, PerClassData> classData : other.perClassData.entrySet()) {
+      PerClassData existing = perClassData.get(classData.getKey());
+      if (existing == null) {
+        existing = new PerClassData();
+        perClassData.put(classData.getKey(), existing);
+      }
+      existing.merge(classData.getValue());
+    }
+  }
 }
