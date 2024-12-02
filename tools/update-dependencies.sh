@@ -1,22 +1,13 @@
 #!/usr/bin/env bash
 set -eufo pipefail
 
-go mod tidy
-
-# Work around https://github.com/bazelbuild/bazel-gazelle/issues/999
-# Ideally we would delete the below block and replace it with this commented command:
-#bazel run //:gazelle_go -- update-repos \
-#    -from_file=go.mod \
-#    -prune \
-#    -to_macro "third_party/go/repositories.bzl%go_deps"
-GO_DEPS_FILE="third_party/go/repositories.bzl"
-bazel run //:gazelle -- update-repos -from_file=go.mod -prune -to_macro "${GO_DEPS_FILE}%go_deps"
-sed '/^$/d' "$GO_DEPS_FILE" >"${GO_DEPS_FILE}.new"
-mv "${GO_DEPS_FILE}.new" "$GO_DEPS_FILE"
-bazel run //:buildifier
-
-
+# Update the Java bits
+REPIN=1 bazel run @contrib_rules_jvm_deps//:pin
 REPIN=1 bazel run @contrib_rules_jvm_tests//:pin
-./tools/freeze-deps.py
+bazel run //tools:freeze-deps
+
+# And now the Go bits
+bazel run @io_bazel_rules_go//go -- mod tidy
+bazel run //:buildifier
 
 ./tools/format.sh

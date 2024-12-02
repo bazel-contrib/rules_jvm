@@ -6,6 +6,7 @@ public class JavaIdentifier implements Comparable<JavaIdentifier> {
 
   private final String packageName;
   private final String className;
+
   /**
    * Copied from the KnowTypeSolvers, this is the bazel dependency string where this package/class
    * will be found: The dependency name will be of the form: -
