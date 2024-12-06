@@ -71,7 +71,12 @@ def java_test(name, **kwargs):
 
 def java_export(name, maven_coordinates, pom_template = None, deploy_env = None, visibility = None, **kwargs):
     """Adds linting tests to `rules_jvm_external`'s `java_export`"""
-    create_lint_tests(name, **kwargs)
+
+    # Only run the lint tests on the java_library target and not the java_export target which will include
+    # other sources within it.
+    # https://github.com/bazel-contrib/rules_jvm_external/blob/534e62d14655e01048b90ef89ab1acaf0caa7348/private/rules/java_export.bzl#L85C5-L85C31
+    lib_name = "%s-lib" % name
+    create_lint_tests(lib_name, **kwargs)
     _java_export(
         name = name,
         maven_coordinates = maven_coordinates,
