@@ -34,7 +34,7 @@ def get_class_name(package, src, prefixes = []):
     # safe to add the class name. While `get_package_name` does
     # the right thing, the parameter passed by a user may not
     # so we shall check once we have `pkg` just to be safe.
-    pkg = package if package else get_package_name(prefixes)
+    pkg = package if package != None else get_package_name(prefixes)
     if len(pkg) and not pkg.endswith("."):
         pkg = pkg + "."
 
