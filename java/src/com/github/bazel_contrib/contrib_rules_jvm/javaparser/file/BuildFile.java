@@ -12,11 +12,13 @@ import org.slf4j.LoggerFactory;
 
 public class BuildFile {
   private static final Logger logger = LoggerFactory.getLogger(BuildFile.class);
+
   /**
    * Full path the the build file e.g.
    * /root/workspace/project/src/main/com/gazelle/java/javaparser/BUILD.bazel
    */
   private final Path buildPath;
+
   /**
    * Contents of the BUILD file we're working with. Read on class creation, updated and written on
    * command
