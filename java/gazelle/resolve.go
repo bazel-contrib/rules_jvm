@@ -51,7 +51,13 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
+	cfg := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
+	if cfg == nil {
+		jr.lang.logger.Fatal().Msg("failed retrieving package config")
+	}
+	if cfg.KotlinEnabled() && !isJvmLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
+		return nil
+	} else if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
 		return nil
 	}
 
@@ -299,8 +305,16 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	return label.NoLabel
 }
 
+func isJvmLibrary(kind string) bool {
+	return isJavaLibrary(kind) || isKotlinLibrary(kind)
+}
+
 func isJavaLibrary(kind string) bool {
 	return kind == "java_library" || isJavaProtoLibrary(kind)
+}
+
+func isKotlinLibrary(kind string) bool {
+	return kind == "kt_jvm_library"
 }
 
 func isJavaProtoLibrary(kind string) bool {
