@@ -85,6 +85,33 @@ java_library(
 )			
 `,
 		},
+		"kotlin": {
+			old: buildFile{
+				rel: "",
+				content: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "myproject",
+    srcs = ["App.kt"],
+    _imported_packages = [
+        "com.google.common.primitives",
+        "kotlin.collections",
+    ],
+    _packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)			
+`,
+			},
+			want: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "myproject",
+    srcs = ["App.kt"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@maven//:com_google_guava_guava"],
+)			
+`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c, langs, _ := testConfig(t)

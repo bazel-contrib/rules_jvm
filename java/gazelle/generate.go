@@ -124,9 +124,16 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	//  2. "What input files did you have" isn't a great heuristic for "What classes are generated"
 	//     (e.g. inner classes, annotation processor generated classes, etc).
 	// But it will do for now.
-	javaClassNamesFromFileNames := sorted_set.NewSortedSet([]string{})
+	likelyLocalClassNames := sorted_set.NewSortedSet([]string{})
 	for _, filename := range srcFilenamesRelativeToPackage {
-		javaClassNamesFromFileNames.Add(strings.TrimSuffix(filename, ".java"))
+		if (strings.HasSuffix(filename, ".kt")) {
+			fileWithoutExtension := strings.TrimSuffix(filename, ".kt")
+			likelyLocalClassNames.Add(fileWithoutExtension)
+			// Top level values and functions in Kotlin are accessible from Java under the <filename>Kt class.
+			likelyLocalClassNames.Add(fileWithoutExtension + "Kt")
+		} else {
+			likelyLocalClassNames.Add(strings.TrimSuffix(filename, ".java"))
+		}
 	}
 
 	if isModule {
@@ -176,14 +183,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
 				allMains.AddAll(mJavaPkg.Mains)
 			} else {
 				// Tests don't get to export things, as things shouldn't depend on them.
-				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -201,9 +208,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
 			// Tests don't get to export things, as things shouldn't depend on them.
-			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		} else {
-			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
 		for _, f := range srcFilenamesRelativeToPackage {
