@@ -55,9 +55,12 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	if cfg == nil {
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
-	if cfg.KotlinEnabled() && !isJvmLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
-		return nil
-	} else if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
+	isLibraryFn := isJavaLibrary
+	if cfg.KotlinEnabled() {
+		isLibraryFn = isJvmLibrary
+	}
+	if !isLibraryFn(r.Kind()) && r.Kind() != "java_test_suite" {
+		log.Trace().Str("kind", r.Kind()).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return not JVM/Java library or test suite")
 		return nil
 	}
 
