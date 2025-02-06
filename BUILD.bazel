@@ -47,33 +47,3 @@ gazelle_binary(
 gazelle(
     name = "gazelle_go",
 )
-
-bzl_library(
-    name = "repositories",
-    srcs = ["repositories.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//java/private:zip_repository",
-        "@bazel_tools//tools/build_defs/repo:http.bzl",
-        "@bazel_tools//tools/build_defs/repo:utils.bzl",
-    ],
-)
-
-bzl_library(
-    name = "setup",
-    srcs = ["setup.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "@apple_rules_lint//lint:implementation",
-        "@contrib_rules_jvm_deps//:defs",
-    ],
-)
-
-bzl_library(
-    name = "gazelle_setup",
-    srcs = ["gazelle_setup.bzl"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//third_party/go:repositories",
-    ],
-)
