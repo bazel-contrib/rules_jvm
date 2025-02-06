@@ -47,7 +47,6 @@ bazel_dep(
 bazel_dep(
     name = "rules_go",
     version = "0.50.1",
-    repo_name = "io_bazel_rules_go",
 )
 bazel_dep(
     name = "rules_java",
@@ -244,7 +243,7 @@ use_repo(
     "contrib_rules_jvm_tests",
 )
 
-go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.21.5")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")

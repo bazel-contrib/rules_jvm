@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "servermanager",
@@ -8,7 +8,7 @@ go_library(
     visibility = ["//java/gazelle:__subpackages__"],
     deps = [
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
-        "@io_bazel_rules_go//go/runfiles:go_default_library",
+        "@rules_go//go/runfiles:go_default_library",
         "@org_golang_google_grpc//:grpc",
     ],
 )
