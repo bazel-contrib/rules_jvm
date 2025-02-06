@@ -86,6 +86,15 @@ def contrib_rules_jvm_deps():
         url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.18.0/bazel_features-v1.18.0.tar.gz",
     )
 
+    # Required by the frozen deps as this is referenced from the build file in the zips we ship
+    maybe(
+        http_archive,
+        name = "rules_shell",
+        sha256 = "d8cd4a3a91fc1dc68d4c7d6b655f09def109f7186437e3f50a9b60ab436a0c53",
+        strip_prefix = "rules_shell-0.3.0",
+        url = "https://github.com/bazelbuild/rules_shell/releases/download/v0.3.0/rules_shell-v0.3.0.tar.gz",
+    )
+
     maybe(
         http_archive,
         name = "rules_jvm_external",

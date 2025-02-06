@@ -54,7 +54,7 @@ output_base = subprocess.check_output(cmd, cwd = cwd).rstrip()
 base = output_base.decode(encoding=sys.stdin.encoding)
 
 # Figure out the mangled repo name
-cmd = ["bazel", "cquery", "--output=starlark", "--starlark:expr=target.label.workspace_name", "@{name}//:outdated".format(name = args.repo)]
+cmd = ["bazel", "cquery", "--output=starlark", "--starlark:expr=target.label.workspace_name", "@{name}//:pin".format(name = args.repo)]
 base_dir = subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.DEVNULL).decode('utf-8').strip()
 
 root = Path(base) / "external" / base_dir
