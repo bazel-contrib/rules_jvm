@@ -3,23 +3,15 @@ module(
     version = "0.0.0",
 )
 
-bazel_dep(
-    name = "contrib_rules_jvm",
-    version = "0.0.0",
-)
+bazel_dep(name = "contrib_rules_jvm", version = "0.0.0")
 local_path_override(
     module_name = "contrib_rules_jvm",
     path = "../..",
 )
 
-bazel_dep(
-    name = "bazel_skylib",
-    version = "1.5.0",
-)
-bazel_dep(
-    name = "rules_jvm_external",
-    version = "6.2",
-)
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "gazelle", version = "0.42.0")
+bazel_dep(name = "rules_jvm_external", version = "6.6")
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
@@ -33,18 +25,4 @@ maven.install(
     fetch_sources = True,
     lock_file = "//:maven_install.json",
 )
-use_repo(
-    maven,
-    "maven",
-    "unpinned_maven",
-)
-
-bazel_dep(
-    name = "gazelle",
-    version = "0.36.0",
-)
-git_override(
-    module_name = "gazelle",
-    commit = "ba2ce367a545e0bdd74a7abca40ef5e0a0cb8dcb",
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-)
+use_repo(maven, "maven")

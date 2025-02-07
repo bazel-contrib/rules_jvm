@@ -7,7 +7,7 @@ REPIN=1 bazel run @contrib_rules_jvm_tests//:pin
 bazel run //tools:freeze-deps
 
 # And now the Go bits
-bazel run @io_bazel_rules_go//go -- mod tidy
+bazel run @rules_go//go -- mod tidy
 bazel run //:buildifier
 
 ./tools/format.sh

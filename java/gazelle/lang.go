@@ -133,7 +133,7 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 
 var baseJavaLoads = []rule.LoadInfo{
 	{
-		Name: "@io_grpc_grpc_java//:java_grpc_library.bzl",
+		Name: "@grpc-java//:java_grpc_library.bzl",
 		Symbols: []string{
 			"java_grpc_library",
 		},

@@ -1,5 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 # gazelle:exclude def.bzl
 
@@ -23,13 +23,13 @@ go_library(
         "//java/gazelle/private/sorted_multiset",
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
-        "@bazel_gazelle//config:go_default_library",
-        "@bazel_gazelle//label:go_default_library",
-        "@bazel_gazelle//language:go_default_library",
-        "@bazel_gazelle//language/proto:go_default_library",
-        "@bazel_gazelle//repo:go_default_library",
-        "@bazel_gazelle//resolve:go_default_library",
-        "@bazel_gazelle//rule:go_default_library",
+        "@bazel_gazelle//config",
+        "@bazel_gazelle//label",
+        "@bazel_gazelle//language",
+        "@bazel_gazelle//language/proto",
+        "@bazel_gazelle//repo",
+        "@bazel_gazelle//resolve",
+        "@bazel_gazelle//rule",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_hashicorp_golang_lru//:golang-lru",
         "@com_github_rs_zerolog//:zerolog",
@@ -50,16 +50,16 @@ go_test(
         "//java/gazelle/javaconfig",
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
-        "@bazel_gazelle//config:go_default_library",
-        "@bazel_gazelle//label:go_default_library",
-        "@bazel_gazelle//language:go_default_library",
-        "@bazel_gazelle//language/proto:go_default_library",
-        "@bazel_gazelle//pathtools:go_default_library",
-        "@bazel_gazelle//repo:go_default_library",
-        "@bazel_gazelle//resolve:go_default_library",
-        "@bazel_gazelle//rule:go_default_library",
-        "@bazel_gazelle//testtools:go_default_library",
-        "@bazel_gazelle//walk:go_default_library",
+        "@bazel_gazelle//config",
+        "@bazel_gazelle//label",
+        "@bazel_gazelle//language",
+        "@bazel_gazelle//language/proto",
+        "@bazel_gazelle//pathtools",
+        "@bazel_gazelle//repo",
+        "@bazel_gazelle//resolve",
+        "@bazel_gazelle//rule",
+        "@bazel_gazelle//testtools",
+        "@bazel_gazelle//walk",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_google_go_cmp//cmp",
         "@com_github_rs_zerolog//:zerolog",
@@ -84,8 +84,6 @@ bzl_library(
     visibility = ["//visibility:public"],
     deps = [
         "//third_party/go:repositories",
-        # "@contrib_rules_jvm_deps//:compat",
         "@contrib_rules_jvm_deps//:defs",
-        # "@io_grpc_grpc_java//:repositories",
     ],
 )

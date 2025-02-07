@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "javaparser",
@@ -7,7 +7,7 @@ go_library(
     visibility = ["//java/gazelle:__subpackages__"],
     deps = [
         "//java/gazelle/private/java",
-        "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
+        "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_go_proto",
         "//java/gazelle/private/servermanager",
         "//java/gazelle/private/sorted_multiset",
         "//java/gazelle/private/sorted_set",
