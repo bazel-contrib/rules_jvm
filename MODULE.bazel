@@ -19,7 +19,7 @@ bazel_dep(name = "protobuf", version = "29.1", repo_name = "com_google_protobuf"
 bazel_dep(name = "rules_cc", version = "0.0.16")
 bazel_dep(name = "rules_go", version = "0.52.0")
 bazel_dep(name = "rules_java", version = "7.12.2")
-bazel_dep(name = "rules_jvm_external", version = "6.6")
+bazel_dep(name = "rules_jvm_external", version = "6.7")
 bazel_dep(name = "rules_proto", version = "7.0.2")
 
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.7.1", dev_dependency = True)
@@ -166,7 +166,6 @@ use_repo(
     "com_google_j2objc_j2objc_annotations",
     "contrib_rules_jvm_deps",
     "org_apache_tomcat_annotations_api",
-    "unpinned_contrib_rules_jvm_deps",
 )
 
 dev_maven = use_extension(
