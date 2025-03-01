@@ -348,7 +348,7 @@ public class BazelJUnitOutputListenerTest {
     Node item = xml.getElementsByTagName("testcase").item(0);
     String testName = item.getAttributes().getNamedItem("name").getNodeValue();
 
-    assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name", testName);
+    assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name()]", testName);
   }
 
   @Test
