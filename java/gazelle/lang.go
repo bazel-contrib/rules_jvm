@@ -191,7 +191,7 @@ func (l javaLang) DoneGeneratingRules() {
 
 func (l javaLang) AfterResolvingDeps(_ context.Context) {
 	if l.hasHadErrors {
-		l.logger.Fatal().Msg("the java extension encontered errors that will create invalid build files")
+		l.logger.Fatal().Msg("the java extension encountered errors that will create invalid build files")
 	}
 }
 
