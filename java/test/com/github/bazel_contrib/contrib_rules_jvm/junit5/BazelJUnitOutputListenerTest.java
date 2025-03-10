@@ -71,7 +71,7 @@ public class BazelJUnitOutputListenerTest {
   }
 
   @Test
-  public void testAfterAllFailuresAreReported() throws IOException {
+  public void testAfterAllFailuresAreReported() throws IOException, ParserConfigurationException, SAXException {
     causeFailure.set(true);
 
     // First let's do a sanity test that we have the expected failures for the @AfterAll
@@ -102,8 +102,18 @@ public class BazelJUnitOutputListenerTest {
       "<failure message=\"I always fail.\" type=\"java.lang.RuntimeException\">", "failures=\"1\"",
     };
 
+
+    Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xmlFile);
+    document.getDocumentElement().normalize();
+
     // Useful for debugging the expected output
     // System.out.println(Files.readString(xmlFile.toPath()));
+
+    Element testsuite  =  (Element) document.getDocumentElement().getElementsByTagName("testsuite").item(0);
+    assertEquals("1", testsuite.getAttribute("tests")); // expected 1 but is 2
+
+    // expected 1 but is 2
+    assertEquals(2, testsuite.getElementsByTagName("testcase").getLength());
 
     for (String expected : expectedStrings) {
       assertTrue(
