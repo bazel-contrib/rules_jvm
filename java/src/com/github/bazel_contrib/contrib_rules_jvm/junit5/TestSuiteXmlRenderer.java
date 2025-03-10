@@ -5,9 +5,15 @@ import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTex
 
 import java.net.InetAddress;
 import java.time.format.DateTimeFormatter;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.Locale;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+
 import org.junit.platform.launcher.TestPlan;
 
 class TestSuiteXmlRenderer {
@@ -26,6 +32,12 @@ class TestSuiteXmlRenderer {
     xml.writeAttribute("timestamp", DateTimeFormatter.ISO_INSTANT.format(suite.getStarted()));
     xml.writeAttribute("hostname", getHostname());
     xml.writeAttribute("tests", String.valueOf(tests.size()));
+
+    DecimalFormat decimalFormat = new DecimalFormat("#.##", new DecimalFormatSymbols(Locale.ROOT));
+    /* @Nullable */ Duration maybeDuration = suite.getDuration();
+    Duration duration =
+            maybeDuration == null ? Duration.between(suite.getStarted(), Instant.now()) : maybeDuration;
+    xml.writeAttribute("time", decimalFormat.format(duration.toMillis() / 1000f));
 
     int errors = 0;
     int failures = 0;
