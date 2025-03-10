@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.launcher.LauncherConstants.STDERR_REPORT_ENTRY_KEY;
 import static org.junit.platform.launcher.LauncherConstants.STDOUT_REPORT_ENTRY_KEY;
+import static org.mockito.Mockito.when;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.File;
@@ -17,8 +19,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -28,6 +32,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
@@ -256,6 +261,48 @@ public class BazelJUnitOutputListenerTest {
     Node failure = failureZero == null ? failureOne : failureZero;
 
     assertEquals("Test timed out and was interrupted", failure.getTextContent());
+  }
+
+  @Test
+  void testSuiteError(@TempDir Path tempDir) throws ParserConfigurationException, IOException, SAXException {
+    TestIdentifier root = TestIdentifier.from(new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]")));
+    TestIdentifier suiteIdentifier = TestIdentifier.from(
+            new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]/[class:ExampleTest]"), TestDescriptor.Type.CONTAINER));
+    TestData suite = new TestData(suiteIdentifier).started()
+            .mark(TestExecutionResult.failed(new RuntimeException("test suite error")));
+    TestPlan testPlan = Mockito.mock(TestPlan.class);
+
+    TestIdentifier child1 = TestIdentifier.from(new StubbedTestDescriptor(createId("child1")));
+    TestIdentifier child2 = TestIdentifier.from(new StubbedTestDescriptor(createId("child2")));
+
+    when(testPlan.getChildren(suite.getId())).thenReturn(Set.of(child1, child2));
+    when(testPlan.getRoots()).thenReturn(Set.of(root));
+
+    Path xmlPath = tempDir.resolve("test.xml");
+    try (BazelJUnitOutputListener listener = new BazelJUnitOutputListener(xmlPath)) {
+      listener.testPlanExecutionStarted(testPlan);
+      listener.executionStarted(root);
+      listener.executionStarted(suiteIdentifier);
+      listener.executionFinished(suiteIdentifier, TestExecutionResult.failed(new RuntimeException("test suite error")));
+      listener.executionFinished(root, TestExecutionResult.successful());
+    }
+
+    Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xmlPath.toFile());
+    document.getDocumentElement().normalize();
+
+    NodeList testsuiteList = document.getDocumentElement().getElementsByTagName("testsuite");
+    assertEquals(1, testsuiteList.getLength());
+    Element testsuite = (Element) testsuiteList.item(0);
+    assertEquals("2", testsuite.getAttribute("tests"));
+    assertEquals("2", testsuite.getAttribute("failures"));
+
+    NodeList testcaseList = testsuite.getElementsByTagName("testcase");
+    assertEquals(2, testcaseList.getLength());
+
+    for (int i = 0; i < testcaseList.getLength(); i++) {
+        Element testcase = (Element) testcaseList.item(i);
+      assertNotNull(getChild("failure", testcase));
+    }
   }
 
   @Test
