@@ -140,8 +140,9 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         throw new IllegalStateException(
             "Unexpected test organization for test Case: " + testCase.getId());
       }
-      if (includeIncompleteTests || testCase.getDuration() != null) {
-        knownSuites.computeIfAbsent(parent, id -> new ArrayList<>()).add(testCase);
+      knownSuites.computeIfAbsent(parent, id -> new ArrayList<>());
+      if (testCase.getId().isTest() && (includeIncompleteTests || testCase.getDuration() != null)) {
+        knownSuites.get(parent).add(testCase);
       }
     }
 
@@ -157,14 +158,6 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     return results.values().stream()
         // Ignore test plan roots. These are always the engine being used.
         .filter(result -> !testPlan.getRoots().contains(result.getId()))
-        .filter(
-            result -> {
-              // Find the test results we will convert to `testcase` entries. These
-              // are identified by the fact that they have no child test cases in the
-              // test plan, or they are marked as tests.
-              TestIdentifier id = result.getId();
-              return id.getSource() != null || id.isTest() || testPlan.getChildren(id).isEmpty();
-            })
         .collect(Collectors.toList());
   }
 
@@ -208,8 +201,23 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       // Write the results
       try {
         for (Map.Entry<TestData, List<TestData>> suiteAndTests : testSuites.entrySet()) {
-          new TestSuiteXmlRenderer(testPlan)
-              .toXml(xml, suiteAndTests.getKey(), suiteAndTests.getValue());
+          TestData suite = suiteAndTests.getKey();
+          List<TestData> tests = suiteAndTests.getValue();
+          if (suite.getResult().getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
+            // If a test suite fails, all its tests must be included in the XML output with the same result as the
+            // suite, since the XML format does not support marking a suite as failed. This aligns with Bazel's
+            // XmlWriter for JUnitRunner.
+            testPlan.getChildren(suite.getId()).forEach(testIdentifier -> {
+              TestData test = results.get(testIdentifier.getUniqueIdObject());
+              if (test == null) {
+                // add test to results.
+                test = getResult(testIdentifier);
+                tests.add(test);
+              }
+              test.mark(suite.getResult());
+            });
+          }
+          new TestSuiteXmlRenderer(testPlan).toXml(xml, suite, tests);
         }
       } catch (XMLStreamException e) {
         throw new RuntimeException(e);
