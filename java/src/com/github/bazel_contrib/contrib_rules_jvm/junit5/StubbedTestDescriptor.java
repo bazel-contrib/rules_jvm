@@ -11,9 +11,15 @@ import org.junit.platform.engine.UniqueId;
 public class StubbedTestDescriptor implements TestDescriptor {
 
   private final UniqueId uniqueId;
+  private final Type type;
 
   public StubbedTestDescriptor(UniqueId uniqueId) {
+    this(uniqueId, Type.TEST);
+  }
+
+  public StubbedTestDescriptor(UniqueId uniqueId, Type type) {
     this.uniqueId = uniqueId;
+    this.type = type;
   }
 
   @Override
@@ -68,7 +74,7 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   @Override
   public Type getType() {
-    return Type.TEST;
+    return type;
   }
 
   @Override
