@@ -263,11 +263,18 @@ public class BazelJUnitOutputListenerTest {
   }
 
   @Test
-  void testSuiteError(@TempDir Path tempDir) throws ParserConfigurationException, IOException, SAXException {
-    TestIdentifier root = TestIdentifier.from(new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]")));
-    TestIdentifier suiteIdentifier = TestIdentifier.from(
-            new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]/[class:ExampleTest]"), TestDescriptor.Type.CONTAINER));
-    TestData suite = new TestData(suiteIdentifier).started()
+  void testSuiteError(@TempDir Path tempDir)
+      throws ParserConfigurationException, IOException, SAXException {
+    TestIdentifier root =
+        TestIdentifier.from(new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]")));
+    TestIdentifier suiteIdentifier =
+        TestIdentifier.from(
+            new StubbedTestDescriptor(
+                UniqueId.parse("[engine:mocked]/[class:ExampleTest]"),
+                TestDescriptor.Type.CONTAINER));
+    TestData suite =
+        new TestData(suiteIdentifier)
+            .started()
             .mark(TestExecutionResult.failed(new RuntimeException("test suite error")));
     TestPlan testPlan = Mockito.mock(TestPlan.class);
 
@@ -282,11 +289,13 @@ public class BazelJUnitOutputListenerTest {
       listener.testPlanExecutionStarted(testPlan);
       listener.executionStarted(root);
       listener.executionStarted(suiteIdentifier);
-      listener.executionFinished(suiteIdentifier, TestExecutionResult.failed(new RuntimeException("test suite error")));
+      listener.executionFinished(
+          suiteIdentifier, TestExecutionResult.failed(new RuntimeException("test suite error")));
       listener.executionFinished(root, TestExecutionResult.successful());
     }
 
-    Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xmlPath.toFile());
+    Document document =
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xmlPath.toFile());
     document.getDocumentElement().normalize();
 
     NodeList testsuiteList = document.getDocumentElement().getElementsByTagName("testsuite");
@@ -299,7 +308,7 @@ public class BazelJUnitOutputListenerTest {
     assertEquals(2, testcaseList.getLength());
 
     for (int i = 0; i < testcaseList.getLength(); i++) {
-        Element testcase = (Element) testcaseList.item(i);
+      Element testcase = (Element) testcaseList.item(i);
       assertNotNull(getChild("failure", testcase));
     }
   }

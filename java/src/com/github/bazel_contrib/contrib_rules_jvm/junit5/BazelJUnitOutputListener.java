@@ -204,18 +204,23 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
           TestData suite = suiteAndTests.getKey();
           List<TestData> tests = suiteAndTests.getValue();
           if (suite.getResult().getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
-            // If a test suite fails, all its tests must be included in the XML output with the same result as the
-            // suite, since the XML format does not support marking a suite as failed. This aligns with Bazel's
+            // If a test suite fails, all its tests must be included in the XML output with the same
+            // result as the
+            // suite, since the XML format does not support marking a suite as failed. This aligns
+            // with Bazel's
             // XmlWriter for JUnitRunner.
-            testPlan.getChildren(suite.getId()).forEach(testIdentifier -> {
-              TestData test = results.get(testIdentifier.getUniqueIdObject());
-              if (test == null) {
-                // add test to results.
-                test = getResult(testIdentifier);
-                tests.add(test);
-              }
-              test.mark(suite.getResult());
-            });
+            testPlan
+                .getChildren(suite.getId())
+                .forEach(
+                    testIdentifier -> {
+                      TestData test = results.get(testIdentifier.getUniqueIdObject());
+                      if (test == null) {
+                        // add test to results.
+                        test = getResult(testIdentifier);
+                        tests.add(test);
+                      }
+                      test.mark(suite.getResult());
+                    });
           }
           new TestSuiteXmlRenderer(testPlan).toXml(xml, suite, tests);
         }
