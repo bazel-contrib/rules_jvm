@@ -1,6 +1,5 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
-import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
