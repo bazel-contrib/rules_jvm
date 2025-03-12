@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "treesitter",
+    srcs = [
+        "filters.go",
+        "parser.go",
+        "queries.go",
+        "query.go",
+        "traversal.go",
+    ],
+    importpath = "github.com/bazel-contrib/rules_jvm/gazelle/common/treesitter",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//gazelle/common",
+        "//gazelle/common/treesitter/grammars/java",
+        "//gazelle/common/treesitter/grammars/json",
+        "//gazelle/common/treesitter/grammars/kotlin",
+        "@com_github_smacker_go_tree_sitter//:go-tree-sitter",
+    ],
+)

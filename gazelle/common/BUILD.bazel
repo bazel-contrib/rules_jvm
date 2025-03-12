@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "common",
+    srcs = [
+        "bazel.go",
+        "directives.go",
+        "jq.go",
+        "regex.go",
+        "rules.go",
+        "set.go",
+        "walk.go",
+    ],
+    importpath = "github.com/bazel-contrib/rules_jvm/gazelle/common",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//config:go_default_library",
+        "@bazel_gazelle//label:go_default_library",
+        "@bazel_gazelle//language:go_default_library",
+        "@bazel_gazelle//rule:go_default_library",
+        "@com_github_emirpasic_gods//sets/treeset",
+        "@com_github_emirpasic_gods//utils",
+        "@com_github_itchyny_gojq//:gojq",
+    ],
+)

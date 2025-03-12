@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kotlin",
+    srcs = [
+        "binding.go",
+        "@tree-sitter-kotlin//:srcs",  #keep
+    ],
+    cgo = True,
+    importpath = "github.com/bazel-contrib/rules_jvm/gazelle/common/treesitter/grammars/kotlin",
+    visibility = ["//gazelle/common/treesitter:__subpackages__"],
+    deps = ["@com_github_smacker_go_tree_sitter//:go-tree-sitter"],
+)
