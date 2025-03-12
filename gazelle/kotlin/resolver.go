@@ -129,7 +129,7 @@ func (kt *kotlinLang) resolveImports(
 			notFound := fmt.Errorf(
 				"Import %[1]q from %[2]q is an unknown dependency. Possible solutions:\n"+
 					"\t1. Instruct Gazelle to resolve to a known dependency using a directive:\n"+
-					"\t\t# aspect:resolve [src-lang] kotlin import-string label\n",
+					"\t\t# gazelle:resolve [src-lang] kotlin import-string label\n",
 				mod.Imp, mod.SourcePath,
 			)
 
@@ -177,7 +177,7 @@ func (kt *kotlinLang) resolveImport(
 		if len(filteredMatches) > 1 {
 			return Resolution_Error, nil, fmt.Errorf(
 				"Import %q from %q resolved to multiple targets (%s)"+
-					" - this must be fixed using the \"aspect:resolve\" directive",
+					" - this must be fixed using the \"gazelle:resolve\" directive",
 				impt.Imp, impt.SourcePath, targetListFromResults(matches))
 		}
 

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	common "github.com/bazel-contrib/rules_jvm/gazelle/common"
-	"github.com/bazel-contrib/rules_jvm/gazelle/common/git"
 	"github.com/bazel-contrib/rules_jvm/gazelle/kotlin/kotlinconfig"
 	jvm_javaconfig "github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	jvm_maven "github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
@@ -20,9 +19,6 @@ func (kt *kotlinLang) KnownDirectives() []string {
 	return []string{
 		kotlinconfig.Directive_KotlinExtension,
 		jvm_javaconfig.JavaMavenInstallFile,
-
-		// TODO: move to common
-		git.Directive_GitIgnore,
 	}
 }
 
@@ -46,9 +42,6 @@ func (kt *kotlinLang) Configure(c *config.Config, rel string, f *rule.File) {
 		cfg = parent.NewChild(rel)
 		cfgs[rel] = cfg
 	}
-
-	// Collect the ignore files for this package
-	git.ReadGitConfig(c, rel, f)
 
 	if f != nil {
 		for _, d := range f.Directives {

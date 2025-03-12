@@ -12,6 +12,7 @@ import (
 type GazelleWalkFunc func(path string) error
 
 // Must align with patched bazel-gazelle
+// TODO(alex/jason): should this repo include such patches?
 const ASPECT_WALKSUBDIR = "__aspect:walksubdir"
 const ASPECT_DIR_ENTRIES = "__aspect:direntries"
 
