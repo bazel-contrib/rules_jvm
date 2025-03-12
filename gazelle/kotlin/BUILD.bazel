@@ -1,6 +1,5 @@
-load("@bazel_gazelle//:def.bzl", "gazelle_binary")
+load("@bazel_gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-# load("//gazelle:gazelle.bzl", "gazelle_generation_test")
 
 # Exclude all test data
 # gazelle:exclude tests/
@@ -46,15 +45,15 @@ gazelle_binary(
     visibility = ["//visibility:private"],
 )
 
-# # A separate generation test for each tests/* test case
-# [
-#     gazelle_generation_test(
-#         name = "%s_test" % test_workspace.replace("/WORKSPACE", "").replace("tests/", ""),
-#         dir = test_workspace.replace("/WORKSPACE", ""),
-#         gazelle_binary = "gazelle_kotlin_binary",
-#     )
-#     for test_workspace in glob(["tests/**/WORKSPACE"])
-# ]
+# A separate generation test for each tests/* test case
+[
+    gazelle_generation_test(
+        name = "%s_test" % test_workspace.split("/")[1],
+        gazelle_binary = "gazelle_kotlin_binary",
+        test_data = glob([test_workspace, "%s/**" % test_workspace.replace("/WORKSPACE", "")]),
+    )
+    for test_workspace in glob(["tests/**/WORKSPACE"])
+]
 
 go_test(
     name = "kotlin_test",
