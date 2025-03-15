@@ -5,6 +5,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,8 +51,12 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   public BazelJUnitOutputListener(Path xmlOut) {
     try {
       Files.createDirectories(xmlOut.getParent());
-      BufferedWriter writer = Files.newBufferedWriter(xmlOut, UTF_8);
-      xml = XMLOutputFactory.newFactory().createXMLStreamWriter(writer);
+      // Use LazyFileWriter to defer file creation until the first write operation.
+      // This prevents premature file creation in cases where the JVM terminates abruptly
+      // before any content is written. If no output is generated, Bazel has custom logic
+      // to create the XML file from test.log, but this logic only activates if the
+      // output file does not already exist.
+      xml = XMLOutputFactory.newFactory().createXMLStreamWriter(new LazyFileWriter(xmlOut));
       xml.writeStartDocument("UTF-8", "1.0");
     } catch (IOException | XMLStreamException e) {
       throw new IllegalStateException("Unable to create output file", e);
@@ -255,6 +260,43 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       xml.close();
     } catch (XMLStreamException e) {
       LOG.log(Level.SEVERE, "Unable to close xml output", e);
+    }
+  }
+
+  static class LazyFileWriter extends Writer {
+    private final Path path;
+    private BufferedWriter delegate;
+    private boolean isCreated = false;
+
+    public LazyFileWriter(Path path) {
+      this.path = path;
+    }
+
+    private void createWriterIfNeeded() throws IOException {
+      if (!isCreated) {
+        delegate = Files.newBufferedWriter(path, UTF_8);
+        isCreated = true;
+      }
+    }
+
+    @Override
+    public void write(char[] cbuf, int off, int len) throws IOException {
+      createWriterIfNeeded();
+      delegate.write(cbuf, off, len);
+    }
+
+    @Override
+    public void flush() throws IOException {
+      if (isCreated) {
+        delegate.flush();
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (isCreated) {
+        delegate.close();
+      }
     }
   }
 }
