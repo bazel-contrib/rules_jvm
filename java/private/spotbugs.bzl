@@ -7,10 +7,16 @@ Spotbugs integration logic
 
 def _spotbugs_impl(ctx):
     info = ctx.attr.config[SpotBugsInfo]
+    max_rank = info.max_rank
     effort = info.effort
     fail_on_warning = info.fail_on_warning
     exclude_filter = info.exclude_filter
+    omit_visitors = info.omit_visitors
     plugin_list = info.plugin_list
+
+    baseline_files = ctx.attr.baseline_file
+    if len(baseline_files) > 1:
+        fail("More than one baseline file was specified.")
 
     if ctx.attr.only_output_jars:
         deps = []
@@ -30,15 +36,28 @@ def _spotbugs_impl(ctx):
         flags.extend(["-exclude", exclude_filter.short_path])
         runfiles.append(exclude_filter)
 
+    if len(baseline_files) > 0:
+        baseline_file = baseline_files[0].files.to_list()[0]
+        flags.extend(["-excludeBugs", baseline_file.short_path])
+        runfiles.append(baseline_file)
+
+    # NOTE: pluginList needs to be specified before specifying any visitor
+    # otherwise the execution will will fail with detector not found.
     if plugin_list:
         plugin_list_cli_flag = ":".join([plugin.short_path for plugin in plugin_list])
         flags.extend(["-pluginList", plugin_list_cli_flag])
         runfiles.extend(plugin_list)
 
+    if omit_visitors:
+        flags.extend(["-omitVisitors", ",".join(omit_visitors)])
+
+    if max_rank:
+        flags.extend(["-maxRank", max_rank])
+
     test = [
         "#!/usr/bin/env bash",
         "ERRORLOG=$(mktemp)",
-        "RES=`{lib} {flags} {jars} 2>$ERRORLOG`".format(
+        "RES=`{lib} {flags} \"${{@}}\" {jars} 2>$ERRORLOG`".format(
             lib = info.binary.short_path,
             flags = " ".join(flags),
             jars = " ".join([jar.short_path for jar in jars]),
@@ -93,6 +112,14 @@ spotbugs_test = rule(
             providers = [
                 SpotBugsInfo,
             ],
+        ),
+        # NOTE: this will always be just one file, but we use a label_list instead of a label
+        # so that we can pass a glob. In cases where no baseline file exist, the glob will simply
+        # be empty. Using a label instead of a label_list would force us to create a baseline file
+        # for all targets, even if theres no need for one.
+        "baseline_file": attr.label_list(
+            allow_files = True,
+            default = [],
         ),
         "only_output_jars": attr.bool(
             doc = "If set to true, only the output jar of the target will be analyzed. Otherwise all transitive runtime dependencies will be analyzed",
