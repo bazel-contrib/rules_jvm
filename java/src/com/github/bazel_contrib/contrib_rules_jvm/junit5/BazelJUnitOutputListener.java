@@ -5,6 +5,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,8 +51,12 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   public BazelJUnitOutputListener(Path xmlOut) {
     try {
       Files.createDirectories(xmlOut.getParent());
-      BufferedWriter writer = Files.newBufferedWriter(xmlOut, UTF_8);
-      xml = XMLOutputFactory.newFactory().createXMLStreamWriter(writer);
+      // Use LazyFileWriter to defer file creation until the first write operation.
+      // This prevents premature file creation in cases where the JVM terminates abruptly
+      // before any content is written. If no output is generated, Bazel has custom logic
+      // to create the XML file from test.log, but this logic only activates if the
+      // output file does not already exist.
+      xml = XMLOutputFactory.newFactory().createXMLStreamWriter(new LazyFileWriter(xmlOut));
       xml.writeStartDocument("UTF-8", "1.0");
     } catch (IOException | XMLStreamException e) {
       throw new IllegalStateException("Unable to create output file", e);
@@ -154,10 +159,19 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   // This is really just documentation until someone actually turns on a static analyser.
   // If they do, we can decide whether we want to pick up the dependency.
   // @GuardedBy("resultsLock")
-  private List<TestData> findTestCases_locked() {
+  private List<TestData> findTestCases_locked(String engineId) {
     return results.values().stream()
         // Ignore test plan roots. These are always the engine being used.
         .filter(result -> !testPlan.getRoots().contains(result.getId()))
+        .filter(
+            result ->
+                engineId == null
+                    || result
+                        .getId()
+                        .getUniqueIdObject()
+                        .getEngineId()
+                        .map(engineId::equals)
+                        .orElse(false))
         .collect(Collectors.toList());
   }
 
@@ -189,12 +203,12 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       return;
     }
 
-    output(false);
+    output(false, testIdentifier.getUniqueIdObject().getEngineId().orElse(null));
   }
 
-  private void output(boolean includeIncompleteTests) {
+  private void output(boolean includeIncompleteTests, /*@Nullable*/ String engineId) {
     synchronized (this.resultsLock) {
-      List<TestData> testCases = findTestCases_locked();
+      List<TestData> testCases = findTestCases_locked(engineId);
       Map<TestData, List<TestData>> testSuites =
           matchTestCasesToSuites_locked(testCases, includeIncompleteTests);
 
@@ -203,8 +217,9 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         for (Map.Entry<TestData, List<TestData>> suiteAndTests : testSuites.entrySet()) {
           TestData suite = suiteAndTests.getKey();
           List<TestData> tests = suiteAndTests.getValue();
-          if (suite.getResult().getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
-            // If a test suite fails or skipped, all its tests must be included in the XML output
+          if (suite.getResult() != null
+              && suite.getResult().getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
+            // If a test suite fails or is skipped, all its tests must be included in the XML output
             // with the same result as the suite, since the XML format does not support marking a
             // suite as failed or skipped. This aligns with Bazel's XmlWriter for JUnitRunner.
             getTestsFromSuite(suite.getId())
@@ -238,12 +253,15 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   }
 
   private List<TestIdentifier> getTestsFromSuite(TestIdentifier suiteIdentifier) {
-    return testPlan.getChildren(suiteIdentifier).stream().flatMap(testIdentifier -> {
-      if (testIdentifier.isContainer()) {
-        return getTestsFromSuite(testIdentifier).stream();
-      }
-      return Stream.of(testIdentifier);
-    }).collect(Collectors.toList());
+    return testPlan.getChildren(suiteIdentifier).stream()
+        .flatMap(
+            testIdentifier -> {
+              if (testIdentifier.isContainer()) {
+                return getTestsFromSuite(testIdentifier).stream();
+              }
+              return Stream.of(testIdentifier);
+            })
+        .collect(Collectors.toList());
   }
 
 
@@ -268,13 +286,50 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       return;
     }
     if (wasInterrupted.get()) {
-      output(true);
+      output(true, null);
     }
     try {
       xml.writeEndDocument();
       xml.close();
     } catch (XMLStreamException e) {
       LOG.log(Level.SEVERE, "Unable to close xml output", e);
+    }
+  }
+
+  static class LazyFileWriter extends Writer {
+    private final Path path;
+    private BufferedWriter delegate;
+    private boolean isCreated = false;
+
+    public LazyFileWriter(Path path) {
+      this.path = path;
+    }
+
+    private void createWriterIfNeeded() throws IOException {
+      if (!isCreated) {
+        delegate = Files.newBufferedWriter(path, UTF_8);
+        isCreated = true;
+      }
+    }
+
+    @Override
+    public void write(char[] cbuf, int off, int len) throws IOException {
+      createWriterIfNeeded();
+      delegate.write(cbuf, off, len);
+    }
+
+    @Override
+    public void flush() throws IOException {
+      if (isCreated) {
+        delegate.flush();
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (isCreated) {
+        delegate.close();
+      }
     }
   }
 }
