@@ -204,13 +204,10 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
           TestData suite = suiteAndTests.getKey();
           List<TestData> tests = suiteAndTests.getValue();
           if (suite.getResult().getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
-            // If a test suite fails, all its tests must be included in the XML output with the same
-            // result as the
-            // suite, since the XML format does not support marking a suite as failed. This aligns
-            // with Bazel's
-            // XmlWriter for JUnitRunner.
-            testPlan
-                .getChildren(suite.getId())
+            // If a test suite fails or skipped, all its tests must be included in the XML output
+            // with the same result as the suite, since the XML format does not support marking a
+            // suite as failed or skipped. This aligns with Bazel's XmlWriter for JUnitRunner.
+            getTestsFromSuite(suite.getId())
                 .forEach(
                     testIdentifier -> {
                       TestData test = results.get(testIdentifier.getUniqueIdObject());
@@ -219,7 +216,7 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
                         test = getResult(testIdentifier);
                         tests.add(test);
                       }
-                      test.mark(suite.getResult());
+                      test.mark(suite.getResult()).skipReason(suite.getSkipReason());
                     });
           }
           new TestSuiteXmlRenderer(testPlan).toXml(xml, suite, tests);
@@ -239,6 +236,16 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
           .forEach(data -> results.remove(data.getId().getUniqueIdObject()));
     }
   }
+
+  private List<TestIdentifier> getTestsFromSuite(TestIdentifier suiteIdentifier) {
+    return testPlan.getChildren(suiteIdentifier).stream().flatMap(testIdentifier -> {
+      if (testIdentifier.isContainer()) {
+        return getTestsFromSuite(testIdentifier).stream();
+      }
+      return Stream.of(testIdentifier);
+    }).collect(Collectors.toList());
+  }
+
 
   @Override
   public void reportingEntryPublished(TestIdentifier testIdentifier, ReportEntry entry) {
