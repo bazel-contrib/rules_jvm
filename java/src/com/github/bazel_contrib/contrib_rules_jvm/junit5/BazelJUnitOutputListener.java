@@ -264,7 +264,6 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         .collect(Collectors.toList());
   }
 
-
   @Override
   public void reportingEntryPublished(TestIdentifier testIdentifier, ReportEntry entry) {
     getResult(testIdentifier).addReportEntry(entry);
