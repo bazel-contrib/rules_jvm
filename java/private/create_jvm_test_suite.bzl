@@ -27,6 +27,7 @@ def create_jvm_test_suite(
         deps = None,
         runtime_deps = [],
         tags = [],
+        jvm_flags = [],
         visibility = None,
         size = None,
         package_prefixes = [],
@@ -111,6 +112,9 @@ def create_jvm_test_suite(
         **library_attrs
     )
 
+    # Get any deps referenced in jvm_flags
+    jvm_flag_deps = [dep for dep in deps for flag in jvm_flags if dep in flag]
+
     for src in test_srcs:
         suffix = src.rfind(".")
         test_name = src[:suffix]
@@ -121,9 +125,10 @@ def create_jvm_test_suite(
             size = size,
             srcs = [src],
             test_class = test_class,
-            deps = [":" + deps_lib_name],
+            deps = [":" + deps_lib_name] + jvm_flag_deps,
             tags = tags,
             runtime_deps = [":" + runtime_deps_lib_name],
+            jvm_flags = jvm_flags,
             visibility = ["//visibility:private"],
             **kwargs
         )

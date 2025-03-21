@@ -1,13 +1,15 @@
-load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_test", "java_junit5_test")
+load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_test", "java_junit5_test", "java_test_suite")
 load("@rules_jvm_external//:defs.bzl", "artifact")
 
 java_junit5_test(
     name = "ExampleTest",
     srcs = ["ExampleTest.java"],
+    jvm_flags = ["-javaagent=$(location @maven//:org_jmockit_jmockit)"],
     runtime_deps = [
         artifact("org.junit.jupiter:junit-jupiter-engine"),
     ],
     deps = [
+        artifact("org.jmockit:jmockit:1.38"),
         artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
