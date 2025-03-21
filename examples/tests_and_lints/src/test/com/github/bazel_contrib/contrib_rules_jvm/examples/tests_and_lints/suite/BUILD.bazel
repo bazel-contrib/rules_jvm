@@ -4,6 +4,9 @@ load("@rules_jvm_external//:defs.bzl", "artifact")
 java_test_suite(
     name = "ExampleSuite",
     srcs = glob(["*.java"]),
+    # Test that Make vars expand correctly
+    args = [artifact("org.jmockit:jmockit")],
+    env = {"JMOCKIT": artifact("org.jmockit:jmockit")},
     jvm_flags = ["-javaagent:$(location @maven//:org_jmockit_jmockit)"],
     runner = "junit5",
     runtime_deps = [
