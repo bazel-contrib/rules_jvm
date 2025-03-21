@@ -1,4 +1,4 @@
-package com.github.bazel_contrib.contrib_rules_jvm.examples.tests_and_lints;
+package com.github.bazel_contrib.contrib_rules_jvm.examples.tests_and_lints.suite;
 
 import org.junit.jupiter.api.Test;
 
