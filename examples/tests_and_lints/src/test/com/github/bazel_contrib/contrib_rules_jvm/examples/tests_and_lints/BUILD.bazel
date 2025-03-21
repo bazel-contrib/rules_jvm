@@ -9,7 +9,7 @@ java_junit5_test(
         artifact("org.junit.jupiter:junit-jupiter-engine"),
     ],
     deps = [
-        artifact("org.jmockit:jmockit:1.38"),
+        artifact("org.jmockit:jmockit"),
         artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
