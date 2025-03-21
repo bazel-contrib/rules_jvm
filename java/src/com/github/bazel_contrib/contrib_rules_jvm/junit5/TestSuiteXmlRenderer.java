@@ -9,18 +9,27 @@ import java.text.DecimalFormatSymbols;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 class TestSuiteXmlRenderer {
 
   private final TestCaseXmlRenderer testRenderer;
+  private final TestPlan testPlan;
 
   public TestSuiteXmlRenderer(TestPlan testPlan) {
     testRenderer = new TestCaseXmlRenderer(testPlan);
+    this.testPlan = testPlan;
   }
 
   public void toXml(XMLStreamWriter xml, TestData suite, Collection<TestData> tests)
@@ -73,8 +82,38 @@ class TestSuiteXmlRenderer {
     xml.writeAttribute("package", "");
     xml.writeEmptyElement("properties");
 
+    // Builds a map of testMethods and matching test cases to wrap in a test suite, which is used to
+    // group parameterized tests
+    // Ensures grouping for parameterized tests.
+    Map<String, List<TestData>> testMethods = new HashMap<>();
+
     for (TestData testCase : tests) {
-      testRenderer.toXml(xml, testCase);
+      Optional<TestIdentifier> parentOptional =
+          testCase.getId().getParentId().map(testPlan::getTestIdentifier);
+
+      if (parentOptional.isPresent()) {
+        TestIdentifier parent = parentOptional.get();
+        String methodName = parent.getDisplayName().replaceAll("\\(\\)", "");
+        testMethods.computeIfAbsent(methodName, k -> new ArrayList<>()).add(testCase);
+      } else {
+        testRenderer.toXml(xml, testCase);
+      }
+    }
+
+    // Wrapping each group of related tests by method name, and wraps in a testsuite tag, and then
+    // build a testcase within the suite for each testCase
+    for (String methodName : testMethods.keySet()) {
+      xml.writeStartElement("testsuite");
+      xml.writeAttribute("name", methodName);
+      // Lexicographphically sorted should be suffcient since [1] < [2] < [3] etc
+      List<TestData> sortedTestCases = testMethods.get(methodName);
+      Collections.sort(
+          sortedTestCases,
+          (a, b) -> a.getId().getDisplayName().compareTo(b.getId().getDisplayName()));
+      for (TestData testCase : testMethods.get(methodName)) {
+        testRenderer.toXml(xml, testCase);
+      }
+      xml.writeEndElement();
     }
 
     writeTextElement(xml, "system-out", suite.getStdOut());
