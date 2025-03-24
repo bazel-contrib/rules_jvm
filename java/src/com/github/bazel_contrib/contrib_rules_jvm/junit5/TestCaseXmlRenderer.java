@@ -34,17 +34,7 @@ class TestCaseXmlRenderer {
 
     TestIdentifier id = test.getId();
 
-    String name;
-    if (test.isDynamic()) {
-      name = id.getDisplayName(); // [ordinal] name=value...
-    } else {
-      // Massage the name
-      name = id.getLegacyReportingName();
-      int index = name.indexOf('(');
-      if (index != -1) {
-        name = name.substring(0, index);
-      }
-    }
+    String name = getTestName(test);
 
     xml.writeStartElement("testcase");
     xml.writeAttribute("name", escapeIllegalCharacters(name));
@@ -103,5 +93,33 @@ class TestCaseXmlRenderer {
     throwable.printStackTrace(new PrintWriter(stringWriter));
 
     xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
+  }
+
+  private String getTestName(TestData test) {
+    TestIdentifier id = test.getId();
+    // checking for the '[' as a proxy for the ordinal parameterized test.
+    // If there is some edge case not considered, here, it should still be okay, as it really just
+    // formats the test case name.
+    if (id.getParentId().isPresent() && id.getDisplayName().startsWith("[")) {
+      return getCustomDisplayName(id);
+    }
+    // this check assumes ParameterizedTest is dynamic, leaving this for now but may not need it.
+    // Edge case maybe when there is no parent (if ever possible)
+    if (test.isDynamic()) {
+      return id.getDisplayName(); // [ordinal] name=value...
+    } else {
+      String name = id.getLegacyReportingName();
+      int index = name.indexOf('(');
+      if (index != -1) {
+        name = name.substring(0, index);
+      }
+      return name;
+    }
+  }
+
+  private String getCustomDisplayName(TestIdentifier testIdentifier) {
+    TestIdentifier parent = testPlan.getTestIdentifier(testIdentifier.getParentId().get());
+    String methodName = parent.getDisplayName().replaceAll("\\(\\)", "");
+    return methodName + " " + testIdentifier.getDisplayName();
   }
 }
