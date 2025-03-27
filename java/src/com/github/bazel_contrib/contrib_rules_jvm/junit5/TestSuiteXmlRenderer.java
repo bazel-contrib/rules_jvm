@@ -10,7 +10,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.launcher.TestPlan;
@@ -73,8 +75,15 @@ class TestSuiteXmlRenderer {
     xml.writeAttribute("package", "");
     xml.writeEmptyElement("properties");
 
+    // JUnitParams generates report names based on parameter values rather than parameter types,
+    // which can result in duplicate test names in the XML output. This situation arises when
+    // two test methods have identical names but differ in parameter types; however, their
+    // string representations may be the same (e.g., Integer 1 and Long 1).
+    Set<String> reportedTests = new HashSet<>();
     for (TestData testCase : tests) {
-      testRenderer.toXml(xml, testCase);
+      if (reportedTests.add(testCase.getId().getLegacyReportingName())) {
+        testRenderer.toXml(xml, testCase);
+      }
     }
 
     writeTextElement(xml, "system-out", suite.getStdOut());
