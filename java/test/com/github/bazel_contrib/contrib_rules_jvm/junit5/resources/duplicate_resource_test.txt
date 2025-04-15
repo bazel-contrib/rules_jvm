@@ -1,0 +1,1 @@
+Simple resource to validate suites only pick up a single resource

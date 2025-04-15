@@ -43,6 +43,7 @@ java_test_suite(
         artifact("org.mockito:mockito-core", "contrib_rules_jvm_tests"),
         artifact("org.opentest4j:opentest4j", "contrib_rules_jvm_tests"),
     ] + junit5_vintage_deps("contrib_rules_jvm_tests"),
+    resources = glob(["resources/*"])
 )
 
 java_test_suite(
