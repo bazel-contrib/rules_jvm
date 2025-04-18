@@ -88,6 +88,9 @@ def create_jvm_test_suite(
         )
         if not _contains_label(deps or [], lib_dep_label):
             deps.append(lib_dep_label)
+        if "resources" in library_attrs:
+            # Prevent duplicate resources from appearing in classpath
+            kwargs.pop("resources")
 
     tests = []
 
