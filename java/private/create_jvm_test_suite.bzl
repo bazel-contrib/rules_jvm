@@ -101,7 +101,7 @@ def create_jvm_test_suite(
         exports = deps,
         visibility = ["//visibility:private"],
         tags = tags,
-        testonly = True
+        testonly = True,
     )
     runtime_deps_lib_name = "%s-test-runtime-deps-lib" % name
     define_library(
@@ -109,7 +109,7 @@ def create_jvm_test_suite(
         exports = runtime_deps,
         visibility = ["//visibility:private"],
         tags = tags,
-        testonly = True
+        testonly = True,
     )
 
     for src in test_srcs:
