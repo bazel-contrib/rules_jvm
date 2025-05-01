@@ -87,7 +87,7 @@ def create_jvm_test_suite(
             **library_attrs
         )
         if not _contains_label(deps or [], lib_dep_label):
-            deps.append(lib_dep_label)
+            deps = deps + [lib_dep_label]
 
     tests = []
 
