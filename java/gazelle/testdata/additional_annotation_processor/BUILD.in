@@ -1,0 +1,2 @@
+# gazelle:java_annotation_processor_plugin com.google.auto.value.AutoValue com.google.auto.value.processor.AutoValueProcessor
+# gazelle:java_annotation_processor_plugin org.apache.logging.log4j.core.config.plugins.Plugin org.apache.logging.log4j.core.config.plugins.processor.PluginProcessor
