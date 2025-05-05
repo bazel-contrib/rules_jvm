@@ -47,7 +47,9 @@ def spotbugs_binary(
 SpotBugsInfo = provider(
     fields = {
         "effort": "Effort can be min, less, default, more or max.",
+        "max_rank": "Only report issues with a bug rank at least as scary as that provided.",
         "exclude_filter": "Optional filter file to use.",
+        "omit_visitors": "Omit named visitors",
         "fail_on_warning": "Whether to fail on warning, or just create a report.",
         "plugin_list": "Optional list of JARs to load as plugins.",
         "binary": "The spotbugs binary to use.",
@@ -61,7 +63,9 @@ def _spotbugs_config_impl(ctx):
         ),
         SpotBugsInfo(
             effort = ctx.attr.effort,
+            max_rank = ctx.attr.max_rank,
             exclude_filter = ctx.file.exclude_filter,
+            omit_visitors = ctx.attr.omit_visitors,
             plugin_list = ctx.files.plugin_list,
             fail_on_warning = ctx.attr.fail_on_warning,
             binary = ctx.executable.spotbugs_binary,
@@ -77,9 +81,16 @@ spotbugs_config = rule(
             values = ["min", "less", "default", "more", "max"],
             default = "default",
         ),
+        "max_rank": attr.string(
+            doc = "Only report issues with a bug rank at least as scary as that provided.",
+        ),
         "exclude_filter": attr.label(
             doc = "Report all bug instances except those matching the filter specified by this filter file",
             allow_single_file = True,
+        ),
+        "omit_visitors": attr.string_list(
+            doc = "Omit named visitors.",
+            default = [],
         ),
         "plugin_list": attr.label_list(
             doc = "Specify a list of plugin Jar files to load",
