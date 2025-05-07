@@ -1,6 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.escapeIllegalCharacters;
+import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeCData;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTextElement;
 
 import java.io.PrintWriter;
@@ -102,6 +103,6 @@ class TestCaseXmlRenderer {
     StringWriter stringWriter = new StringWriter();
     throwable.printStackTrace(new PrintWriter(stringWriter));
 
-    xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
+    writeCData(xml, stringWriter.toString());
   }
 }
