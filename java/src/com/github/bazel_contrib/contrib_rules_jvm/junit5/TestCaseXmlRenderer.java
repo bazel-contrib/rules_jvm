@@ -34,18 +34,7 @@ class TestCaseXmlRenderer {
     decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
 
     TestIdentifier id = test.getId();
-
-    String name;
-    if (test.isDynamic()) {
-      name = id.getDisplayName(); // [ordinal] name=value...
-    } else {
-      // Massage the name
-      name = id.getLegacyReportingName();
-      int index = name.indexOf('(');
-      if (index != -1) {
-        name = name.substring(0, index);
-      }
-    }
+    String name = id.getLegacyReportingName();
 
     xml.writeStartElement("testcase");
     xml.writeAttribute("name", escapeIllegalCharacters(name));
