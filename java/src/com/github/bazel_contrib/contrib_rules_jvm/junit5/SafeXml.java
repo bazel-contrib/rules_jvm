@@ -40,10 +40,17 @@ public class SafeXml {
 
     xml.writeStartElement(elementName);
 
+    writeCData(xml, text);
+    xml.writeEndElement();
+  }
+
+  public static void writeCData(XMLStreamWriter xml, String text) throws XMLStreamException {
+    if (text == null) {
+      return;
+    }
     // If the text content contains a cdata end tag, then the generated xml won't
     // be parseable. Replace the end tag with a new cdata section, so everything
     // works as expected
     xml.writeCData(escapeIllegalCharacters(text.replace("]]>", "]]]]><![CDATA[>")));
-    xml.writeEndElement();
   }
 }
