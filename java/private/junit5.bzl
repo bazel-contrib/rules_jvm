@@ -91,12 +91,9 @@ def java_junit5_test(
     if exclude_engines:
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
 
-    security_manager_flag_seen = False
-    for flag in jvm_flags:
-        if flag.startswith("-Djava.security.manager="):
-            security_manager_flag_seen = True
-    if not security_manager_flag_seen:
-        jvm_flags = jvm_flags + ["-Djava.security.manager=allow"]
+    # Note: Security manager flag is no longer automatically added
+    # The security manager is deprecated and removed in Java 24+ (JEP 411)
+    # Users can manually add -Djava.security.manager=allow to jvm_flags if needed for older Java versions
 
     java_test(
         name = name,
