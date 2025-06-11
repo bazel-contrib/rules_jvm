@@ -1,4 +1,4 @@
-load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+load("@rules_java//java:defs.bzl", "java_binary", "java_import", "java_library")
 load("//java/private:artifact.bzl", "artifact")
 
 # We want to be able to compile the test runner, but we don't want to
