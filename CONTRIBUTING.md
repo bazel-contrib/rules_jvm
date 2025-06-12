@@ -28,7 +28,10 @@ point to the `rules_jvm` folder.
 
 ## Releasing
 
-1. Determine the next release version, following semver if possible/
-2. Tag the repo and push it (or create a tag in GH UI).
-3. Watch the automation run on GitHub actions.
+1. Determine the next release version, following semver if possible.
+2. Tag the repo and push it (e.g. `git tag v1.2.3`), or create a tag in GitHub UI.
+3. Watch the automation run via the [GitHub action](.github/workflows/release.yml).
+4. Once the GitHub release has been created, you can manually edit it.
+5. Update the Bazel Central Registry's contrib_rules_jvm module, as in [this PR][]
 
+[this PR]: https://github.com/bazelbuild/bazel-central-registry/pull/3770
