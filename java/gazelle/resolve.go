@@ -50,8 +50,31 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
+	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
+	}
+
+	if r.Kind() == "java_export" {
+		depsStrings := r.AttrStrings("deps")
+		deps := make([]label.Label, 0, len(depsStrings))
+		for _, depString := range depsStrings {
+			lbl, err := label.Parse(depString)
+			if err != nil {
+				// TODO BL: handle
+			}
+			if lbl.Pkg == "" {
+				lbl.Pkg = f.Pkg
+			}
+			deps = append(deps, lbl)
+		}
+
+		var out []resolve.ImportSpec
+		for _, dep := range deps {
+			for _, importSpec := range jr.lang.importCache[dep] {
+				out = append(out, importSpec)
+			}
+		}
+		return out
 	}
 
 	var out []resolve.ImportSpec
@@ -60,6 +83,8 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
+
+	jr.lang.importCache[label.New("", f.Pkg, r.Name())] = out
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return")
 	return out
@@ -70,6 +95,12 @@ func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	if isJavaProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
 	}
+	if r.Kind() == "java_export" {
+		for _, dep := range r.AttrStrings("deps") {
+			embedStrings = append(embedStrings, dep)
+		}
+	}
+
 	embedLabels := make([]label.Label, 0, len(embedStrings))
 	for _, s := range embedStrings {
 		l, err := label.Parse(s)
