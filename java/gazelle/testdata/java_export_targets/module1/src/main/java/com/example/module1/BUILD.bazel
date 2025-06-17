@@ -1,0 +1,6 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "module_export",
+    deps = [":module1"],
+)
