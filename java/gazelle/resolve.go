@@ -54,27 +54,23 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		return nil
 	}
 
-	if r.Kind() == "java_export" {
-		depsStrings := r.AttrStrings("deps")
-		deps := make([]label.Label, 0, len(depsStrings))
-		for _, depString := range depsStrings {
-			lbl, err := label.Parse(depString)
-			if err != nil {
-				// TODO BL: handle
-			}
-			if lbl.Pkg == "" {
-				lbl.Pkg = f.Pkg
-			}
-			deps = append(deps, lbl)
-		}
+	lbl := label.New("", f.Pkg, r.Name())
+	deps := depLabels(r, f)
 
-		var out []resolve.ImportSpec
+	if r.Kind() == "java_export" {
 		for _, dep := range deps {
-			for _, importSpec := range jr.lang.importCache[dep] {
-				out = append(out, importSpec)
-			}
+			// Because Imports is a post-order traversal, the children will be added before the parent, so we always have to take the rightmost element of this package to get the closest one to the root of the tree.
+			jr.lang.javaExportCache[dep] = append(jr.lang.javaExportCache[dep], lbl)
 		}
-		return out
+		//var out []resolve.ImportSpec
+		//for _, dep := range deps {
+		//	for _, importSpec := range jr.lang.importCache[dep] {
+		//		out = append(out, importSpec)
+		//	}
+		//}
+		//// TODO BL: For some reason, `child_export_export` gets here before it's had a chance to un the code below and add itself to the importCache
+		//// Same happens with `nested` and `nested_export`. We have a problem with java_libs in the same files as java_exports
+		//return out
 	}
 
 	var out []resolve.ImportSpec
@@ -84,10 +80,33 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 	}
 
-	jr.lang.importCache[label.New("", f.Pkg, r.Name())] = out
-
-	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return")
+	//// TODO BL: Cache experiments
+	//lbl := label.New("", f.Pkg, r.Name())
+	//jr.lang.importCache[lbl] = out
+	//for _, depLabel := range deps {
+	//	depImports := jr.lang.importCache[depLabel]
+	//	for _, importSpec := range depImports {
+	//		jr.lang.importCache[lbl] = append(jr.lang.importCache[lbl], importSpec)
+	//	}
+	//}
+	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
+}
+
+func depLabels(r *rule.Rule, f *rule.File) []label.Label {
+	depsStrings := r.AttrStrings("deps")
+	deps := make([]label.Label, 0, len(depsStrings))
+	for _, depString := range depsStrings {
+		lbl, err := label.Parse(depString)
+		if err != nil {
+			// TODO BL: handle
+		}
+		if lbl.Pkg == "" {
+			lbl.Pkg = f.Pkg
+		}
+		deps = append(deps, lbl)
+	}
+	return deps
 }
 
 func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
@@ -140,6 +159,11 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
 		if dep == label.NoLabel {
 			continue
+		}
+
+		javaExportsWithPackage := jr.lang.javaExportCache[dep]
+		if len(javaExportsWithPackage) != 0 {
+			dep = javaExportsWithPackage[len(javaExportsWithPackage)-1]
 		}
 
 		labels.Add(simplifyLabel(c.RepoName, dep, from))

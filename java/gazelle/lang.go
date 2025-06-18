@@ -35,6 +35,9 @@ type javaLang struct {
 	// TODO BL: Document this
 	importCache map[label.Label][]resolve.ImportSpec
 
+	// TODO BL: Document this
+	javaExportCache map[label.Label][]label.Label
+
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
@@ -69,6 +72,7 @@ func NewLanguage() language.Language {
 		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		importCache:      make(map[label.Label][]resolve.ImportSpec),
+		javaExportCache:  make(map[label.Label][]label.Label),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
