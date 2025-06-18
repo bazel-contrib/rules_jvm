@@ -1,8 +1,13 @@
 load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
 
 java_export(
     name = "child_export_export",
     deps = [":child_export"],
 )
 
-
+java_library(
+    name = "child_export",
+    srcs = ["ChildExport.java"],
+    visibility = ["//:__subpackages__"],
+)
