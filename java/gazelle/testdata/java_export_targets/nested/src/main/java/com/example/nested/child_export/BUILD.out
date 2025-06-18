@@ -5,3 +5,9 @@ java_export(
     name = "child_export_export",
     deps = [":child_export"],
 )
+
+java_library(
+    name = "child_export",
+    srcs = ["ChildExport.java"],
+    visibility = ["//:__subpackages__"],
+)

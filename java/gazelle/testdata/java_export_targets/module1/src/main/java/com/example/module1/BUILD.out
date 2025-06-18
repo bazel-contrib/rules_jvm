@@ -1,0 +1,18 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "module_export",
+    deps = [":module1"],
+)
+
+java_library(
+    name = "module1",
+    srcs = [
+        "Module1.java",
+        "Module1InterfaceToFoo.java",
+    ],
+    visibility = ["//:__subpackages__"],
+    exports = ["//module1/src/main/java/com/example/module1/foo"],
+    deps = ["//module1/src/main/java/com/example/module1/foo"],
+)

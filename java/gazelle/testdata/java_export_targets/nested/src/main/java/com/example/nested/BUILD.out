@@ -1,0 +1,16 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "nested_export",
+    deps = [":nested"],
+)
+
+java_library(
+    name = "nested",
+    srcs = ["UseChild.java"],
+    deps = [
+      "nested/src/main/java/com/example/nested/child_export:child_export_export"
+    ],
+    visibility = ["//:__subpackages__"],
+)

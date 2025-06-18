@@ -1,0 +1,7 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "foo",
+    srcs = ["Module1Foo.java"],
+    visibility = ["//:__subpackages__"],
+)
