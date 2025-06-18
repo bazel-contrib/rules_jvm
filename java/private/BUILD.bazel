@@ -34,6 +34,7 @@ bzl_library(
         ":create_jvm_test_suite",
         ":java_test_suite_shared_constants",
         ":library",
+        "@bazel_skylib//lib:collections",
     ],
 )
 
