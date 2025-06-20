@@ -12,7 +12,7 @@ java_library(
         "Module1.java",
         "Module1InterfaceToFoo.java",
     ],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//module1/src/main/java/com/example/module1:__pkg__"],
     exports = ["//module1/src/main/java/com/example/module1/foo"],
     deps = ["//module1/src/main/java/com/example/module1/foo"],
 )

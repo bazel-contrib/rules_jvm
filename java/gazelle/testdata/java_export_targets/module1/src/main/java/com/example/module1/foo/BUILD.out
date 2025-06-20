@@ -3,5 +3,5 @@ load("@rules_java//java:defs.bzl", "java_library")
 java_library(
     name = "foo",
     srcs = ["Module1Foo.java"],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//module1/src/main/java/com/example/module1:__pkg__"],
 )

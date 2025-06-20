@@ -6,6 +6,6 @@ java_library(
         "DependOnBaz.java",
         "Module2Bar.java",
     ],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//module2/src/main/java/com/example/module2:__pkg__"],
     deps = ["//module2/src/main/java/com/example/module2/baz"],
 )

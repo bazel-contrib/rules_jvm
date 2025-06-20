@@ -9,6 +9,6 @@ java_export(
 java_library(
     name = "nested",
     srcs = ["UseChild.java"],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//nested/src/main/java/com/example/nested:__pkg__"],
     deps = ["//nested/src/main/java/com/example/nested/child_export:child_export_export"],
 )

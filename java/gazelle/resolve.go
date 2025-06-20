@@ -166,6 +166,11 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
+	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside of the java_export.
+	if containingJavaExport, inJavaExport := jr.lang.labelToJavaExport[from]; inJavaExport {
+		r.SetAttr("visibility", []string{fmt.Sprintf("//%s:__pkg__", containingJavaExport.Pkg)})
+	}
+
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 
@@ -191,6 +196,7 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 	}
 
 	setLabelAttrIncludingExistingValues(r, attrName, labels)
+
 }
 
 func (jr *Resolver) populatePluginsAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, packageConfig *javaconfig.Config, from label.Label, isTestRule bool, r *rule.Rule) {

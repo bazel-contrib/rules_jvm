@@ -3,5 +3,5 @@ load("@rules_java//java:defs.bzl", "java_library")
 java_library(
     name = "baz",
     srcs = ["Module2Baz.java"],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//module2/src/main/java/com/example/module2:__pkg__"],
 )
