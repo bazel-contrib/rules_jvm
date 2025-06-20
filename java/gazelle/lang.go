@@ -46,6 +46,10 @@ type javaLang struct {
 	// TODO BL: Turn into a set
 	labelsToResolveInputs map[label.Label]types.ResolveInput
 
+	// TODO BL: There has to be a more efficient way to do this
+	javaExportsTransitiveDeps map[label.Label]map[label.Label]bool
+	labelToJavaExport         map[label.Label]label.Label
+
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
@@ -83,6 +87,8 @@ func NewLanguage() language.Language {
 		javaExportCache:               make(map[label.Label][]label.Label),
 		packagesToLabelsDeclaringThem: make(map[types.PackageName]label.Label),
 		labelsToResolveInputs:         make(map[label.Label]types.ResolveInput),
+		javaExportsTransitiveDeps:     make(map[label.Label]map[label.Label]bool),
+		labelToJavaExport:             make(map[label.Label]label.Label),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{

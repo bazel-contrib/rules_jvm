@@ -85,11 +85,22 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 
 			for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
 				lblToVisit := jr.lang.packagesToLabelsDeclaringThem[importedPkg]
+				if _, labelInAnotherJavaExport := jr.lang.labelToJavaExport[lblToVisit]; labelInAnotherJavaExport {
+					continue
+				}
 				if ok := queuedForVisit[lblToVisit]; !ok {
 					labelsToVisit = append(labelsToVisit, lblToVisit)
 					queuedForVisit[lblToVisit] = true
 				}
 			}
+		}
+
+		jr.lang.javaExportsTransitiveDeps[lbl] = queuedForVisit
+		for queued, _ := range queuedForVisit {
+			//if _, ok := jr.lang.labelToJavaExport[queued]; ok {
+			//	panic("Target in multiple exports: %s")
+			//}
+			jr.lang.labelToJavaExport[queued] = lbl
 		}
 
 		return out
@@ -127,11 +138,6 @@ func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isJavaProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
-	}
-	if r.Kind() == "java_export" {
-		for _, dep := range r.AttrStrings("deps") {
-			embedStrings = append(embedStrings, dep)
-		}
 	}
 
 	embedLabels := make([]label.Label, 0, len(embedStrings))
@@ -264,6 +270,50 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+	if len(matches) == 1 {
+		return matches[0].Label
+	}
+
+	disambiguateJavaExports := func(results []resolve.FindResult) []resolve.FindResult {
+		var javaExportsThatCoverThisDep []resolve.FindResult
+		var nonJavaExportResults []resolve.FindResult
+		for _, result := range results {
+			_, depIsJavaExport := jr.lang.javaExportsTransitiveDeps[result.Label]
+			if depIsJavaExport {
+				javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, result)
+			} else {
+				nonJavaExportResults = append(nonJavaExportResults, result)
+			}
+		}
+
+		if len(javaExportsThatCoverThisDep) == 0 {
+			return results
+		} else if len(javaExportsThatCoverThisDep) > 1 {
+			var exportStrings []string
+			for _, exportResult := range javaExportsThatCoverThisDep {
+				exportStrings = append(exportStrings, exportResult.Label.String())
+			}
+			jr.lang.logger.Fatal().
+				Str("rule", from.Pkg).
+				Strs("java_exports", exportStrings).
+				Msg("resolveSinglePackage found MULTIPLE java_export targets exporting this rule")
+		}
+
+		javaExportForDep := javaExportsThatCoverThisDep[0]
+		myJavaExport := jr.lang.labelToJavaExport[from]
+		// If we're inside the same java export (or inside no java export), return the dep
+		if myJavaExport != javaExportForDep.Label {
+			return []resolve.FindResult{javaExportForDep}
+		}
+
+		// If we don't find any relevant java_export, resolve normally.
+		return nonJavaExportResults
+	}
+
+	if len(matches) > 1 {
+		matches = disambiguateJavaExports(matches)
+	}
+
 	if len(matches) == 1 {
 		return matches[0].Label
 	}
