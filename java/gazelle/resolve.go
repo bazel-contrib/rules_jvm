@@ -274,44 +274,8 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return matches[0].Label
 	}
 
-	disambiguateJavaExports := func(results []resolve.FindResult) []resolve.FindResult {
-		var javaExportsThatCoverThisDep []resolve.FindResult
-		var nonJavaExportResults []resolve.FindResult
-		for _, result := range results {
-			_, depIsJavaExport := jr.lang.javaExportsTransitiveDeps[result.Label]
-			if depIsJavaExport {
-				javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, result)
-			} else {
-				nonJavaExportResults = append(nonJavaExportResults, result)
-			}
-		}
-
-		if len(javaExportsThatCoverThisDep) == 0 {
-			return results
-		} else if len(javaExportsThatCoverThisDep) > 1 {
-			var exportStrings []string
-			for _, exportResult := range javaExportsThatCoverThisDep {
-				exportStrings = append(exportStrings, exportResult.Label.String())
-			}
-			jr.lang.logger.Fatal().
-				Str("rule", from.Pkg).
-				Strs("java_exports", exportStrings).
-				Msg("resolveSinglePackage found MULTIPLE java_export targets exporting this rule")
-		}
-
-		javaExportForDep := javaExportsThatCoverThisDep[0]
-		myJavaExport := jr.lang.labelToJavaExport[from]
-		// If we're inside the same java export (or inside no java export), return the dep
-		if myJavaExport != javaExportForDep.Label {
-			return []resolve.FindResult{javaExportForDep}
-		}
-
-		// If we don't find any relevant java_export, resolve normally.
-		return nonJavaExportResults
-	}
-
 	if len(matches) > 1 {
-		matches = disambiguateJavaExports(matches)
+		matches = jr.tryResolvingToJavaExport(matches, from)
 	}
 
 	if len(matches) == 1 {
@@ -413,6 +377,50 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	jr.lang.hasHadErrors = true
 
 	return label.NoLabel
+}
+
+// tryResolvingToJavaExport attempts to narrow down a list of resolution candidates by preferring java_export targets when appropriate.
+// A dependency will be resolved to a `java_export` target when the following are all true.
+//   - The dependency is contained in a java_export target, and
+//   - There is exactly one java_export target that contains the dependency, and
+//   - That java_export does not export the target under consideration (`from`).
+//
+// Returns a subset of `results`, either by picking an appropriate `java_export`, or by eliminating ineligible `java_export`.
+// The program will issue a fatal error if it finds that more than one java_export contains the required dependency.
+func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from label.Label) []resolve.FindResult {
+	var javaExportsThatCoverThisDep []resolve.FindResult
+	var nonJavaExportResults []resolve.FindResult
+	for _, result := range results {
+		_, depIsJavaExport := jr.lang.javaExportsTransitiveDeps[result.Label]
+		if depIsJavaExport {
+			javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, result)
+		} else {
+			nonJavaExportResults = append(nonJavaExportResults, result)
+		}
+	}
+
+	if len(javaExportsThatCoverThisDep) == 0 {
+		return results
+	} else if len(javaExportsThatCoverThisDep) > 1 {
+		var exportStrings []string
+		for _, exportResult := range javaExportsThatCoverThisDep {
+			exportStrings = append(exportStrings, exportResult.Label.String())
+		}
+		jr.lang.logger.Fatal().
+			Str("rule", from.Pkg).
+			Strs("java_exports", exportStrings).
+			Msg("resolveSinglePackage found MULTIPLE java_export targets exporting this rule")
+	}
+
+	javaExportForDep := javaExportsThatCoverThisDep[0]
+	myJavaExport := jr.lang.labelToJavaExport[from]
+	// If we're inside the same java export (or inside no java export), return the dep
+	if myJavaExport != javaExportForDep.Label {
+		return []resolve.FindResult{javaExportForDep}
+	}
+
+	// If we don't find any relevant java_export, resolve normally.
+	return nonJavaExportResults
 }
 
 func isJavaLibrary(kind string) bool {
