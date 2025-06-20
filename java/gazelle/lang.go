@@ -2,6 +2,8 @@ package gazelle
 
 import (
 	"context"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"os"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -30,6 +32,23 @@ type javaLang struct {
 	// javaPackageCache is used for module granularity support
 	// Key is the path to the java package from the Bazel workspace root.
 	javaPackageCache map[string]*java.Package
+
+	// TODO BL: Document this
+	importCache map[label.Label][]resolve.ImportSpec
+
+	// TODO BL: Document this
+	javaExportCache map[label.Label][]label.Label
+
+	// TODO BL: Document this
+	packagesToLabelsDeclaringThem map[types.PackageName]label.Label
+
+	// TODO BL: Document this
+	// TODO BL: Turn into a set
+	labelsToResolveInputs map[label.Label]types.ResolveInput
+
+	// TODO BL: There has to be a more efficient way to do this
+	javaExportsTransitiveDeps map[label.Label]map[label.Label]bool
+	labelToJavaExport         map[label.Label]label.Label
 
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
@@ -61,9 +80,15 @@ func NewLanguage() language.Language {
 	logger.Debug().Msg("creating java language")
 
 	l := javaLang{
-		logger:           logger,
-		javaLogLevel:     javaLevel,
-		javaPackageCache: make(map[string]*java.Package),
+		logger:                        logger,
+		javaLogLevel:                  javaLevel,
+		javaPackageCache:              make(map[string]*java.Package),
+		importCache:                   make(map[label.Label][]resolve.ImportSpec),
+		javaExportCache:               make(map[label.Label][]label.Label),
+		packagesToLabelsDeclaringThem: make(map[types.PackageName]label.Label),
+		labelsToResolveInputs:         make(map[label.Label]types.ResolveInput),
+		javaExportsTransitiveDeps:     make(map[label.Label]map[label.Label]bool),
+		labelToJavaExport:             make(map[label.Label]label.Label),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
@@ -112,11 +137,25 @@ var javaLibraryKind = rule.KindInfo{
 	},
 }
 
+var javaExportKind = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps":    true,
+		"exports": true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"exports":      true,
+		"runtime_deps": true,
+	},
+}
+
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	kinds := map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
 		"java_junit5_test":   kindWithRuntimeDeps,
 		"java_library":       javaLibraryKind,
+		"java_export":        javaExportKind,
 		"java_test":          kindWithRuntimeDeps,
 		"java_test_suite":    kindWithRuntimeDeps,
 		"java_proto_library": kindWithoutRuntimeDeps,
@@ -152,6 +191,7 @@ var baseJavaLoads = []rule.LoadInfo{
 		Symbols: []string{
 			"java_junit5_test",
 			"java_test_suite",
+			"java_export",
 		},
 	},
 }

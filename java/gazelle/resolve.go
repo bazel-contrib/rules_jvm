@@ -50,8 +50,60 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" {
+	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
+	}
+
+	lbl := label.New("", f.Pkg, r.Name())
+	deps := attrLabels("deps", r, f)
+
+	if r.Kind() == "java_export" {
+		var out []resolve.ImportSpec
+		for _, dep := range deps {
+			// Because Imports is a post-order traversal, the children will be added before the parent, so we always have to take the rightmost element of this package to get the closest one to the root of the tree.
+			jr.lang.javaExportCache[dep] = append(jr.lang.javaExportCache[dep], lbl)
+		}
+
+		labelsToVisit := make([]label.Label, len(deps))
+		_ = copy(labelsToVisit, deps)
+
+		queuedForVisit := make(map[label.Label]bool)
+		for _, depLabel := range labelsToVisit {
+			queuedForVisit[depLabel] = true
+		}
+
+		for len(labelsToVisit) > 0 {
+			dep := labelsToVisit[0]
+			labelsToVisit = labelsToVisit[1:]
+
+			resolveInputForDep := jr.lang.labelsToResolveInputs[dep]
+			for _, pkg := range resolveInputForDep.PackageNames.SortedSlice() {
+				out = append(out, resolve.ImportSpec{
+					Lang: languageName, Imp: pkg.Name,
+				})
+			}
+
+			for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
+				lblToVisit := jr.lang.packagesToLabelsDeclaringThem[importedPkg]
+				if _, labelInAnotherJavaExport := jr.lang.labelToJavaExport[lblToVisit]; labelInAnotherJavaExport {
+					continue
+				}
+				if ok := queuedForVisit[lblToVisit]; !ok {
+					labelsToVisit = append(labelsToVisit, lblToVisit)
+					queuedForVisit[lblToVisit] = true
+				}
+			}
+		}
+
+		jr.lang.javaExportsTransitiveDeps[lbl] = queuedForVisit
+		for queued, _ := range queuedForVisit {
+			//if _, ok := jr.lang.labelToJavaExport[queued]; ok {
+			//	panic("Target in multiple exports: %s")
+			//}
+			jr.lang.labelToJavaExport[queued] = lbl
+		}
+
+		return out
 	}
 
 	var out []resolve.ImportSpec
@@ -61,8 +113,25 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 	}
 
-	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return")
+	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
+}
+
+func attrLabels(attr string, r *rule.Rule, f *rule.File) []label.Label {
+	depsStrings := r.AttrStrings(attr)
+	deps := make([]label.Label, 0, len(depsStrings))
+	for _, depString := range depsStrings {
+		lbl, err := label.Parse(depString)
+		if err != nil {
+			// TODO BL: handle
+		}
+		if lbl.Pkg == "" {
+			lbl.Pkg = f.Pkg
+			lbl.Relative = false
+		}
+		deps = append(deps, lbl)
+	}
+	return deps
 }
 
 func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
@@ -70,6 +139,7 @@ func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	if isJavaProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
 	}
+
 	embedLabels := make([]label.Label, 0, len(embedStrings))
 	for _, s := range embedStrings {
 		l, err := label.Parse(s)
@@ -96,6 +166,11 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
+	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside of the java_export.
+	if containingJavaExport, inJavaExport := jr.lang.labelToJavaExport[from]; inJavaExport {
+		r.SetAttr("visibility", []string{fmt.Sprintf("//%s:__pkg__", containingJavaExport.Pkg)})
+	}
+
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 
@@ -111,10 +186,17 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 			continue
 		}
 
+		javaExportsWithPackage := jr.lang.javaExportCache[dep]
+		if len(javaExportsWithPackage) != 0 {
+			javaExportDep := javaExportsWithPackage[len(javaExportsWithPackage)-1]
+			dep = javaExportDep
+		}
+
 		labels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
 	setLabelAttrIncludingExistingValues(r, attrName, labels)
+
 }
 
 func (jr *Resolver) populatePluginsAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, packageConfig *javaconfig.Config, from label.Label, isTestRule bool, r *rule.Rule) {
@@ -194,6 +276,14 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+	if len(matches) == 1 {
+		return matches[0].Label
+	}
+
+	if len(matches) > 1 {
+		matches = jr.tryResolvingToJavaExport(matches, from)
+	}
+
 	if len(matches) == 1 {
 		return matches[0].Label
 	}
@@ -293,6 +383,50 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	jr.lang.hasHadErrors = true
 
 	return label.NoLabel
+}
+
+// tryResolvingToJavaExport attempts to narrow down a list of resolution candidates by preferring java_export targets when appropriate.
+// A dependency will be resolved to a `java_export` target when the following are all true.
+//   - The dependency is contained in a java_export target, and
+//   - There is exactly one java_export target that contains the dependency, and
+//   - That java_export does not export the target under consideration (`from`).
+//
+// Returns a subset of `results`, either by picking an appropriate `java_export`, or by eliminating ineligible `java_export`.
+// The program will issue a fatal error if it finds that more than one java_export contains the required dependency.
+func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from label.Label) []resolve.FindResult {
+	var javaExportsThatCoverThisDep []resolve.FindResult
+	var nonJavaExportResults []resolve.FindResult
+	for _, result := range results {
+		_, depIsJavaExport := jr.lang.javaExportsTransitiveDeps[result.Label]
+		if depIsJavaExport {
+			javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, result)
+		} else {
+			nonJavaExportResults = append(nonJavaExportResults, result)
+		}
+	}
+
+	if len(javaExportsThatCoverThisDep) == 0 {
+		return results
+	} else if len(javaExportsThatCoverThisDep) > 1 {
+		var exportStrings []string
+		for _, exportResult := range javaExportsThatCoverThisDep {
+			exportStrings = append(exportStrings, exportResult.Label.String())
+		}
+		jr.lang.logger.Fatal().
+			Str("rule", from.Pkg).
+			Strs("java_exports", exportStrings).
+			Msg("resolveSinglePackage found MULTIPLE java_export targets exporting this rule")
+	}
+
+	javaExportForDep := javaExportsThatCoverThisDep[0]
+	myJavaExport := jr.lang.labelToJavaExport[from]
+	// If we're inside the same java export (or inside no java export), return the dep
+	if myJavaExport != javaExportForDep.Label {
+		return []resolve.FindResult{javaExportForDep}
+	}
+
+	// If we don't find any relevant java_export, resolve normally.
+	return nonJavaExportResults
 }
 
 func isJavaLibrary(kind string) bool {
