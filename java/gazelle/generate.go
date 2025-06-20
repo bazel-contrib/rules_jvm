@@ -508,6 +508,12 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
+
+	lbl := label.New("", file.Pkg, r.Name())
+	l.labelsToResolveInputs[lbl] = resolveInput
+	for _, pkg := range resolvablePackages {
+		l.packagesToLabelsDeclaringThem[pkg.PackageName()] = lbl
+	}
 }
 
 func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName string, testonly bool, res *language.GenerateResult) {

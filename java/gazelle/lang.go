@@ -2,6 +2,7 @@ package gazelle
 
 import (
 	"context"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"os"
 
@@ -38,6 +39,13 @@ type javaLang struct {
 	// TODO BL: Document this
 	javaExportCache map[label.Label][]label.Label
 
+	// TODO BL: Document this
+	packagesToLabelsDeclaringThem map[types.PackageName]label.Label
+
+	// TODO BL: Document this
+	// TODO BL: Turn into a set
+	labelsToResolveInputs map[label.Label]types.ResolveInput
+
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
@@ -68,11 +76,13 @@ func NewLanguage() language.Language {
 	logger.Debug().Msg("creating java language")
 
 	l := javaLang{
-		logger:           logger,
-		javaLogLevel:     javaLevel,
-		javaPackageCache: make(map[string]*java.Package),
-		importCache:      make(map[label.Label][]resolve.ImportSpec),
-		javaExportCache:  make(map[label.Label][]label.Label),
+		logger:                        logger,
+		javaLogLevel:                  javaLevel,
+		javaPackageCache:              make(map[string]*java.Package),
+		importCache:                   make(map[label.Label][]resolve.ImportSpec),
+		javaExportCache:               make(map[label.Label][]label.Label),
+		packagesToLabelsDeclaringThem: make(map[types.PackageName]label.Label),
+		labelsToResolveInputs:         make(map[label.Label]types.ResolveInput),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{

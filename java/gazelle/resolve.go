@@ -55,22 +55,44 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	}
 
 	lbl := label.New("", f.Pkg, r.Name())
-	deps := depLabels(r, f)
+	deps := attrLabels("deps", r, f)
 
 	if r.Kind() == "java_export" {
+		var out []resolve.ImportSpec
 		for _, dep := range deps {
 			// Because Imports is a post-order traversal, the children will be added before the parent, so we always have to take the rightmost element of this package to get the closest one to the root of the tree.
 			jr.lang.javaExportCache[dep] = append(jr.lang.javaExportCache[dep], lbl)
 		}
-		//var out []resolve.ImportSpec
-		//for _, dep := range deps {
-		//	for _, importSpec := range jr.lang.importCache[dep] {
-		//		out = append(out, importSpec)
-		//	}
-		//}
-		//// TODO BL: For some reason, `child_export_export` gets here before it's had a chance to un the code below and add itself to the importCache
-		//// Same happens with `nested` and `nested_export`. We have a problem with java_libs in the same files as java_exports
-		//return out
+
+		labelsToVisit := make([]label.Label, len(deps))
+		_ = copy(labelsToVisit, deps)
+
+		queuedForVisit := make(map[label.Label]bool)
+		for _, depLabel := range labelsToVisit {
+			queuedForVisit[depLabel] = true
+		}
+
+		for len(labelsToVisit) > 0 {
+			dep := labelsToVisit[0]
+			labelsToVisit = labelsToVisit[1:]
+
+			resolveInputForDep := jr.lang.labelsToResolveInputs[dep]
+			for _, pkg := range resolveInputForDep.PackageNames.SortedSlice() {
+				out = append(out, resolve.ImportSpec{
+					Lang: languageName, Imp: pkg.Name,
+				})
+			}
+
+			for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
+				lblToVisit := jr.lang.packagesToLabelsDeclaringThem[importedPkg]
+				if ok := queuedForVisit[lblToVisit]; !ok {
+					labelsToVisit = append(labelsToVisit, lblToVisit)
+					queuedForVisit[lblToVisit] = true
+				}
+			}
+		}
+
+		return out
 	}
 
 	var out []resolve.ImportSpec
@@ -80,21 +102,12 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 	}
 
-	//// TODO BL: Cache experiments
-	//lbl := label.New("", f.Pkg, r.Name())
-	//jr.lang.importCache[lbl] = out
-	//for _, depLabel := range deps {
-	//	depImports := jr.lang.importCache[depLabel]
-	//	for _, importSpec := range depImports {
-	//		jr.lang.importCache[lbl] = append(jr.lang.importCache[lbl], importSpec)
-	//	}
-	//}
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
 }
 
-func depLabels(r *rule.Rule, f *rule.File) []label.Label {
-	depsStrings := r.AttrStrings("deps")
+func attrLabels(attr string, r *rule.Rule, f *rule.File) []label.Label {
+	depsStrings := r.AttrStrings(attr)
 	deps := make([]label.Label, 0, len(depsStrings))
 	for _, depString := range depsStrings {
 		lbl, err := label.Parse(depString)
@@ -103,6 +116,7 @@ func depLabels(r *rule.Rule, f *rule.File) []label.Label {
 		}
 		if lbl.Pkg == "" {
 			lbl.Pkg = f.Pkg
+			lbl.Relative = false
 		}
 		deps = append(deps, lbl)
 	}
@@ -163,7 +177,8 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 
 		javaExportsWithPackage := jr.lang.javaExportCache[dep]
 		if len(javaExportsWithPackage) != 0 {
-			dep = javaExportsWithPackage[len(javaExportsWithPackage)-1]
+			javaExportDep := javaExportsWithPackage[len(javaExportsWithPackage)-1]
+			dep = javaExportDep
 		}
 
 		labels.Add(simplifyLabel(c.RepoName, dep, from))
