@@ -509,7 +509,12 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	}
 	res.Imports = append(res.Imports, resolveInput)
 
-	lbl := label.New("", file.Pkg, r.Name())
+	pkg := ""
+	// TODO BL: Annotation processors might create rules without files, but that doesn't mean they don't have packages.
+	if file != nil {
+		pkg = file.Pkg
+	}
+	lbl := label.New("", pkg, r.Name())
 	l.labelsToResolveInputs[lbl] = resolveInput
 	for _, pkg := range resolvablePackages {
 		l.packagesToLabelsDeclaringThem[pkg.PackageName()] = lbl
