@@ -38,6 +38,7 @@ maven.install(
         "com.github.spotbugs:spotbugs:4.7.3",
         "com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0",
         "com.mebigfatguy.sb-contrib:sb-contrib:7.6.4",
+        "org.jmockit:jmockit:1.38",
     ],
     fetch_sources = True,
     lock_file = "//:maven_install.json",
