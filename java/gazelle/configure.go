@@ -66,6 +66,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaGenerateProto,
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
+		javaconfig.JavaResolveToJavaExports,
 	}
 }
 
@@ -146,7 +147,29 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[1], err)
 				}
 				cfg.AddAnnotationProcessorPlugin(*annotationClassName, *processorClassName)
+
+			case javaconfig.JavaResolveToJavaExports:
+				if !cfg.CanSetResolveToJavaExports() {
+					jc.lang.logger.Fatal().
+						Msgf("Detected multiple attempts to initialize directive %q. Please only initialize it once for the entire repository.",
+							javaconfig.JavaResolveToJavaExports)
+				}
+				if rel != "" {
+					jc.lang.logger.Fatal().
+						Msgf("Enabling or disabling directive %q must be done from the root of the repository.",
+							javaconfig.JavaResolveToJavaExports)
+				}
+				switch d.Value {
+				case "true":
+					cfg.SetResolveToJavaExports(true)
+				case "false":
+					cfg.SetResolveToJavaExports(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JavaResolveToJavaExports, d.Value)
+				}
 			}
+
 		}
 	}
 

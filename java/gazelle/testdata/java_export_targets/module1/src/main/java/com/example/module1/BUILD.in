@@ -1,0 +1,8 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "module_export",
+    maven_coordinates = "com.example:module1:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":module1"],
+)

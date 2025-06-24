@@ -1,0 +1,24 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+java_library(
+    name = "user",
+    srcs = ["UseAllModules.java"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/export:export_export",
+        "//module1/src/main/java/com/example/module1:module_export",
+        "//module2/src/main/java/com/example/module2",
+        "//nested/src/main/java/com/example/nested:nested_export",
+        "//nested/src/main/java/com/example/nested/child_export:child_export_export",
+        "//other_deps/src/main/java/com/example/other_deps/plain_deps",
+        "//other_deps/src/main/java/com/example/other_deps/runtime",
+        "//other_deps/src/main/java/com/example/other_deps/third_party:third_party_export",
+    ],
+)
+
+java_binary(
+    name = "UseAllModules",
+    main_class = "com.example.user.UseAllModules",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":user"],
+)

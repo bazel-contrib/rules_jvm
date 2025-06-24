@@ -4,7 +4,6 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/rs/zerolog"
 )
@@ -112,7 +111,6 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExportLabel label.
 		transitiveDeps[depLabel] = true
 	}
 
-	var imports []resolve.ImportSpec
 	// Breadth-first traversal on the transitive closure of the export,
 	// resolving all the packages to the labels that export them.
 	for len(labelsToVisit) > 0 {
@@ -120,21 +118,15 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExportLabel label.
 		labelsToVisit = labelsToVisit[1:]
 
 		// Visit the dependency
-		resolveInputForDep := jei.labelsToResolveInputs[dep]
-		for _, pkg := range resolveInputForDep.PackageNames.SortedSlice() {
-			imports = append(imports, resolve.ImportSpec{
-				Lang: jei.langName, Imp: pkg.Name,
-			})
-		}
-
 		jei.labelToJavaExport[dep] = javaExportLabel
 		visibilityLbl := label.New("", dep.Pkg, "__pkg__")
 		javaExport.InternalVisibility.Add(visibilityLbl)
 
 		// Queue every transitive dependency to be visited
+		resolveInputForDep := jei.labelsToResolveInputs[dep]
 		for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
-			lblToVisit := jei.packagesToLabelsDeclaringThem[importedPkg]
-			if lblToVisit == label.NoLabel {
+			lblToVisit, found := jei.packagesToLabelsDeclaringThem[importedPkg]
+			if !found || lblToVisit == label.NoLabel {
 				jei.logger.Debug().
 					Str("package", importedPkg.Name).
 					Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")

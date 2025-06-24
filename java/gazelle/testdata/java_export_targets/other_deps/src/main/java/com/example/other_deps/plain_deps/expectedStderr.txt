@@ -1,0 +1,1 @@
+{"level":"error","label":"//other_deps/src/main/java/com/example/other_deps/plain_deps:plain_deps_export","message":"java_export rule contained a non-empty `srcs` attribute, but it will be ignored during resolution. Instead, please use the `exports` or `runtime_deps` attributes and depend on the generated `java_library`"}

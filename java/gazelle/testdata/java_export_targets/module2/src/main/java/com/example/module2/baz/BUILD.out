@@ -1,0 +1,11 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "baz",
+    srcs = ["Module2Baz.java"],
+    visibility = [
+        "//module2/src/main/java/com/example/module2:__pkg__",
+        "//module2/src/main/java/com/example/module2/bar:__pkg__",
+        "//module2/src/main/java/com/example/module2/baz:__pkg__",
+    ],
+)

@@ -9,7 +9,6 @@ go_library(
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
         "@bazel_gazelle//label",
-        "@bazel_gazelle//resolve",
         "@bazel_gazelle//rule",
         "@com_github_rs_zerolog//:zerolog",
     ],

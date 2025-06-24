@@ -166,3 +166,31 @@ func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
 		isTestSuite: isTestSuite,
 	}, nil
 }
+
+type LateInit[T any] struct {
+	value       T
+	initialized bool
+}
+
+func NewLateInit[T any](valueWhileUninitialized T) *LateInit[T] {
+	return &LateInit[T]{
+		value:       valueWhileUninitialized,
+		initialized: false,
+	}
+}
+
+func (lib *LateInit[T]) Initialize(value T) {
+	if lib.initialized {
+		panic("Trying to initialize a LateInit that's already initialized.")
+	}
+	lib.value = value
+	lib.initialized = true
+}
+
+func (lib *LateInit[T]) IsInitialized() bool {
+	return lib.initialized
+}
+
+func (lib *LateInit[T]) Value() T {
+	return lib.value
+}

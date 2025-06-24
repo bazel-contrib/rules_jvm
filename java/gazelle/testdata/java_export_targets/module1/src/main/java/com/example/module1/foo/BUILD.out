@@ -1,0 +1,10 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "foo",
+    srcs = ["Module1Foo.java"],
+    visibility = [
+        "//module1/src/main/java/com/example/module1:__pkg__",
+        "//module1/src/main/java/com/example/module1/foo:__pkg__",
+    ],
+)

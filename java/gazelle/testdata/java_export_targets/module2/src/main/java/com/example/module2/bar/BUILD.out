@@ -1,0 +1,15 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "bar",
+    srcs = [
+        "DependOnBaz.java",
+        "Module2Bar.java",
+    ],
+    visibility = [
+        "//module2/src/main/java/com/example/module2:__pkg__",
+        "//module2/src/main/java/com/example/module2/bar:__pkg__",
+        "//module2/src/main/java/com/example/module2/baz:__pkg__",
+    ],
+    deps = ["//module2/src/main/java/com/example/module2/baz"],
+)

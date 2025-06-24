@@ -1,0 +1,20 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "module_export",
+    maven_coordinates = "com.example:module1:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":module1"],
+)
+
+java_library(
+    name = "module1",
+    srcs = ["Module1.java"],
+    visibility = [
+        "//module1/src/main/java/com/example/module1:__pkg__",
+        "//module1/src/main/java/com/example/module1/foo:__pkg__",
+    ],
+    exports = ["//module1/src/main/java/com/example/module1/foo"],
+    deps = ["//module1/src/main/java/com/example/module1/foo"],
+)

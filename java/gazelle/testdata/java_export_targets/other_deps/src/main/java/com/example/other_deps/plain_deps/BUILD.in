@@ -1,0 +1,9 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "plain_deps_export",
+    srcs = ["PlainDep.java"],
+    maven_coordinates = "com.example:plain_deps:0.1",
+    visibility = ["//:__subpackages__"],
+    deps = ["//other_deps/src/main/java/com/example/other_deps/plain_deps/dep"],
+)
