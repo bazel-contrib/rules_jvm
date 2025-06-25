@@ -214,7 +214,7 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 	if packageConfig != nil && packageConfig.ResolveToJavaExports() {
 		for _, r := range f.Rules {
 			if r.Kind() == "java_export" {
-				l.javaExportIndex.RecordJavaExport(r, f)
+				l.javaExportIndex.RecordJavaExport(c.RepoName, r, f)
 			}
 		}
 	}

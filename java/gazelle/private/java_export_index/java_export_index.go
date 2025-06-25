@@ -17,8 +17,8 @@ type JavaExportResolveInfo struct {
 	InternalVisibility *sorted_set.SortedSet[label.Label]
 }
 
-func NewJavaExportResolveInfoFromRule(r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
-	lbl := label.New("", file.Pkg, r.Name())
+func NewJavaExportResolveInfoFromRule(repoName string, r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
+	lbl := label.New(repoName, file.Pkg, r.Name())
 	exportPackageVisibility := label.New("", file.Pkg, "__pkg__")
 	return &JavaExportResolveInfo{
 		Rule:               r,
@@ -30,6 +30,7 @@ func NewJavaExportResolveInfoFromRule(r *rule.Rule, file *rule.File) *JavaExport
 // JavaExportIndex holds information about `java_export` targets and which symbols they make available,
 // so that other java targets can depend on the right `java_export` instead of fine-grained dependencies.
 type JavaExportIndex struct {
+	// langName and logger are fields we must store from the language.Language, so that we can use them in the implementation.
 	langName string
 	logger   zerolog.Logger
 
@@ -62,17 +63,28 @@ func NewJavaExportIndex(langName string, logger zerolog.Logger) *JavaExportIndex
 	}
 }
 
-func (jei *JavaExportIndex) ProcessResolveInputForRule(file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
+func (jei *JavaExportIndex) ProcessResolveInputForRule(repoName string, file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
 	pkg := ""
 	if file != nil {
 		pkg = file.Pkg
 	}
-	lbl := label.New("", pkg, r.Name())
+	lbl := label.New(repoName, pkg, r.Name())
 
 	jei.labelsToResolveInputs[lbl] = resolveInput
 	for _, javaPackage := range resolveInput.PackageNames.SortedSlice() {
 		jei.packagesToLabelsDeclaringThem[javaPackage] = lbl
 	}
+}
+
+func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *rule.File) {
+	lbl := label.New(repoName, f.Pkg, r.Name())
+	srcs := r.AttrStrings("srcs")
+	if len(srcs) > 0 {
+		jei.logger.Error().
+			Str("label", lbl.String()).
+			Msg("java_export rule contained a non-empty `srcs` attribute, but it will be ignored during resolution. Instead, please use the `exports` or `runtime_deps` attributes and depend on the generated `java_library`")
+	}
+	jei.javaExports[lbl] = NewJavaExportResolveInfoFromRule(repoName, r, f)
 }
 
 // FinishBeforeResolve processes all the `java_exports` we've recorded when traversing the repository, to:
@@ -132,7 +144,7 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 					Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")
 				continue
 			}
-			_, isExportedByAnotherJavaExport := jei.IsExportedByJavaExport(lblToVisit)
+			_, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lblToVisit)
 			if isExportedByAnotherJavaExport {
 				continue
 			}
@@ -144,23 +156,23 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 	}
 }
 
-func (jei *JavaExportIndex) RecordJavaExport(r *rule.Rule, f *rule.File) {
-	lbl := label.New("", f.Pkg, r.Name())
-	srcs := r.AttrStrings("srcs")
-	if len(srcs) > 0 {
-		jei.logger.Error().
-			Str("label", lbl.String()).
-			Msg("java_export rule contained a non-empty `srcs` attribute, but it will be ignored during resolution. Instead, please use the `exports` or `runtime_deps` attributes and depend on the generated `java_library`")
-	}
-	jei.javaExports[lbl] = NewJavaExportResolveInfoFromRule(r, f)
-}
-
 func (jei *JavaExportIndex) IsJavaExport(lbl label.Label) bool {
 	_, is := jei.javaExports[lbl]
 	return is
 }
 
 func (jei *JavaExportIndex) IsExportedByJavaExport(lbl label.Label) (*JavaExportResolveInfo, bool) {
+	if !jei.readyForResolve {
+		jei.logger.Fatal().
+			Str("label", lbl.String()).
+			Msg("Tried to get check if label is exported by a java_export before the java export index was ready for resolve. This is likely an internal bug, please contact the maintainers.")
+	}
+	return jei.isExportedByJavaExport(lbl)
+}
+
+// isExportedByJavaExport is the private version of IsExportedByJavaExport.
+// It exists so that we can call it while we finish the index, while it's still not ready for resolution.
+func (jei *JavaExportIndex) isExportedByJavaExport(lbl label.Label) (*JavaExportResolveInfo, bool) {
 	exportLbl, isExported := jei.labelToJavaExport[lbl]
 	if isExported {
 		export, exists := jei.javaExports[exportLbl]
@@ -176,6 +188,11 @@ func (jei *JavaExportIndex) IsExportedByJavaExport(lbl label.Label) (*JavaExport
 }
 
 func (jei *JavaExportIndex) VisibilityForLabel(lbl label.Label) *sorted_set.SortedSet[label.Label] {
+	if !jei.readyForResolve {
+		jei.logger.Fatal().
+			Str("target", lbl.String()).
+			Msg("Tried to get visibility for target before the java export index was ready for resolve. This is likely an internal bug, please contact the maintainers.")
+	}
 	regularReturn := sorted_set.NewSortedSetFn[label.Label]([]label.Label{label.New("", "", "__subpackages__")}, sorted_set.LabelLess)
 	if jei.IsJavaExport(lbl) {
 		return regularReturn
@@ -202,6 +219,7 @@ func attrLabels(attr string, r *rule.Rule, ruleLabel label.Label) ([]label.Label
 			lbl.Pkg = ruleLabel.Pkg
 			lbl.Relative = false
 		}
+		lbl.Repo = ruleLabel.Repo
 		deps = append(deps, lbl)
 	}
 	return deps, errors
