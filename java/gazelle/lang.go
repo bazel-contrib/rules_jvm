@@ -2,9 +2,9 @@ package gazelle
 
 import (
 	"context"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"os"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java_export_index"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
