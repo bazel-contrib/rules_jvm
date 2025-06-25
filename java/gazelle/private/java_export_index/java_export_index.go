@@ -79,26 +79,26 @@ func (jei *JavaExportIndex) ProcessResolveInputForRule(file *rule.File, r *rule.
 // - Gather all the transitive dependencies by traversing the `ResolveInput`s of relevant targets.
 // - With that information, populate the map of `labelToJavaExport`.
 func (jei *JavaExportIndex) FinishBeforeResolve() {
-	for javaExportLabel, javaExport := range jei.javaExports {
-		jei.calculateImportsForJavaExport(javaExportLabel, javaExport)
+	for _, javaExport := range jei.javaExports {
+		jei.calculateImportsForJavaExport(javaExport)
 	}
 
 	jei.readyForResolve = true
 }
 
-func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExportLabel label.Label, javaExport *JavaExportResolveInfo) {
+func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo) {
 	var parseErrors []error
-	deps, errors := attrLabels("deps", javaExport.Rule, javaExportLabel)
+	deps, errors := attrLabels("deps", javaExport.Rule, javaExport.Label)
 	parseErrors = append(parseErrors, errors...)
-	exports, errors := attrLabels("exports", javaExport.Rule, javaExportLabel)
+	exports, errors := attrLabels("exports", javaExport.Rule, javaExport.Label)
 	parseErrors = append(parseErrors, errors...)
-	runtimeDeps, errors := attrLabels("runtime_deps", javaExport.Rule, javaExportLabel)
+	runtimeDeps, errors := attrLabels("runtime_deps", javaExport.Rule, javaExport.Label)
 	parseErrors = append(parseErrors, errors...)
 
 	if len(parseErrors) > 0 {
 		jei.logger.Error().
 			Errs("errors", errors).
-			Msgf("Errors parsing labels from fields of %s", javaExportLabel.String())
+			Msgf("Errors parsing labels from fields of %s", javaExport.Label.String())
 	}
 
 	labelsToVisit := make([]label.Label, len(deps))
@@ -118,7 +118,7 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExportLabel label.
 		labelsToVisit = labelsToVisit[1:]
 
 		// Visit the dependency
-		jei.labelToJavaExport[dep] = javaExportLabel
+		jei.labelToJavaExport[dep] = javaExport.Label
 		visibilityLbl := label.New("", dep.Pkg, "__pkg__")
 		javaExport.InternalVisibility.Add(visibilityLbl)
 
