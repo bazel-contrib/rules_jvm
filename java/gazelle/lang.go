@@ -222,7 +222,7 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 
 func (l javaLang) DoneGeneratingRules() {
 	l.parser.ServerManager().Shutdown()
-	l.javaExportIndex.FinishBeforeResolve()
+	l.javaExportIndex.FinalizeIndex()
 }
 
 func (l javaLang) AfterResolvingDeps(_ context.Context) {

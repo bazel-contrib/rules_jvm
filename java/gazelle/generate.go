@@ -510,7 +510,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	res.Imports = append(res.Imports, resolveInput)
 
 	if cfg.ResolveToJavaExports() {
-		l.javaExportIndex.ProcessResolveInputForRule(repoName, file, r, resolveInput)
+		l.javaExportIndex.RecordRuleWithResolveInput(repoName, file, r, resolveInput)
 	}
 }
 

@@ -63,12 +63,19 @@ func NewJavaExportIndex(langName string, logger zerolog.Logger) *JavaExportIndex
 	}
 }
 
-func (jei *JavaExportIndex) ProcessResolveInputForRule(repoName string, file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
+// RecordRuleWithResolveInput lets the index know about a rule that might declare some packages, and might depend on some other packages later.
+// Must be called before FinalizeIndex.
+func (jei *JavaExportIndex) RecordRuleWithResolveInput(repoName string, file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
 	pkg := ""
 	if file != nil {
 		pkg = file.Pkg
 	}
 	lbl := label.New(repoName, pkg, r.Name())
+	if jei.readyForResolve {
+		jei.logger.Fatal().
+			Str("label", lbl.String()).
+			Msg("Tried to record rule after the index was finalized. This is likely an internal bug, please contact the maintainers.")
+	}
 
 	jei.labelsToResolveInputs[lbl] = resolveInput
 	for _, javaPackage := range resolveInput.PackageNames.SortedSlice() {
@@ -76,8 +83,15 @@ func (jei *JavaExportIndex) ProcessResolveInputForRule(repoName string, file *ru
 	}
 }
 
+// RecordJavaExport lets the index know about a java_export rule, for later resolution.
+// Must be called before FinalizeIndex.
 func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *rule.File) {
 	lbl := label.New(repoName, f.Pkg, r.Name())
+	if jei.readyForResolve {
+		jei.logger.Fatal().
+			Str("label", lbl.String()).
+			Msg("Tried to record java_export after the index was finalized. This is likely an internal bug, please contact the maintainers.")
+	}
 	srcs := r.AttrStrings("srcs")
 	if len(srcs) > 0 {
 		jei.logger.Error().
@@ -87,10 +101,10 @@ func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *r
 	jei.javaExports[lbl] = NewJavaExportResolveInfoFromRule(repoName, r, f)
 }
 
-// FinishBeforeResolve processes all the `java_exports` we've recorded when traversing the repository, to:
+// FinalizeIndex processes all the `java_exports` we've recorded when traversing the repository, to:
 // - Gather all the transitive dependencies by traversing the `ResolveInput`s of relevant targets.
 // - With that information, populate the map of `labelToJavaExport`.
-func (jei *JavaExportIndex) FinishBeforeResolve() {
+func (jei *JavaExportIndex) FinalizeIndex() {
 	for _, javaExport := range jei.javaExports {
 		jei.calculateImportsForJavaExport(javaExport)
 	}
@@ -187,6 +201,8 @@ func (jei *JavaExportIndex) isExportedByJavaExport(lbl label.Label) (*JavaExport
 	return nil, false
 }
 
+// VisibilityForLabel returns the visibility that a target label.Label should have, according to the JavaExportIndex.
+// Returns nil if the JavaExportIndex doesn't have an opinion on what visibility a target should have.
 func (jei *JavaExportIndex) VisibilityForLabel(lbl label.Label) *sorted_set.SortedSet[label.Label] {
 	if !jei.readyForResolve {
 		jei.logger.Fatal().
@@ -203,7 +219,7 @@ func (jei *JavaExportIndex) VisibilityForLabel(lbl label.Label) *sorted_set.Sort
 		return exporter.InternalVisibility
 	}
 
-	return regularReturn
+	return nil
 }
 
 func attrLabels(attr string, r *rule.Rule, ruleLabel label.Label) ([]label.Label, []error) {

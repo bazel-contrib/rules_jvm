@@ -102,15 +102,16 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside the java_export.
 	if packageConfig.ResolveToJavaExports() && isJavaLibrary(r.Kind()) {
 		visibility := jr.lang.javaExportIndex.VisibilityForLabel(from)
-
-		var asStrings []string
-		for _, vis := range visibility.SortedSlice() {
-			asStrings = append(asStrings, vis.String())
+		if visibility != nil {
+			var asStrings []string
+			for _, vis := range visibility.SortedSlice() {
+				asStrings = append(asStrings, vis.String())
+			}
+			// The rule attr replacement code is buggy, because while in `rule.SetAttr` we can replace the RHS of the expression, attr.val is always unchanged. I suspect it has to do with pointer magic.
+			// Fixed in https://github.com/bazel-contrib/bazel-gazelle/issues/2045
+			r.DelAttr("visibility")
+			r.SetAttr("visibility", asStrings)
 		}
-		// The rule attr replacement code is buggy, because while in `rule.SetAttr` we can replace the RHS of the expression, attr.val is always unchanged. I suspect it has to do with pointer magic.
-		// Fixed in https://github.com/bazel-contrib/bazel-gazelle/issues/2045
-		r.DelAttr("visibility")
-		r.SetAttr("visibility", asStrings)
 	}
 
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
