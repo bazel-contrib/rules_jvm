@@ -57,7 +57,7 @@ const (
 	// JavaResolveToJavaExports tells the code generator to favour resolving dependencies to java_exports where possible.
 	// If enabled, generated libraries will try to depend on java_exports targets that export a given package, instead of the underlying library.
 	// This allows monorepos to closely match a traditional Gradle/Maven model where subprojects are published in jars.
-	// Can be either "true" or "false". Defaults to "false".
+	// Can be either "true" or "false". Defaults to "true".
 	// Inherited by children packages, can only be set at the root of the repository.
 	JavaResolveToJavaExports = "java_resolve_to_java_exports"
 )
@@ -137,7 +137,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
-		resolveToJavaExports:   types.NewLateInit[bool](false),
+		resolveToJavaExports:   types.NewLateInit[bool](true),
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,

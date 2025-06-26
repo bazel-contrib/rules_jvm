@@ -167,6 +167,9 @@ func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
 	}, nil
 }
 
+// LateInit represents a value that can be initialized exactly once.
+// It can still be accessed before it's initialized, but once initialized its value cannot change.
+// Useful for configuration that "will be initialized at some point, but we're not sure when".
 type LateInit[T any] struct {
 	value       T
 	initialized bool
