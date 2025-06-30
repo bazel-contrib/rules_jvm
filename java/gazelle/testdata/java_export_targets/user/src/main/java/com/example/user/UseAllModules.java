@@ -10,6 +10,7 @@ import com.example.export_depending_on_different_package.export.DependOnLib;
 import com.example.other_deps.runtime.RuntimeDep;
 import com.example.other_deps.plain_deps.PlainDep;
 import com.example.other_deps.third_party.ThirdPartyDeps;
+import com.example.shared_dep.Dependent;
 
 public class UseAllModules {
   public static void main(String[] args) {
@@ -23,5 +24,6 @@ public class UseAllModules {
     System.out.println(PlainDep.module());
     System.out.println(RuntimeDep.module());
     System.out.println(ThirdPartyDeps.module());
+    System.out.println(Dependent.module());
   }
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/rs/zerolog"
+	"sort"
 )
 
 // JavaExportResolveInfo captures metadata about a java_export rule.
@@ -104,15 +105,37 @@ func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *r
 // FinalizeIndex processes all the `java_exports` we've recorded when traversing the repository, to:
 // - Gather all the transitive dependencies by traversing the `ResolveInput`s of relevant targets.
 // - With that information, populate the map of `labelToJavaExport`.
+type exportConflict struct {
+	dep                 label.Label
+	wantedToExportFrom  label.Label
+	alreadyExportedFrom label.Label
+}
+
 func (jei *JavaExportIndex) FinalizeIndex() {
+
+	exportConflicts := sorted_set.NewSortedSetFn[exportConflict]([]exportConflict{}, func(a, b exportConflict) bool {
+		return sorted_set.LabelLess(a.wantedToExportFrom, b.wantedToExportFrom)
+	})
+
 	for _, javaExport := range jei.javaExports {
-		jei.calculateImportsForJavaExport(javaExport)
+		jei.calculateImportsForJavaExport(javaExport, exportConflicts)
+	}
+
+	// We need to collect and sort the conflicts to get a deterministic ordering of output for tests.
+	for _, conflict := range exportConflicts.SortedSlice() {
+		conflictingExports := []string{conflict.wantedToExportFrom.String(), conflict.alreadyExportedFrom.String()}
+		sort.Strings(conflictingExports)
+
+		jei.logger.Error().
+			Str("dependency", conflict.dep.String()).
+			Strs("java_exports", conflictingExports).
+			Msg("Two `java_export` targets want to export the same dependency. This can lead to incorrect results, please disambiguate, e.g. by having export depend on other export explicitly.")
 	}
 
 	jei.readyForResolve = true
 }
 
-func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo) {
+func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo, conflicts *sorted_set.SortedSet[exportConflict]) {
 	var parseErrors []error
 	deps, errors := attrLabels("deps", javaExport.Rule, javaExport.Label)
 	parseErrors = append(parseErrors, errors...)
@@ -132,6 +155,20 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 	labelsToVisit = append(labelsToVisit, exports...)
 	labelsToVisit = append(labelsToVisit, runtimeDeps...)
 
+	for _, lbl := range labelsToVisit {
+		if jei.IsJavaExport(lbl) {
+			continue
+		}
+		exportingExport, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lbl)
+		if isExportedByAnotherJavaExport {
+			conflicts.Add(exportConflict{
+				dep:                 lbl,
+				wantedToExportFrom:  javaExport.Label,
+				alreadyExportedFrom: exportingExport.Label,
+			})
+		}
+	}
+
 	transitiveDeps := make(map[label.Label]bool)
 	for _, depLabel := range labelsToVisit {
 		transitiveDeps[depLabel] = true
@@ -142,6 +179,10 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 	for len(labelsToVisit) > 0 {
 		dep := labelsToVisit[0]
 		labelsToVisit = labelsToVisit[1:]
+
+		if jei.IsJavaExport(dep) {
+			continue
+		}
 
 		// Visit the dependency
 		jei.labelToJavaExport[dep] = javaExport.Label
@@ -158,8 +199,16 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 					Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")
 				continue
 			}
-			_, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lblToVisit)
+			if jei.IsJavaExport(lblToVisit) {
+				continue
+			}
+			exportingExport, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lblToVisit)
 			if isExportedByAnotherJavaExport {
+				conflicts.Add(exportConflict{
+					dep:                 lblToVisit,
+					wantedToExportFrom:  javaExport.Label,
+					alreadyExportedFrom: exportingExport.Label,
+				})
 				continue
 			}
 			if ok := transitiveDeps[lblToVisit]; !ok {

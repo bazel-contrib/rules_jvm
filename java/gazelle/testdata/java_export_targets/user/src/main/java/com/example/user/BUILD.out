@@ -13,6 +13,7 @@ java_library(
         "//other_deps/src/main/java/com/example/other_deps/plain_deps",
         "//other_deps/src/main/java/com/example/other_deps/runtime",
         "//other_deps/src/main/java/com/example/other_deps/third_party:third_party_export",
+        "//shared_dep/src/main/java/com/example/shared_dep",
     ],
 )
 
