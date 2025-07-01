@@ -1,12 +1,13 @@
 package java_export_index
 
 import (
+	"sort"
+
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/rs/zerolog"
-	"sort"
 )
 
 // JavaExportResolveInfo captures metadata about a java_export rule.
@@ -15,15 +16,43 @@ import (
 type JavaExportResolveInfo struct {
 	Rule               *rule.Rule
 	Label              label.Label
+	DirectDependencies map[label.Label]bool
 	InternalVisibility *sorted_set.SortedSet[label.Label]
 }
 
-func NewJavaExportResolveInfoFromRule(repoName string, r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
+func (jei *JavaExportIndex) NewJavaExportResolveInfoFromRule(repoName string, r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
 	lbl := label.New(repoName, file.Pkg, r.Name())
 	exportPackageVisibility := label.New("", file.Pkg, "__pkg__")
+
+	var parseErrors []error
+	deps, errors := attrLabels("deps", r, lbl)
+	parseErrors = append(parseErrors, errors...)
+	exports, errors := attrLabels("exports", r, lbl)
+	parseErrors = append(parseErrors, errors...)
+	runtimeDeps, errors := attrLabels("runtime_deps", r, lbl)
+	parseErrors = append(parseErrors, errors...)
+
+	if len(parseErrors) > 0 {
+		jei.logger.Error().
+			Errs("errors", errors).
+			Msgf("Errors parsing labels from fields of %s", lbl.String())
+	}
+
+	directDependencies := make(map[label.Label]bool, len(deps)+len(exports)+len(runtimeDeps))
+	for _, d := range deps {
+		directDependencies[d] = true
+	}
+	for _, d := range exports {
+		directDependencies[d] = true
+	}
+	for _, d := range runtimeDeps {
+		directDependencies[d] = true
+	}
+
 	return &JavaExportResolveInfo{
 		Rule:               r,
 		Label:              lbl,
+		DirectDependencies: directDependencies,
 		InternalVisibility: sorted_set.NewSortedSetFn([]label.Label{exportPackageVisibility}, sorted_set.LabelLess),
 	}
 }
@@ -99,7 +128,7 @@ func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *r
 			Str("label", lbl.String()).
 			Msg("java_export rule contained a non-empty `srcs` attribute, but it will be ignored during resolution. Instead, please use the `exports` or `runtime_deps` attributes and depend on the generated `java_library`")
 	}
-	jei.javaExports[lbl] = NewJavaExportResolveInfoFromRule(repoName, r, f)
+	jei.javaExports[lbl] = jei.NewJavaExportResolveInfoFromRule(repoName, r, f)
 }
 
 // FinalizeIndex processes all the `java_exports` we've recorded when traversing the repository, to:
@@ -117,8 +146,36 @@ func (jei *JavaExportIndex) FinalizeIndex() {
 		return sorted_set.LabelLess(a.wantedToExportFrom, b.wantedToExportFrom)
 	})
 
+	// To ensure that we properly capture which java_exports export dependencies,
+	// we want to process the java_exports in topological order, starting with the ones that don't depend on other java_exports.
+	// To ensure this order, we rely on the following property:
+	//   - If `java_export(X)` should transitively depend on `java_export(Y)`,
+	//   - then X will have more transitive dependencies than Y, because it has _at least_ the same dependencies as Y.
+	//
+	// Therefore, we sort the java_exports by lowest number of transitive dependencies before calculating their imports.
+
+	// Map to memoize the number of transitive dependencies for a given label.
+	transitiveDependencyCounts := make(map[label.Label]int)
+	// Map to memoize the translation from a label.Label's ResolveInputs to a set of its direct dependencies
+	labelsToDependencies := make(map[label.Label]map[label.Label]bool)
+
+	// We want the exports with the _lowest_ amount of transitive dependencies to be processed first,
+	// So that other java_exports that might depend on them can do so.
+	sortedJavaExports := sorted_set.NewSortedSetFn[*JavaExportResolveInfo]([]*JavaExportResolveInfo{}, func(a, b *JavaExportResolveInfo) bool {
+		if transitiveDependencyCounts[a.Label] < transitiveDependencyCounts[b.Label] {
+			return true
+		} else {
+			return sorted_set.LabelLess(a.Label, b.Label)
+		}
+	})
+
 	for _, javaExport := range jei.javaExports {
-		jei.calculateImportsForJavaExport(javaExport, exportConflicts)
+		jei.calculateTransitiveDependencies(javaExport.Label, transitiveDependencyCounts, labelsToDependencies)
+		sortedJavaExports.Add(javaExport)
+	}
+
+	for _, javaExport := range sortedJavaExports.SortedSlice() {
+		jei.calculateImportsForJavaExport(javaExport, exportConflicts, labelsToDependencies)
 	}
 
 	// We need to collect and sort the conflicts to get a deterministic ordering of output for tests.
@@ -135,25 +192,56 @@ func (jei *JavaExportIndex) FinalizeIndex() {
 	jei.readyForResolve = true
 }
 
-func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo, conflicts *sorted_set.SortedSet[exportConflict]) {
-	var parseErrors []error
-	deps, errors := attrLabels("deps", javaExport.Rule, javaExport.Label)
-	parseErrors = append(parseErrors, errors...)
-	exports, errors := attrLabels("exports", javaExport.Rule, javaExport.Label)
-	parseErrors = append(parseErrors, errors...)
-	runtimeDeps, errors := attrLabels("runtime_deps", javaExport.Rule, javaExport.Label)
-	parseErrors = append(parseErrors, errors...)
-
-	if len(parseErrors) > 0 {
-		jei.logger.Error().
-			Errs("errors", errors).
-			Msgf("Errors parsing labels from fields of %s", javaExport.Label.String())
+func (jei *JavaExportIndex) calculateTransitiveDependencies(lbl label.Label, transitiveDependencies map[label.Label]int, labelsToDependencies map[label.Label]map[label.Label]bool) int {
+	storedTransitiveDeps, depHasBeenVisited := transitiveDependencies[lbl]
+	if depHasBeenVisited {
+		return storedTransitiveDeps
 	}
 
-	labelsToVisit := make([]label.Label, len(deps))
-	_ = copy(labelsToVisit, deps)
-	labelsToVisit = append(labelsToVisit, exports...)
-	labelsToVisit = append(labelsToVisit, runtimeDeps...)
+	transitiveDepsForLabel := 0
+
+	var directDependencies map[label.Label]bool
+
+	if jei.IsJavaExport(lbl) {
+		export, _ := jei.javaExports[lbl]
+		directDependencies = export.DirectDependencies
+	} else {
+		if dependencies, depsAreMemoized := labelsToDependencies[lbl]; depsAreMemoized {
+			directDependencies = dependencies
+		} else {
+			directDependencies = make(map[label.Label]bool)
+
+			resolveInputForDep := jei.labelsToResolveInputs[lbl]
+			for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
+				lblToVisit, found := jei.packagesToLabelsDeclaringThem[importedPkg]
+				if !found || lblToVisit == label.NoLabel {
+					jei.logger.Debug().
+						Str("package", importedPkg.Name).
+						Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")
+					continue
+				}
+				directDependencies[lblToVisit] = true
+			}
+
+			labelsToDependencies[lbl] = directDependencies
+		}
+	}
+
+	for dep := range directDependencies {
+		transitiveDepsForLabel += jei.calculateTransitiveDependencies(dep, transitiveDependencies, labelsToDependencies)
+		transitiveDepsForLabel += 1 // To account for the dep we're processing
+	}
+
+	transitiveDependencies[lbl] = transitiveDepsForLabel
+	return transitiveDepsForLabel
+}
+
+func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo, conflicts *sorted_set.SortedSet[exportConflict], labelsToDependencies map[label.Label]map[label.Label]bool) {
+
+	labelsToVisit := make([]label.Label, 0, len(javaExport.DirectDependencies))
+	for dep, _ := range javaExport.DirectDependencies {
+		labelsToVisit = append(labelsToVisit, dep)
+	}
 
 	for _, lbl := range labelsToVisit {
 		if jei.IsJavaExport(lbl) {
@@ -190,25 +278,12 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 		javaExport.InternalVisibility.Add(visibilityLbl)
 
 		// Queue every transitive dependency to be visited
-		resolveInputForDep := jei.labelsToResolveInputs[dep]
-		for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
-			lblToVisit, found := jei.packagesToLabelsDeclaringThem[importedPkg]
-			if !found || lblToVisit == label.NoLabel {
-				jei.logger.Debug().
-					Str("package", importedPkg.Name).
-					Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")
-				continue
-			}
+		for lblToVisit := range labelsToDependencies[dep] {
 			if jei.IsJavaExport(lblToVisit) {
 				continue
 			}
-			exportingExport, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lblToVisit)
+			_, isExportedByAnotherJavaExport := jei.isExportedByJavaExport(lblToVisit)
 			if isExportedByAnotherJavaExport {
-				conflicts.Add(exportConflict{
-					dep:                 lblToVisit,
-					wantedToExportFrom:  javaExport.Label,
-					alreadyExportedFrom: exportingExport.Label,
-				})
 				continue
 			}
 			if ok := transitiveDeps[lblToVisit]; !ok {
