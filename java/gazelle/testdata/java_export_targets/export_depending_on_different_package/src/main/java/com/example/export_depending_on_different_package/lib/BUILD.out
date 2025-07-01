@@ -1,0 +1,10 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "lib",
+    srcs = ["Lib.java"],
+    visibility = [
+        "//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/export:__pkg__",
+        "//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/lib:__pkg__",
+    ],
+)

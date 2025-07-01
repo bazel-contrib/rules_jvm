@@ -1,0 +1,15 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "child_export_export",
+    maven_coordinates = "com.example:nested-child:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":child_export"],
+)
+
+java_library(
+    name = "child_export",
+    srcs = ["ChildExport.java"],
+    visibility = ["//nested/src/main/java/com/example/nested/child_export:__pkg__"],
+)

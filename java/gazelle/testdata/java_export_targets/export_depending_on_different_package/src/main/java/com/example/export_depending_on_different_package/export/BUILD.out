@@ -1,0 +1,19 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "export_export",
+    maven_coordinates = "com.example:export_different_package:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":export"],
+)
+
+java_library(
+    name = "export",
+    srcs = ["DependOnLib.java"],
+    visibility = [
+        "//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/export:__pkg__",
+        "//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/lib:__pkg__",
+    ],
+    deps = ["//export_depending_on_different_package/src/main/java/com/example/export_depending_on_different_package/lib"],
+)
