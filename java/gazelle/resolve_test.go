@@ -26,20 +26,20 @@ import (
 
 func TestImports(t *testing.T) {
 	type buildFile struct {
-		rel, content string;
+		rel, content string
 	}
 
 	type wantImport struct {
-		importSpec resolve.ImportSpec;
-		labelName  string;
+		importSpec resolve.ImportSpec
+		labelName  string
 	}
 
 	type testCase struct {
-		old buildFile
+		old  buildFile
 		want []wantImport
 	}
 
-	for name, tc := range map[string]testCase {
+	for name, tc := range map[string]testCase{
 		"java": {
 			old: buildFile{
 				rel: "",
@@ -53,10 +53,10 @@ java_library(
 )`,
 			},
 			want: []wantImport{
-				wantImport {
+				wantImport{
 					importSpec: resolve.ImportSpec{
 						Lang: "java",
-						Imp: "com.example",
+						Imp:  "com.example",
 					},
 					labelName: "hello",
 				},
@@ -77,27 +77,27 @@ kt_jvm_library(
 )`,
 			},
 			want: []wantImport{
-				wantImport {
+				wantImport{
 					importSpec: resolve.ImportSpec{
 						Lang: "java",
-						Imp: "com.example",
+						Imp:  "com.example",
 					},
 					labelName: "hello",
 				},
 			},
 		},
 	} {
-	    t.Run(name, func(t *testing.T) {
-	    	c, langs, confs := testConfig(t)
+		t.Run(name, func(t *testing.T) {
+			c, langs, confs := testConfig(t)
 
-	    	mrslv, exts := InitTestResolversAndExtensions(langs)
-	    	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+			mrslv, exts := InitTestResolversAndExtensions(langs)
+			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 
-	    	buildPath := filepath.Join(filepath.FromSlash(tc.old.rel), "BUILD.bazel")
-	    	f, err := rule.LoadData(buildPath, tc.old.rel, []byte(tc.old.content))
-	    	if err != nil {
-	    		t.Fatal(err)
-	    	}
+			buildPath := filepath.Join(filepath.FromSlash(tc.old.rel), "BUILD.bazel")
+			f, err := rule.LoadData(buildPath, tc.old.rel, []byte(tc.old.content))
+			if err != nil {
+				t.Fatal(err)
+			}
 			for _, configurer := range confs {
 				// Update the config to handle gazelle directives in the BUILD file.
 				configurer.Configure(c, tc.old.rel, f)
@@ -110,7 +110,7 @@ kt_jvm_library(
 				ix.AddRule(c, r, f)
 				t.Logf("added rule %s", r.Name())
 			}
-	    	ix.Finish()
+			ix.Finish()
 
 			for _, want := range tc.want {
 				results := ix.FindRulesByImportWithConfig(c, want.importSpec, "java")
@@ -122,7 +122,7 @@ kt_jvm_library(
 					}
 				}
 			}
-	    })
+		})
 	}
 }
 

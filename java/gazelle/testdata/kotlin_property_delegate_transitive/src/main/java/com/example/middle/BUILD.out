@@ -1,0 +1,12 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "middle",
+    srcs = ["MiddleDelegate.kt"],
+    visibility = ["//:__subpackages__"],
+    exports = ["@maven//:com_google_guava_guava"],
+    deps = [
+        "//src/main/java/com/example/base",
+        "@maven//:com_google_guava_guava",
+    ],
+)

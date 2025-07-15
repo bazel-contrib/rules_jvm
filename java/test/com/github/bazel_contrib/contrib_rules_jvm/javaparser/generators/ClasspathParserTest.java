@@ -202,8 +202,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
-            new PerClassData(
-                treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
+            new PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
         parser.getParsedPackageData().perClassData);
   }
 
@@ -218,8 +217,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
-            new PerClassData(
-                treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
+            new PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
         parser.getParsedPackageData().perClassData);
   }
 
@@ -243,16 +241,13 @@ public class ClasspathParserTest {
     TreeMap<String, PerClassData> expected = new TreeMap<>();
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField",
-        new PerClassData(
-            new TreeSet<>(), new TreeMap<>(), expectedOuterClassFieldAnnotations));
+        new PerClassData(new TreeSet<>(), new TreeMap<>(), expectedOuterClassFieldAnnotations));
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField.InnerClass",
-        new PerClassData(
-            new TreeSet<>(), new TreeMap<>(), expectedInnerClassFieldAnnotations));
+        new PerClassData(new TreeSet<>(), new TreeMap<>(), expectedInnerClassFieldAnnotations));
     expected.put(
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField.InnerEnum",
-        new PerClassData(
-            new TreeSet<>(), new TreeMap<>(), expectedInnerEnumFieldAnnotations));
+        new PerClassData(new TreeSet<>(), new TreeMap<>(), expectedInnerEnumFieldAnnotations));
 
     assertEquals(expected, parser.getParsedPackageData().perClassData);
   }
@@ -271,8 +266,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImportOnMethod",
-            new PerClassData(
-                new TreeSet<>(), expectedPerMethodAnnotations, new TreeMap<>())),
+            new PerClassData(new TreeSet<>(), expectedPerMethodAnnotations, new TreeMap<>())),
         parser.getParsedPackageData().perClassData);
   }
 
@@ -289,8 +283,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
-            new PerClassData(
-                treeSet("Deprecated"), new TreeMap<>(), new TreeMap<>())),
+            new PerClassData(treeSet("Deprecated"), new TreeMap<>(), new TreeMap<>())),
         parser.getParsedPackageData().perClassData);
   }
 
@@ -307,8 +300,7 @@ public class ClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
-            new PerClassData(
-                treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
+            new PerClassData(treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
         parser.getParsedPackageData().perClassData);
   }
 

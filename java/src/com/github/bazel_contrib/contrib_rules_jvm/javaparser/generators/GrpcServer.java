@@ -24,13 +24,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,14 +123,20 @@ public class GrpcServer {
 
       Path directory = workspace.resolve(request.getRel());
       // TODO: Make this tidier.
-      List<Path> kotlinFiles = files.stream().filter(file -> file.endsWith(".kt")).map(file -> directory.resolve(file)).collect(Collectors.toList());
-      List<String> javaFiles = files.stream().filter(file -> file.endsWith(".java")).collect(Collectors.toList());
+      List<Path> kotlinFiles =
+          files.stream()
+              .filter(file -> file.endsWith(".kt"))
+              .map(file -> directory.resolve(file))
+              .collect(Collectors.toList());
+      List<String> javaFiles =
+          files.stream().filter(file -> file.endsWith(".java")).collect(Collectors.toList());
 
       ParsedPackageData data = new ParsedPackageData();
       if (!kotlinFiles.isEmpty()) {
         try {
           KtParser parser = new KtParser();
-          data.merge(parser.parseClasses(kotlinFiles));
+          ParsedPackageData kotlinData = parser.parseClasses(kotlinFiles);
+          data.merge(kotlinData);
         } catch (Exception ex) {
           logger.error("Error parsing Kotlin files", ex);
           throw ex;
@@ -143,15 +148,19 @@ public class GrpcServer {
       if (!javaFiles.isEmpty()) {
         try {
           parser.parseClasses(directory, javaFiles);
-          data.merge(parser.getParsedPackageData());
+          ParsedPackageData javaData = parser.getParsedPackageData();
+          data.merge(javaData);
         } catch (IOException exception) {
           // If we fail to process a directory, which can happen with the module level processing
           // or can't parse any of the files, just return an empty response.
+          logger.debug("IOException occurred, returning empty package: {}", exception.getMessage());
           return Package.newBuilder().setName("").build();
         } catch (Exception ex) {
           logger.error("Error parsing Java files", ex);
           throw ex;
         }
+      } else {
+        logger.debug("No Java files to process, skipping Java parser");
       }
       Set<String> packages = data.packages;
       if (packages.size() > 1) {
@@ -168,19 +177,16 @@ public class GrpcServer {
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
       logger.debug("Got used types: {}", data.usedTypes);
       logger.debug(
-          "Got used packages without specific types: {}",
-          data.usedPackagesWithoutSpecificTypes);
+          "Got used packages without specific types: {}", data.usedPackagesWithoutSpecificTypes);
 
       Builder packageBuilder =
           Package.newBuilder()
               .setName(Iterables.getOnlyElement(packages))
               .addAllImportedClasses(data.usedTypes)
               .addAllExportedClasses(data.exportedTypes)
-              .addAllImportedPackagesWithoutSpecificClasses(
-                  data.usedPackagesWithoutSpecificTypes)
+              .addAllImportedPackagesWithoutSpecificClasses(data.usedPackagesWithoutSpecificTypes)
               .addAllMains(data.mainClasses);
-      for (Map.Entry<String, PerClassData> classEntry :
-          data.perClassData.entrySet()) {
+      for (Map.Entry<String, PerClassData> classEntry : data.perClassData.entrySet()) {
         PerClassMetadata.Builder perClassMetadata =
             PerClassMetadata.newBuilder()
                 .addAllAnnotationClassNames(classEntry.getValue().annotations);
@@ -202,6 +208,11 @@ public class GrpcServer {
         }
         packageBuilder.putPerClassMetadata(classEntry.getKey(), perClassMetadata.build());
       }
+
+      // Add implicit dependencies (from property delegates and future features)
+      logger.debug("Got implicit dependencies: {}", data.implicitDeps);
+      packageBuilder.addAllImplicitDeps(data.implicitDeps);
+
       return packageBuilder.build();
     }
   }

@@ -9,8 +9,6 @@ buildifier(
 # gazelle:java_maven_install_file contrib_rules_jvm_deps_install.json
 # gazelle:prefix github.com/bazel-contrib/rules_jvm
 
-# gazelle:repository go_repository name=org_golang_x_tools_go_vcs importpath=golang.org/x/tools/go/vcs
-
 # gazelle:resolve java com.beust.jcommander @contrib_rules_jvm_deps//:com_beust_jcommander
 # gazelle:resolve java com.beust.jcommander.converters @contrib_rules_jvm_deps//:com_beust_jcommander
 # gazelle:resolve java com.gazelle.java.javaparser.v0 //java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_java_library
@@ -26,6 +24,10 @@ buildifier(
 # gazelle:resolve java org.apache.commons.cli @contrib_rules_jvm_deps//:commons_cli_commons_cli
 # gazelle:resolve java org.junit.jupiter.api @maven//:org_junit_jupiter_junit_jupiter_api
 # gazelle:resolve java org.slf4j @contrib_rules_jvm_deps//:org_slf4j_slf4j_api
+# gazelle:resolve java org.jetbrains.kotlin.cli.jvm.compiler @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
+# gazelle:resolve java org.jetbrains.kotlin.config @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
+# gazelle:resolve java org.jetbrains.kotlin.name @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
+# gazelle:resolve java org.jetbrains.kotlin.psi @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
 
 gazelle(
     name = "gazelle",

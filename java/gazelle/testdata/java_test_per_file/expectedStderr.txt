@@ -1,0 +1,1 @@
+INFO GrpcServer - Set of classes in %WORKSPACEPATH%/src/test/java/com/example/somemodule has no package

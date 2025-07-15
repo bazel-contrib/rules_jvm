@@ -51,20 +51,7 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJavaLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
-		return nil
-	}
-
-	cfg := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
-	if cfg == nil {
-		jr.lang.logger.Fatal().Msg("failed retrieving package config")
-	}
-	isLibraryFn := isJavaLibrary
-	if cfg.KotlinEnabled() {
-		isLibraryFn = isJvmLibrary
-	}
-	if !isLibraryFn(r.Kind()) && r.Kind() != "java_test_suite" {
-		log.Trace().Str("kind", r.Kind()).Str("label", label.New("", f.Pkg, r.Name()).String()).Msg("return not JVM/Java library or test suite")
+	if !isJvmLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
 	}
 
@@ -128,8 +115,16 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
+	// Add implicit dependencies to exports (unified exports strategy)
+	allExportedPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	allExportedPackageNames.AddAll(resolveInput.ExportedPackageNames)
+	// Add implicit dependencies from all Kotlin language features (inline functions, extension functions, property delegates, etc.)
+	for _, implicitDep := range resolveInput.ImplicitDeps {
+		allExportedPackageNames.Add(implicitDep.PackageName())
+	}
+
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
-	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "exports", allExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
 }

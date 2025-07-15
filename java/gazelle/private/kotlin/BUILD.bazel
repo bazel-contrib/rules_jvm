@@ -4,9 +4,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "kotlin",
-    srcs = [
-        "kotlin.go",
-    ],
+    srcs = ["kotlin.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/kotlin",
     # Allow visibility for plugins that don't live in this repo
     visibility = ["//visibility:public"],
@@ -20,4 +18,5 @@ go_test(
     size = "small",
     srcs = ["kotlin_test.go"],
     embed = [":kotlin"],
+    deps = ["//java/gazelle/private/types"],
 )

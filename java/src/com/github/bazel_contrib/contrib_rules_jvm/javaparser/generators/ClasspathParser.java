@@ -35,11 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -58,7 +54,8 @@ public class ClasspathParser {
 
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-  private static final List<String> OPTIONS = List.of("--release=" + Runtime.version().feature());
+  private static final List<String> OPTIONS =
+      List.of("--release=" + Runtime.version().feature(), "-proc:none");
 
   public ClasspathParser() {
     // Doesn't need to do anything currently

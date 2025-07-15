@@ -2,27 +2,37 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 class ParsedPackageData {
   /** Packages defined. */
   final Set<String> packages = new TreeSet<>();
+
   /** The fully qualified name of types that are imported. */
   final Set<String> usedTypes = new TreeSet<>();
+
   /** The name of passages that are imported for wildcards or (in Kotlin) direct function access. */
   final Set<String> usedPackagesWithoutSpecificTypes = new TreeSet<>();
 
   /** The fully qualified names of types that should be exported by this build rule. */
   final Set<String> exportedTypes = new TreeSet<>();
+
   /** The short name (no package) of any classes that provide a public static main function. */
   final Set<String> mainClasses = new TreeSet<>();
 
   /**
-   * Maps from fully-qualified class-name to class-names of annotations on that class.
-   * Annotations will be fully-qualified where that's known, and not where not known.
+   * Maps from fully-qualified class-name to class-names of annotations on that class. Annotations
+   * will be fully-qualified where that's known, and not where not known.
    */
   final Map<String, PerClassData> perClassData = new TreeMap<>();
+
+  /**
+   * All implicit dependencies that should be added to exports attribute. This includes dependencies
+   * from inline functions, extension functions, property delegates, and any future Kotlin language
+   * features that create implicit cross-package dependencies.
+   */
+  final Set<String> implicitDeps = new TreeSet<>();
 
   ParsedPackageData() {}
 
@@ -40,5 +50,7 @@ class ParsedPackageData {
       }
       existing.merge(classData.getValue());
     }
+    // Merge implicit dependencies
+    implicitDeps.addAll(other.implicitDeps);
   }
 }

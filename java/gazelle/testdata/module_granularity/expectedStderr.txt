@@ -1,0 +1,1 @@
+INFO GrpcServer - Set of classes in %WORKSPACEPATH%/module1 has no package

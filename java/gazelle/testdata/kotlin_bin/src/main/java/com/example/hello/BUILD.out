@@ -1,8 +1,6 @@
 load("@rules_java//java:defs.bzl", "java_binary")
 load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
 
-# gazelle:jvm_kotlin_enabled true
-
 kt_jvm_library(
     name = "hello",
     srcs = ["Hello.kt"],

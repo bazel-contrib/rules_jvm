@@ -19,6 +19,11 @@ type Package struct {
 	TestPackage bool
 
 	PerClassMetadata map[string]PerClassMetadata
+
+	// All implicit dependencies that should be added to exports attribute.
+	// This includes dependencies from inline functions, extension functions, property delegates,
+	// and any future Kotlin language features that create implicit cross-package dependencies.
+	ImplicitDeps []types.ClassName
 }
 
 func (p *Package) AllAnnotations() *sorted_set.SortedSet[types.ClassName] {

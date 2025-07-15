@@ -1,7 +1,5 @@
 load("@rules_java//java:defs.bzl", "java_library")
 
-# gazelle:jvm_kotlin_enabled true
-
 java_library(
     name = "greeter",
     srcs = ["Greeter.java"],
