@@ -1,9 +1,26 @@
+load("@aspect_bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "servermanager",
-    srcs = ["servermanager.go"],
-    data = ["//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main"],
+    srcs = ["servermanager.go"] + select({
+        "//java/gazelle:embedded_server": [
+            "embedded.go",
+        ],
+        "//conditions:default": [
+            "insource-server.go",
+        ],
+    }),
+    data = select({
+        "//java/gazelle:embedded_server": [],
+        "//conditions:default": ["//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main"],
+    }),
+    embedsrcs = select({
+        "//java/gazelle:embedded_server": [
+            ":javaparser_deploy_jar",
+        ],
+        "//conditions:default": [],
+    }),
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager",
     visibility = ["//java/gazelle:__subpackages__"],
     deps = [
@@ -11,4 +28,10 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@rules_go//go/runfiles",
     ],
+)
+
+copy_file(
+    name = "javaparser_deploy_jar",
+    src = "//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main_deploy.jar",
+    out = "javaparser.jar",
 )
