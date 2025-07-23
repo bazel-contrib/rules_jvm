@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.NestedClassesTest$Second$Third$Fourth$Fifth" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-07-23T17:23:19" hostname="MacBook-Pro.local" time="0.001">
+  <properties/>
+  <testcase name="shouldBeExecuted()" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.NestedClassesTest$Second$Third$Fourth$Fifth" time="0.001"/>
+  <system-out><![CDATA[>>>> Executed test in NestedClassesTest$Second$Third$Fourth$Fifth
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

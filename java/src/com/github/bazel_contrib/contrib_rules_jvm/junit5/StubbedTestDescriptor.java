@@ -12,14 +12,20 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   private final UniqueId uniqueId;
   private final Type type;
+  private final Optional<TestDescriptor> parent;
 
   public StubbedTestDescriptor(UniqueId uniqueId) {
     this(uniqueId, Type.TEST);
   }
 
   public StubbedTestDescriptor(UniqueId uniqueId, Type type) {
+    this(uniqueId, type, null);
+  }
+
+  public StubbedTestDescriptor(UniqueId uniqueId, Type type, TestDescriptor parent) {
     this.uniqueId = uniqueId;
     this.type = type;
+    this.parent = Optional.ofNullable(parent);
   }
 
   @Override
@@ -44,12 +50,12 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   @Override
   public Optional<TestDescriptor> getParent() {
-    return Optional.empty();
+    return parent;
   }
 
   @Override
   public void setParent(TestDescriptor parent) {
-    // Do nothin
+    // Do nothing
   }
 
   @Override
