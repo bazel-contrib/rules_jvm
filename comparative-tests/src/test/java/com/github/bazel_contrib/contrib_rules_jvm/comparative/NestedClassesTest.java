@@ -1,6 +1,5 @@
-package com.github.bazel_contrib.contrib_rules_jvm.junit5;
+package com.github.bazel_contrib.contrib_rules_jvm.comparative;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +12,6 @@ public class NestedClassesTest {
   }
 
   @Nested
-  @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
   class Second {
     @Test
     public void shouldBeExecuted() {
@@ -21,7 +19,6 @@ public class NestedClassesTest {
     }
 
     @Nested
-    @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
     class Third {
       @Test
       public void shouldBeExecuted() {
@@ -29,7 +26,6 @@ public class NestedClassesTest {
       }
 
       @Nested
-      @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
       class Fourth {
         @Test
         public void shouldBeExecuted() {
@@ -37,7 +33,6 @@ public class NestedClassesTest {
         }
 
         @Nested
-        @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
         class Fifth {
           @Test
           public void shouldBeExecuted() {

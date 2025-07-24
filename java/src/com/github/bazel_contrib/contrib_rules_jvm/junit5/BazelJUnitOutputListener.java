@@ -12,7 +12,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -32,6 +33,13 @@ import org.junit.platform.launcher.TestPlan;
 public class BazelJUnitOutputListener implements TestExecutionListener, Closeable {
   public static final Logger LOG = Logger.getLogger(BazelJUnitOutputListener.class.getName());
   private final XMLStreamWriter xml;
+
+  // When grouping test cases in matchTestCasesToSuites_locked, we want to group by the
+  // closes parent that is a class or nested-class if there is one.
+  // This means using nested-class for @Nested test case and class for other test cases.
+  // See https://docs.junit.org/current/user-guide/#running-tests-discovery-selectors
+  // We ignore suites here to align with Bazel's XmlWriter for JUnitRunner.
+  private static final Set<String> SegmentClassTypes = Set.of("class", "nested-class");
 
   private final Object resultsLock = new Object();
   // Commented out to avoid adding a dependency to building the test runner.
@@ -102,53 +110,30 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
 
     // Find the containing test suites for the test cases.
     for (TestData testCase : testCases) {
-      TestData parent;
+      if (!testCase.getId().isTest()
+          || (!includeIncompleteTests && testCase.getDuration() == null)) {
+        // If this case is not a test or there is no duration and includeIncompleteTests is not set,
+        // skip this test case
+        continue;
+      }
 
-      // The number of segments in the test case Unique ID depends upon the nature of the test:
-      // 3 segments : Simple tests (engine, class, method)
-      // 4 segments : Parameterized Tests (engine, class, template, invocation)
-      // 5 segments : Suite running simple tests (suite-engine, suite, engine, class, method)
-      // 6 segments : Suite running parameterized test (suite-engine, suite, engine, class,
-      // template, invocation)
-      // In all cases we're looking for the "class" segment, pull the UniqueID and map that from the
-      // results
+      // Default to the current testCase parent id
+      Optional<TestData> parent = testCase.getId().getParentIdObject().map(results::get);
+
+      // Loop over the segments in reverse to find this test case's class parent. We utilize the
+      // closest parent that is either a class or nested class when nested classes are involved.
+      // If no parent exists that is a class, then we default to the current test case.
       List<UniqueId.Segment> segments = testCase.getId().getUniqueIdObject().getSegments();
+      for (int i = segments.size() - 2; i >= 0; i--) {
+        if (SegmentClassTypes.contains(segments.get(i).getType()) || !parent.isPresent()) {
+          break;
+        }
 
-      if (segments.size() == 2) {
-        parent = results.get(testCase.getId().getUniqueIdObject());
-      } else if (segments.size() == 3 || segments.size() == 5) {
-        // get class / test data up one level
-        parent =
-            testCase
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-      } else if (segments.size() == 4 || segments.size() == 6) {
-        // get class / test data up two levels
-        parent =
-            testCase
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-        parent =
-            parent
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-      } else {
-        // Something is missing from our understanding of test organization,
-        // Ask people to send us a report about what we broke here.
-        LOG.warning("Unexpected test organization for " + testCase.getId());
-        throw new IllegalStateException(
-            "Unexpected test organization for test Case: " + testCase.getId());
+        parent = parent.get().getId().getParentIdObject().map(results::get);
       }
-      knownSuites.computeIfAbsent(parent, id -> new ArrayList<>());
-      if (testCase.getId().isTest() && (includeIncompleteTests || testCase.getDuration() != null)) {
-        knownSuites.get(parent).add(testCase);
-      }
+
+      // If no class or nested-class segment was found, default to the current test case
+      knownSuites.computeIfAbsent(parent.orElse(testCase), id -> new ArrayList<>()).add(testCase);
     }
 
     return knownSuites;

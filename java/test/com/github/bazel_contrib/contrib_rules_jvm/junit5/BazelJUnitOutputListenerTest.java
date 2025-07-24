@@ -267,19 +267,24 @@ public class BazelJUnitOutputListenerTest {
       throws ParserConfigurationException, IOException, SAXException {
     TestIdentifier root =
         TestIdentifier.from(new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]")));
-    TestIdentifier suiteIdentifier =
-        TestIdentifier.from(
-            new StubbedTestDescriptor(
-                UniqueId.parse("[engine:mocked]/[class:ExampleTest]"),
-                TestDescriptor.Type.CONTAINER));
+    TestDescriptor suiteDescriptor =
+        new StubbedTestDescriptor(
+            UniqueId.parse("[engine:mocked]/[class:ExampleTest]"), TestDescriptor.Type.CONTAINER);
+    TestIdentifier suiteIdentifier = TestIdentifier.from(suiteDescriptor);
     TestData suite =
         new TestData(suiteIdentifier)
             .started()
             .mark(TestExecutionResult.failed(new RuntimeException("test suite error")));
     TestPlan testPlan = Mockito.mock(TestPlan.class);
 
-    TestIdentifier child1 = TestIdentifier.from(new StubbedTestDescriptor(createId("child1")));
-    TestIdentifier child2 = TestIdentifier.from(new StubbedTestDescriptor(createId("child2")));
+    TestIdentifier child1 =
+        TestIdentifier.from(
+            new StubbedTestDescriptor(
+                createId("child1"), TestDescriptor.Type.TEST, suiteDescriptor));
+    TestIdentifier child2 =
+        TestIdentifier.from(
+            new StubbedTestDescriptor(
+                createId("child2"), TestDescriptor.Type.TEST, suiteDescriptor));
 
     when(testPlan.getChildren(suite.getId())).thenReturn(Set.of(child1, child2));
     when(testPlan.getRoots()).thenReturn(Set.of(root));
@@ -289,6 +294,10 @@ public class BazelJUnitOutputListenerTest {
       listener.testPlanExecutionStarted(testPlan);
       listener.executionStarted(root);
       listener.executionStarted(suiteIdentifier);
+      listener.executionStarted(child1);
+      listener.executionStarted(child2);
+      listener.executionFinished(child1, TestExecutionResult.successful());
+      listener.executionFinished(child2, TestExecutionResult.successful());
       listener.executionFinished(
           suiteIdentifier, TestExecutionResult.failed(new RuntimeException("test suite error")));
       listener.executionFinished(root, TestExecutionResult.successful());
