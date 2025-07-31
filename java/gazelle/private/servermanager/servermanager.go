@@ -7,29 +7,38 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
 
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
-	"github.com/bazelbuild/rules_go/go/runfiles"
 	"google.golang.org/grpc"
 )
 
 type ServerManager struct {
 	workspace    string
 	javaLogLevel string
+	tmpdir       string
 
 	mu   sync.Mutex
 	conn *grpc.ClientConn
 }
 
-func New(workspace, javaLogLevel string) *ServerManager {
+type JavaparserLocator interface {
+	locateJavaparser(jvmFlags []string) (string, error)
+	startupFlags(jvmFlags []string) []string
+}
+
+func New(workspace, javaLogLevel string) (*ServerManager, error) {
+	dir, err := os.MkdirTemp(os.Getenv("TMPDIR"), "gazelle-javaparser")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tmpdir to start javaparser server: %w", err)
+	}
 	return &ServerManager{
 		workspace:    workspace,
 		javaLogLevel: javaLogLevel,
-	}
+		tmpdir:       dir,
+	}, nil
 }
 
 func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
@@ -39,26 +48,33 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	if m.conn != nil {
 		return m.conn, nil
 	}
-
 	logLevelFlag := fmt.Sprintf("-Dorg.slf4j.simpleLogger.defaultLogLevel=%s", m.javaLogLevel)
 
-	javaParserPath, err := locateJavaparser()
-	if err != nil {
-		return nil, fmt.Errorf("failed to find javaparser in runfiles: %w", err)
+	jvmFlags := []string{
+		logLevelFlag,
 	}
 
-	dir, err := os.MkdirTemp(os.Getenv("TMPDIR"), "gazelle-javaparser")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tmpdir to start javaparser server: %w", err)
-	}
-	portFilePath := filepath.Join(dir, "port")
+	portFilePath := filepath.Join(m.tmpdir, "port")
 
-	cmd := exec.Command(
+	javaParserPath, err := m.locateJavaparser(jvmFlags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find javaparser: %w", err)
+	}
+
+	commandArgs := []string{
 		javaParserPath,
-		"--jvm_flag="+logLevelFlag,
+	}
+	for _, arg := range m.startupFlags(jvmFlags) {
+		commandArgs = append(commandArgs, arg)
+	}
+	commandArgs = append(commandArgs,
 		"--server-port-file-path", portFilePath,
 		"--workspace", m.workspace,
-		"--idle-timeout", "30")
+		"--idle-timeout", "30",
+	)
+
+	cmd := exec.Command(commandArgs[0], commandArgs[1:]...)
+
 	// Send JavaParser stdout to stderr for two reasons:
 	//  1. We don't want to pollute our own stdout
 	//  2. Java does some output buffer sniffing where it will block its own progress until the
@@ -84,24 +100,6 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	m.conn = conn
 
 	return conn, nil
-}
-
-func locateJavaparser() (string, error) {
-	rf, err := runfiles.New()
-	if err != nil {
-		return "", fmt.Errorf("failed to init new style runfiles: %w", err)
-	}
-
-	// We want //java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main
-	javaparserPath := "contrib_rules_jvm/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/Main"
-	if runtime.GOOS == "windows" {
-		javaparserPath += ".exe"
-	}
-	loc, err := rf.Rlocation(javaparserPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to call RLocation: %w", err)
-	}
-	return loc, nil
 }
 
 func readPort(path string) (int32, error) {
