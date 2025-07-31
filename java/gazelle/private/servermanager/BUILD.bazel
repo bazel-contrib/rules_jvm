@@ -10,17 +10,17 @@ go_library(
         "//conditions:default": [
             "insource-server.go",
         ],
-    }),
+    }),  # keep
     data = select({
         "//java/gazelle:embedded_server": [],
         "//conditions:default": ["//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main"],
-    }),
+    }),  # keep
     embedsrcs = select({
         "//java/gazelle:embedded_server": [
             ":javaparser_deploy_jar",
         ],
         "//conditions:default": [],
-    }),
+    }),  # keep
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager",
     visibility = ["//java/gazelle:__subpackages__"],
     deps = [
