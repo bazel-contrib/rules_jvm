@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -24,8 +23,11 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.engine.support.descriptor.ClassSource;
+import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -33,13 +35,6 @@ import org.junit.platform.launcher.TestPlan;
 public class BazelJUnitOutputListener implements TestExecutionListener, Closeable {
   public static final Logger LOG = Logger.getLogger(BazelJUnitOutputListener.class.getName());
   private final XMLStreamWriter xml;
-
-  // When grouping test cases in matchTestCasesToSuites_locked, we want to group by the
-  // closes parent that is a class or nested-class if there is one.
-  // This means using nested-class for @Nested test case and class for other test cases.
-  // See https://docs.junit.org/current/user-guide/#running-tests-discovery-selectors
-  // We ignore suites here to align with Bazel's XmlWriter for JUnitRunner.
-  private static final Set<String> SegmentClassTypes = Set.of("class", "nested-class");
 
   private final Object resultsLock = new Object();
   // Commented out to avoid adding a dependency to building the test runner.
@@ -109,6 +104,11 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     Map<TestData, List<TestData>> knownSuites = new HashMap<>();
 
     // Find the containing test suites for the test cases.
+    // For each test case, we want to find the class parent of the test. We do this by getting the
+    // class information from the method source. We then loop over the parent objects until we find
+    // the parent with a class source that matches the class named within the method source. If no
+    // such match is found, we fall back tousing the parent object of the test. It should never
+    // happen, but if there is no parent object, we just use the test object.
     for (TestData testCase : testCases) {
       if (!testCase.getId().isTest()
           || (!includeIncompleteTests && testCase.getDuration() == null)) {
@@ -117,23 +117,41 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         continue;
       }
 
-      // Default to the current testCase parent id
-      Optional<TestData> parent = testCase.getId().getParentIdObject().map(results::get);
+      Optional<TestData> classParent = testCase.getId().getParentIdObject().map(results::get);
 
-      // Loop over the segments in reverse to find this test case's class parent. We utilize the
-      // closest parent that is either a class or nested class when nested classes are involved.
-      // If no parent exists that is a class, then we default to the current test case.
-      List<UniqueId.Segment> segments = testCase.getId().getUniqueIdObject().getSegments();
-      for (int i = segments.size() - 2; i >= 0; i--) {
-        if (SegmentClassTypes.contains(segments.get(i).getType()) || !parent.isPresent()) {
-          break;
+      // If the test has a method source, get its class information.
+      TestSource methodSource = testCase.getId().getSource().orElse(null);
+      if (methodSource instanceof MethodSource) {
+        String methodClassName = ((MethodSource) methodSource).getClassName();
+
+        // Loop over the segments until we find a parent object that has the matching class source
+        Optional<TestData> currentParent = classParent;
+        while (currentParent.isPresent()) {
+          boolean isMatchingClass =
+              currentParent
+                  .get()
+                  .getId()
+                  .getSource()
+                  .filter(classSource -> classSource instanceof ClassSource)
+                  .map(
+                      classSource ->
+                          methodClassName.equals(((ClassSource) classSource).getClassName()))
+                  .orElse(false);
+
+          if (isMatchingClass) {
+            // We found a match so update the class parent and break out early
+            classParent = currentParent;
+            break;
+          }
+
+          currentParent = currentParent.get().getId().getParentIdObject().map(results::get);
         }
-
-        parent = parent.get().getId().getParentIdObject().map(results::get);
       }
 
-      // If no class or nested-class segment was found, default to the current test case
-      knownSuites.computeIfAbsent(parent.orElse(testCase), id -> new ArrayList<>()).add(testCase);
+      // Fallback to using the testCase itself as the suite if it did not have any parent data
+      knownSuites
+          .computeIfAbsent(classParent.orElse(testCase), id -> new ArrayList<>())
+          .add(testCase);
     }
 
     return knownSuites;
