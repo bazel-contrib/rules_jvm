@@ -36,6 +36,9 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.engine.support.descriptor.ClassSource;
+import org.junit.platform.engine.support.descriptor.MethodSource;
+import org.junit.platform.engine.support.descriptor.PackageSource;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -269,7 +272,9 @@ public class BazelJUnitOutputListenerTest {
         TestIdentifier.from(new StubbedTestDescriptor(UniqueId.parse("[engine:mocked]")));
     TestDescriptor suiteDescriptor =
         new StubbedTestDescriptor(
-            UniqueId.parse("[engine:mocked]/[class:ExampleTest]"), TestDescriptor.Type.CONTAINER);
+            UniqueId.parse("[engine:mocked]/[class:ExampleTest]"),
+            TestDescriptor.Type.CONTAINER,
+            ClassSource.from("ExampleTest.class"));
     TestIdentifier suiteIdentifier = TestIdentifier.from(suiteDescriptor);
     TestData suite =
         new TestData(suiteIdentifier)
@@ -277,16 +282,34 @@ public class BazelJUnitOutputListenerTest {
             .mark(TestExecutionResult.failed(new RuntimeException("test suite error")));
     TestPlan testPlan = Mockito.mock(TestPlan.class);
 
-    TestIdentifier child1 =
+    TestIdentifier classChild =
         TestIdentifier.from(
             new StubbedTestDescriptor(
-                createId("child1"), TestDescriptor.Type.TEST, suiteDescriptor));
-    TestIdentifier child2 =
+                createId("classChild"),
+                TestDescriptor.Type.TEST,
+                ClassSource.from("ExampleTest"),
+                suiteDescriptor));
+    TestIdentifier methodChild =
         TestIdentifier.from(
             new StubbedTestDescriptor(
-                createId("child2"), TestDescriptor.Type.TEST, suiteDescriptor));
+                createId("methodChild"),
+                TestDescriptor.Type.TEST,
+                MethodSource.from("ExampleTest", "methodChild"),
+                suiteDescriptor));
+    TestIdentifier noSourceChild =
+        TestIdentifier.from(
+            new StubbedTestDescriptor(
+                createId("noSourceChild"), TestDescriptor.Type.TEST, null, suiteDescriptor));
+    TestIdentifier packageChild =
+        TestIdentifier.from(
+            new StubbedTestDescriptor(
+                createId("packageChild"),
+                TestDescriptor.Type.TEST,
+                PackageSource.from("package"),
+                suiteDescriptor));
 
-    when(testPlan.getChildren(suite.getId())).thenReturn(Set.of(child1, child2));
+    when(testPlan.getChildren(suite.getId()))
+        .thenReturn(Set.of(classChild, methodChild, noSourceChild, packageChild));
     when(testPlan.getRoots()).thenReturn(Set.of(root));
 
     Path xmlPath = tempDir.resolve("test.xml");
@@ -294,10 +317,14 @@ public class BazelJUnitOutputListenerTest {
       listener.testPlanExecutionStarted(testPlan);
       listener.executionStarted(root);
       listener.executionStarted(suiteIdentifier);
-      listener.executionStarted(child1);
-      listener.executionStarted(child2);
-      listener.executionFinished(child1, TestExecutionResult.successful());
-      listener.executionFinished(child2, TestExecutionResult.successful());
+      listener.executionStarted(classChild);
+      listener.executionFinished(classChild, TestExecutionResult.successful());
+      listener.executionStarted(methodChild);
+      listener.executionFinished(methodChild, TestExecutionResult.successful());
+      listener.executionStarted(noSourceChild);
+      listener.executionFinished(noSourceChild, TestExecutionResult.successful());
+      listener.executionStarted(packageChild);
+      listener.executionFinished(packageChild, TestExecutionResult.successful());
       listener.executionFinished(
           suiteIdentifier, TestExecutionResult.failed(new RuntimeException("test suite error")));
       listener.executionFinished(root, TestExecutionResult.successful());
@@ -310,11 +337,11 @@ public class BazelJUnitOutputListenerTest {
     NodeList testsuiteList = document.getDocumentElement().getElementsByTagName("testsuite");
     assertEquals(1, testsuiteList.getLength());
     Element testsuite = (Element) testsuiteList.item(0);
-    assertEquals("2", testsuite.getAttribute("tests"));
-    assertEquals("2", testsuite.getAttribute("failures"));
+    assertEquals("4", testsuite.getAttribute("tests"));
+    assertEquals("4", testsuite.getAttribute("failures"));
 
     NodeList testcaseList = testsuite.getElementsByTagName("testcase");
-    assertEquals(2, testcaseList.getLength());
+    assertEquals(4, testcaseList.getLength());
 
     for (int i = 0; i < testcaseList.getLength(); i++) {
       Element testcase = (Element) testcaseList.item(i);

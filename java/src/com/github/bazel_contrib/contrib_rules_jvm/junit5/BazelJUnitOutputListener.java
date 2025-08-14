@@ -23,11 +23,9 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.engine.TestExecutionResult;
-import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.engine.support.descriptor.ClassSource;
-import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -104,11 +102,9 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     Map<TestData, List<TestData>> knownSuites = new HashMap<>();
 
     // Find the containing test suites for the test cases.
-    // For each test case, we want to find the class parent of the test. We do this by getting the
-    // class information from the method source. We then loop over the parent objects until we find
-    // the parent with a class source that matches the class named within the method source. If no
-    // such match is found, we fall back tousing the parent object of the test. It should never
-    // happen, but if there is no parent object, we just use the test object.
+    // For each test case, we want to find the class container parent of the test. To do so, we loop
+    // over the parent identifiers until we find the parent that is a container and has a class
+    // source. If no such parent is found, we fall back to using the test case itself.
     for (TestData testCase : testCases) {
       if (!testCase.getId().isTest()
           || (!includeIncompleteTests && testCase.getDuration() == null)) {
@@ -117,41 +113,24 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
         continue;
       }
 
-      Optional<TestData> classParent = testCase.getId().getParentIdObject().map(results::get);
+      // Loop over the segments until we find a parent object that is a container and has a class
+      // source
+      Optional<TestData> parent = testCase.getId().getParentIdObject().map(results::get);
+      while (parent.isPresent()) {
+        TestIdentifier parentIdentifier = parent.get().getId();
 
-      // If the test has a method source, get its class information.
-      TestSource methodSource = testCase.getId().getSource().orElse(null);
-      if (methodSource instanceof MethodSource) {
-        String methodClassName = ((MethodSource) methodSource).getClassName();
-
-        // Loop over the segments until we find a parent object that has the matching class source
-        Optional<TestData> currentParent = classParent;
-        while (currentParent.isPresent()) {
-          boolean isMatchingClass =
-              currentParent
-                  .get()
-                  .getId()
-                  .getSource()
-                  .filter(classSource -> classSource instanceof ClassSource)
-                  .map(
-                      classSource ->
-                          methodClassName.equals(((ClassSource) classSource).getClassName()))
-                  .orElse(false);
-
-          if (isMatchingClass) {
-            // We found a match so update the class parent and break out early
-            classParent = currentParent;
-            break;
-          }
-
-          currentParent = currentParent.get().getId().getParentIdObject().map(results::get);
+        if (parentIdentifier.isContainer()
+            && parentIdentifier.getSource().filter(ClassSource.class::isInstance).isPresent()) {
+          // We found the class container parent, break out of the loop
+          break;
         }
+
+        parent = parentIdentifier.getParentIdObject().map(results::get);
       }
 
-      // Fallback to using the testCase itself as the suite if it did not have any parent data
-      knownSuites
-          .computeIfAbsent(classParent.orElse(testCase), id -> new ArrayList<>())
-          .add(testCase);
+      // Fallback to using the testCase itself as the suite if it did not have a class container
+      // parent
+      knownSuites.computeIfAbsent(parent.orElse(testCase), id -> new ArrayList<>()).add(testCase);
     }
 
     return knownSuites;
