@@ -89,49 +89,55 @@ slf4j_version = "1.7.32"
 
 spotbugs_version = "4.8.6"
 
+RULES_JVM_ARTIFACTS = [
+    "com.github.spotbugs:spotbugs-annotations:%s" % spotbugs_version,
+    "com.google.code.findbugs:jsr305:3.0.2",
+    "com.google.errorprone:error_prone_annotations:2.35.1",
+    "com.google.googlejavaformat:google-java-format:1.24.0",
+    "com.google.guava:guava:33.3.1-jre",
+    "commons-cli:commons-cli:1.9.0",
+    "io.grpc:grpc-api",
+    "io.grpc:grpc-core",
+    "io.grpc:grpc-netty",
+    "io.grpc:grpc-services",
+    "io.grpc:grpc-stub",
+
+    # These can be versioned independently of the versions in `repositories.bzl`
+    # so long as the version numbers are higher.
+    "org.junit.jupiter:junit-jupiter-engine",
+    "org.junit.jupiter:junit-jupiter-api",
+    "org.junit.platform:junit-platform-launcher",
+    "org.junit.platform:junit-platform-reporting",
+    "org.junit.vintage:junit-vintage-engine",
+
+    # Open Test Alliance for the JVM dep
+    "org.opentest4j:opentest4j:1.3.0",
+
+    # Checkstyle deps
+    "com.puppycrawl.tools:checkstyle:10.20.2",
+
+    # PMD deps
+    "net.sourceforge.pmd:pmd-dist:7.8.0",
+
+    # Spotbugs deps
+    "org.slf4j:slf4j-api:%s" % slf4j_version,
+    "org.slf4j:slf4j-jdk14:%s" % slf4j_version,
+
+    # Used by us at runtime
+    "org.slf4j:slf4j-simple:%s" % slf4j_version,
+
+    # We explicitly declare a protobuf runtime version
+    # so that it coincides with the one we use to generate the code.
+    "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
+]
+
 maven.install(
     name = "contrib_rules_jvm_deps",
-    artifacts = [
-        "com.github.spotbugs:spotbugs-annotations:%s" % spotbugs_version,
-        "com.google.code.findbugs:jsr305:3.0.2",
-        "com.google.errorprone:error_prone_annotations:2.35.1",
-        "com.google.googlejavaformat:google-java-format:1.24.0",
-        "com.google.guava:guava:33.3.1-jre",
-        "commons-cli:commons-cli:1.9.0",
-        "io.grpc:grpc-api",
-        "io.grpc:grpc-core",
-        "io.grpc:grpc-netty",
-        "io.grpc:grpc-services",
-        "io.grpc:grpc-stub",
-
-        # These can be versioned independently of the versions in `repositories.bzl`
-        # so long as the version numbers are higher.
-        "org.junit.jupiter:junit-jupiter-engine",
-        "org.junit.jupiter:junit-jupiter-api",
-        "org.junit.platform:junit-platform-launcher",
-        "org.junit.platform:junit-platform-reporting",
-        "org.junit.vintage:junit-vintage-engine",
-
-        # Open Test Alliance for the JVM dep
-        "org.opentest4j:opentest4j:1.3.0",
-
-        # Checkstyle deps
-        "com.puppycrawl.tools:checkstyle:10.20.2",
-
-        # PMD deps
-        "net.sourceforge.pmd:pmd-dist:7.8.0",
-
-        # Spotbugs deps
-        "org.slf4j:slf4j-api:%s" % slf4j_version,
-        "org.slf4j:slf4j-jdk14:%s" % slf4j_version,
-
-        # Used by us at runtime
-        "org.slf4j:slf4j-simple:%s" % slf4j_version,
-
-        # We explicitly declare a protobuf runtime version
-        # so that it coincides with the one we use to generate the code.
-        "com.google.protobuf:protobuf-java:{}".format(PROTOBUF_JAVA_VERSION),
-    ] + IO_GRPC_GRPC_JAVA_ARTIFACTS,
+    artifacts = RULES_JVM_ARTIFACTS + [
+        artifact
+        for artifact in IO_GRPC_GRPC_JAVA_ARTIFACTS
+        if artifact not in RULES_JVM_ARTIFACTS
+    ],
     boms = [
         "io.grpc:grpc-bom:1.68.2",
         "io.netty:netty-bom:4.1.87.Final",
