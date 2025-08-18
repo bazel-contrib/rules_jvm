@@ -22,7 +22,10 @@ type Runner struct {
 }
 
 func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) (*Runner, error) {
-	serverManager := servermanager.New(repoRoot, javaLogLevel)
+	serverManager, err := servermanager.New(repoRoot, javaLogLevel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create javaparser server manager: %v", err)
+	}
 
 	conn, err := serverManager.Connect()
 	if err != nil {
