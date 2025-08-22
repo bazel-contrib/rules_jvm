@@ -39,12 +39,7 @@ class TestCaseXmlRenderer {
     if (test.isDynamic()) {
       name = id.getDisplayName(); // [ordinal] name=value...
     } else {
-      // Massage the name
       name = id.getLegacyReportingName();
-      int index = name.indexOf('(');
-      if (index != -1) {
-        name = name.substring(0, index);
-      }
     }
 
     xml.writeStartElement("testcase");
