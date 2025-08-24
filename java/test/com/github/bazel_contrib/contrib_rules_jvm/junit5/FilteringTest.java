@@ -138,8 +138,7 @@ public class FilteringTest {
 
   @Test
   public void shouldIncludeATestMethodIfTheFilterIsJustTheClassName() {
-    PatternFilter filter =
-        new PatternFilter(JUnit5StyleTest.class.getName().replace("$", "\\$") + "#");
+    PatternFilter filter = new PatternFilter(JUnit5StyleTest.class.getName() + "#");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
@@ -156,8 +155,7 @@ public class FilteringTest {
 
   @Test
   public void shouldIncludeANestedTestMethodIfTheFilterIsJustTheNestedClassName() {
-    PatternFilter filter =
-        new PatternFilter(JUnit5StyleTest.NestedTest.class.getName().replace("$", "\\$") + "#");
+    PatternFilter filter = new PatternFilter(JUnit5StyleTest.NestedTest.class.getName() + "#");
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertFalse(testResult.included(), "method in enclosing class should not be matched");
@@ -177,9 +175,27 @@ public class FilteringTest {
     PatternFilter filter =
         new PatternFilter(
             String.join(
-                ",",
-                JUnit5StyleTest.class.getName().replace("$", "\\$"),
-                JUnit5StyleTest.NestedTest.class.getName().replace("$", "\\$")));
+                "|", JUnit5StyleTest.class.getName(), JUnit5StyleTest.NestedTest.class.getName()));
+
+    FilterResult testResult = filter.apply(testMethodTestDescriptor);
+    assertTrue(testResult.included());
+
+    FilterResult dynamicTestResult = filter.apply(testTemplateTestDescriptor);
+    assertTrue(dynamicTestResult.included());
+
+    FilterResult siblingTestResult = filter.apply(siblingTestMethodTestDescriptor);
+    assertTrue(siblingTestResult.included());
+
+    FilterResult nestedTestResult = filter.apply(nestedTestMethodTestDescriptor);
+    assertTrue(nestedTestResult.included());
+  }
+
+  @Test
+  public void shouldIncludeMultipleTestMethodsIfTheFilterComprisesMultipleClassNamesWithCommas() {
+    PatternFilter filter =
+        new PatternFilter(
+            String.join(
+                ",", JUnit5StyleTest.class.getName(), JUnit5StyleTest.NestedTest.class.getName()));
 
     FilterResult testResult = filter.apply(testMethodTestDescriptor);
     assertTrue(testResult.included());
