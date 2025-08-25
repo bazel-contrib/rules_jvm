@@ -46,11 +46,11 @@ public class PatternFilter implements PostDiscoveryFilter {
     // Find the first parent with a source and apply the filter to that.
     // This lets running individual tests in IDEs like IntelliJ work while also
     // running all tests without sources when the '.*' pattern is set.
+    String testDisplayName = object.getDisplayName();
     while (!object.getSource().isPresent()) {
       object = object.getParent().orElse(null);
       if (object == null) {
-        return FilterResult.excluded(
-            "Skipping a test without a source: " + object.getDisplayName());
+        return FilterResult.excluded("Skipping a test without a source: " + testDisplayName);
       }
     }
 
