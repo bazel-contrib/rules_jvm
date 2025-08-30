@@ -1,4 +1,5 @@
 load("@apple_rules_lint//lint:defs.bzl", "LinterInfo")
+load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load(":spotbugs_config.bzl", "SpotBugsInfo")
 
 """

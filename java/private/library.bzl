@@ -1,5 +1,8 @@
 load("@apple_rules_lint//lint:defs.bzl", "get_lint_config")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("@rules_java//java:java_binary.bzl", _java_binary = "java_binary")
+load("@rules_java//java:java_library.bzl", _java_library = "java_library")
+load("@rules_java//java:java_test.bzl", _java_test = "java_test")
 load("@rules_jvm_external//:defs.bzl", _java_export = "java_export")
 load("//java/private:checkstyle.bzl", "checkstyle_test")
 load("//java/private:pmd.bzl", "pmd_test")
@@ -57,17 +60,17 @@ def create_lint_tests(name, **kwargs):
 def java_binary(name, **kwargs):
     """Adds linting tests to Bazel's own `java_binary`"""
     create_lint_tests(name, **kwargs)
-    native.java_binary(name = name, **kwargs)
+    _java_binary(name = name, **kwargs)
 
 def java_library(name, **kwargs):
     """Adds linting tests to Bazel's own `java_library`"""
     create_lint_tests(name, **kwargs)
-    native.java_library(name = name, **kwargs)
+    _java_library(name = name, **kwargs)
 
 def java_test(name, **kwargs):
     """Adds linting tests to Bazel's own `java_test`"""
     create_lint_tests(name, **kwargs)
-    native.java_test(name = name, **kwargs)
+    _java_test(name = name, **kwargs)
 
 def java_export(name, maven_coordinates, pom_template = None, deploy_env = None, visibility = None, **kwargs):
     """Adds linting tests to `rules_jvm_external`'s `java_export`"""

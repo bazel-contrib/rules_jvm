@@ -1,3 +1,6 @@
+load("@rules_java//java:java_binary.bzl", "java_binary")
+load("@rules_java//java/common:java_info.bzl", "JavaInfo")
+
 def spotbugs_binary(
         name,
         main_class = "edu.umd.cs.findbugs.LaunchAppropriateUI",
@@ -33,8 +36,7 @@ def spotbugs_binary(
       runtime_deps: The deps required by spotbugs at runtime. May be omitted.
       srcs: If you're compiling your own `spotbugs` binary, the sources to use.
     """
-
-    native.java_binary(
+    java_binary(
         name = name,
         main_class = main_class,
         srcs = srcs,

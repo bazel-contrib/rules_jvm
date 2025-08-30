@@ -1,3 +1,6 @@
+load("@rules_java//java:java_binary.bzl", "java_binary")
+load("@rules_java//java/common:java_info.bzl", "JavaInfo")
+
 def checkstyle_binary(
         name,
         main_class = "com.puppycrawl.tools.checkstyle.Main",
@@ -32,8 +35,7 @@ def checkstyle_binary(
       runtime_deps: The deps required by checkstyle at runtime. May be omitted.
       srcs: If you're compiling your own `checkstyle` binary, the sources to use.
     """
-
-    native.java_binary(
+    java_binary(
         name = name,
         main_class = main_class,
         srcs = srcs,
