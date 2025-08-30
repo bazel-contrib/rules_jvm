@@ -88,6 +88,9 @@ bzl_library(
     name = "checkstyle_config",
     srcs = ["checkstyle_config.bzl"],
     visibility = ["//java:__subpackages__"],
+    deps = [
+        "@rules_java//java:rules",
+    ],
 )
 
 bzl_library(
@@ -106,10 +109,14 @@ bzl_library(
     name = "pmd_ruleset",
     srcs = ["pmd_ruleset.bzl"],
     visibility = ["//java:__subpackages__"],
+    deps = ["@rules_java//java:rules"],
 )
 
 bzl_library(
     name = "spotbugs_config",
     srcs = ["spotbugs_config.bzl"],
     visibility = ["//java:__subpackages__"],
+    deps = [
+        "@rules_java//java:rules",
+    ],
 )
