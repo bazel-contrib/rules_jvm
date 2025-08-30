@@ -1,6 +1,9 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@grpc-java//:java_grpc_library.bzl", "java_rpc_toolchain")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_java//java:defs.bzl", "java_library")
+load("//java/private:artifact.bzl", "artifact")
 
 # gazelle:exclude def.bzl
 
@@ -69,6 +72,26 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@org_golang_x_tools_go_vcs//:vcs",
     ],
+)
+
+java_library(
+    name = "java_grpc_library_deps__do_not_reference",
+    exports = [
+        "@grpc-java//api",
+        "@grpc-java//protobuf",
+        "@grpc-java//stub",
+        "@grpc-java//stub:javax_annotation",
+        artifact("com.google.code.findbugs:jsr305"),
+        artifact("com.google.guava:guava"),
+        artifact("com.google.protobuf:protobuf-java"),
+    ],
+)
+
+java_rpc_toolchain(
+    name = "java_grpc_library_toolchain",
+    plugin = "@grpc-java//compiler:grpc_java_plugin",
+    runtime = [":java_grpc_library_deps__do_not_reference"],
+    visibility = ["//visibility:public"],
 )
 
 bzl_library(
