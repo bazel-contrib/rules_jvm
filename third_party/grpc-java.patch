@@ -33,6 +33,26 @@ index 753f48507..43ba0cc35 100644
      ],
  )
  
+diff --git a/java_grpc_library.bzl b/java_grpc_library.bzl
+index 630ced383..7a1be1c51 100644
+--- a/java_grpc_library.bzl
++++ b/java_grpc_library.bzl
+@@ -78,6 +78,7 @@ def _path_ignoring_repository(f):
+         return f.path[f.path.find(f.owner.workspace_root) + len(f.owner.workspace_root) + 1:]
+ 
+ def _java_rpc_library_impl(ctx):
++    print("Greetings!")
+     if len(ctx.attr.srcs) != 1:
+         fail("Exactly one src value supported", "srcs")
+     if ctx.attr.srcs[0].label.package != ctx.label.package:
+@@ -96,6 +97,7 @@ def _java_rpc_library_impl(ctx):
+     args.add_joined("--descriptor_set_in", descriptor_set_in, join_with = ctx.configuration.host_path_separator)
+     args.add_all(srcs, map_each = _path_ignoring_repository)
+ 
++    print(args)
+     ctx.actions.run(
+         inputs = depset(srcs, transitive = [descriptor_set_in, toolchain.plugin.files]),
+         outputs = [srcjar],
 diff --git a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
 index dad794e8b..ee0cef45e 100644
 --- a/protobuf-lite/BUILD.bazel
@@ -99,4 +119,46 @@ index 572ea681e..a7a92630d 100644
      visibility = ["//visibility:public"],
 -    exports = [artifact("org.apache.tomcat:annotations-api")],
 +    exports = [artifact("org.apache.tomcat:annotations-api", repository_name = "contrib_rules_jvm_deps")],
+ )
+diff --git a/netty/BUILD.bazel b/netty/BUILD.bazel
+index 1234567..abcdefg 100644
+--- a/netty/BUILD.bazel
++++ b/netty/BUILD.bazel
+@@ -12,19 +12,19 @@ java_library(
+     deps = [
+         "//api",
+         "//core:internal",
+-        artifact("com.google.code.findbugs:jsr305"),
+-        artifact("com.google.errorprone:error_prone_annotations"),
+-        artifact("com.google.guava:guava"),
+-        artifact("io.netty:netty-buffer"),
+-        artifact("io.netty:netty-codec"),
+-        artifact("io.netty:netty-codec-http"),
+-        artifact("io.netty:netty-codec-http2"),
+-        artifact("io.netty:netty-codec-socks"),
+-        artifact("io.netty:netty-common"),
+-        artifact("io.netty:netty-handler"),
+-        artifact("io.netty:netty-handler-proxy"),
+-        artifact("io.netty:netty-resolver"),
+-        artifact("io.netty:netty-transport"),
+-        artifact("io.netty:netty-transport-native-unix-common"),
+-        artifact("io.perfmark:perfmark-api"),
+-        artifact("org.codehaus.mojo:animal-sniffer-annotations"),
++        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.errorprone:error_prone_annotations", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-buffer", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-codec", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-codec-http", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-codec-http2", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-codec-socks", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-common", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-handler", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-handler-proxy", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-resolver", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-transport", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.netty:netty-transport-native-unix-common", repository_name = "contrib_rules_jvm_deps"),
++        artifact("io.perfmark:perfmark-api", repository_name = "contrib_rules_jvm_deps"),
++        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
+     ],
  )

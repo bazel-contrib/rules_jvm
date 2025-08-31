@@ -154,10 +154,7 @@ maven.install(
         "org.junit:junit-bom:5.11.3",
     ],
     fail_if_repin_required = True,
-    generate_compat_repositories = True,
     lock_file = "//:contrib_rules_jvm_deps_install.json",
-    resolver = "maven",
-    strict_visibility = False,
 )
 
 # Spotbugs deps
@@ -172,17 +169,7 @@ maven.artifact(
     group = "com.github.spotbugs",
     version = spotbugs_version,
 )
-use_repo(
-    maven,
-    "com_google_api_grpc_proto_google_common_protos",
-    "com_google_code_findbugs_jsr305",
-    "com_google_errorprone_error_prone_annotations",
-    "com_google_guava_failureaccess",
-    "com_google_guava_guava",
-    "com_google_j2objc_j2objc_annotations",
-    "contrib_rules_jvm_deps",
-    "org_apache_tomcat_annotations_api",
-)
+use_repo(maven, "contrib_rules_jvm_deps")
 
 dev_maven = use_extension(
     "@rules_jvm_external//:extensions.bzl",
