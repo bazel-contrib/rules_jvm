@@ -4,10 +4,12 @@ load("@rules_jvm_external//:defs.bzl", "artifact")
 java_junit5_test(
     name = "ExampleTest",
     srcs = ["ExampleTest.java"],
+    jvm_flags = ["-javaagent:$(location @maven//:org_jmockit_jmockit)"],
     runtime_deps = [
         artifact("org.junit.jupiter:junit-jupiter-engine"),
     ],
     deps = [
+        artifact("org.jmockit:jmockit"),
         artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),

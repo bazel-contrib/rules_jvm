@@ -1,0 +1,10 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "export_two",
+    maven_coordinates = "com.example:shared_dep_two:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [
+        "//shared_dep/src/main/java/com/example/shared_dep/shared_dep",
+    ],
+)

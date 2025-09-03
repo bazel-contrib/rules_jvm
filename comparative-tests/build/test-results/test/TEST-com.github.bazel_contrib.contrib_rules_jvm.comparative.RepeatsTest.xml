@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.github.bazel_contrib.contrib_rules_jvm.comparative.RepeatsTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2025-08-01T22:06:05" hostname="MacBook-Pro.local" time="0.001">
+  <properties/>
+  <testcase name="repetition 1 of 3" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.RepeatsTest" time="0.0"/>
+  <testcase name="repetition 2 of 3" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.RepeatsTest" time="0.0"/>
+  <testcase name="repetition 3 of 3" classname="com.github.bazel_contrib.contrib_rules_jvm.comparative.RepeatsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,3 +1,5 @@
+load("@rules_java//java:java_binary.bzl", "java_binary")
+
 def pmd_binary(
         name,
         main_class = "net.sourceforge.pmd.cli.PmdCli",
@@ -32,8 +34,7 @@ def pmd_binary(
       runtime_deps: The deps required by PMD at runtime. May be omitted.
       srcs: If you're compiling your own PMD binary, the sources to use.
     """
-
-    native.java_binary(
+    java_binary(
         name = name,
         main_class = main_class,
         srcs = srcs,

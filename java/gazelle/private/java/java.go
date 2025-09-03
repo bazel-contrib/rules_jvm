@@ -6,7 +6,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 )
 
-// IsTestPackage tries to detect if the directory would contain test files of not.
+// IsTestPackage tries to detect if the directory would contain test files or not.
 // It assumes dir is a forward-slashed package name, not a possibly-back-slashed filepath.
 func IsTestPackage(pkg string) bool {
 	if strings.HasPrefix(pkg, "javatests/") {

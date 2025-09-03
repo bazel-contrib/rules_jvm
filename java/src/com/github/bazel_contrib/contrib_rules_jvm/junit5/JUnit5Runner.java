@@ -18,6 +18,9 @@ public class JUnit5Runner {
   private static final String JAVA17_SYSTEM_EXIT_TOGGLE =
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.Java17SystemExitToggle";
 
+  private static final Runtime.Version JAVA_12 = Runtime.Version.parse("12");
+  private static final Runtime.Version JAVA_24 = Runtime.Version.parse("24");
+
   public static void main(String[] args) {
     String testSuite = System.getProperty("bazel.test_suite");
 
@@ -51,15 +54,13 @@ public class JUnit5Runner {
   }
 
   private static SystemExitToggle getSystemExitToggle() {
-    // In Java 8 and lower, the first part of the version is a 1.
-    // In Java 9 and higher, the first part of the version is the feature version.
-    // Major versions of early Access builds have an "-ea" suffix.
-    int featureVersion = Integer.parseInt(System.getProperty("java.version").split("[.-]")[0]);
-    if (featureVersion == 1) {
-      featureVersion = 8;
-    }
+    Runtime.Version javaVersion = Runtime.version();
 
-    if (featureVersion < 12) {
+    // The `Version.compareTo` javadoc states it returns:
+    //
+    // "A negative integer, zero, or a positive integer if this Version is
+    // less than, equal to, or greater than the given Version"
+    if (JAVA_12.compareTo(javaVersion) > 0) {
       return new Java11SystemExitToggle();
     }
 
@@ -78,7 +79,18 @@ public class JUnit5Runner {
       // this would be a combination of `ReflectiveOperationException` and
       // `SecurityException`, but the latter is scheduled for removal so
       // relying on it seems like a Bad Idea.
-      System.err.println("Failed to load Java 17 system exit override: " + e.getMessage());
+
+      // In Java 24 the hook we need for the system exit toggle is gone. If
+      // we're running on a version of Java earlier than that, print a
+      // warning.
+      if (!(JAVA_24.compareTo(javaVersion) < 0)) {
+        System.err.println("Failed to load Java 17 system exit override: " + e.getMessage());
+      }
+
+      // Install a shutdown hook so people can track down what went wrong
+      // if a test calls `System.exit`
+      Thread shutdownHook = SystemExitDetectingShutdownHook.newShutdownHook(System.err);
+      Runtime.getRuntime().addShutdownHook(shutdownHook);
 
       // Fall through
     }

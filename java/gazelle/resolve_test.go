@@ -257,6 +257,7 @@ func InitTestResolversAndExtensions(langs []language.Language) (mapResolver, []i
 		// TODO There has to be a better way to make this generic.
 		if jLang, ok := lang.(*javaLang); ok {
 			jLang.mavenResolver = NewTestMavenResolver()
+			jLang.javaExportIndex.FinalizeIndex()
 		}
 
 		for kind := range lang.Kinds() {

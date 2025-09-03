@@ -1,0 +1,8 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "nested_export",
+    maven_coordinates = "com.example:nested:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":nested"],
+)

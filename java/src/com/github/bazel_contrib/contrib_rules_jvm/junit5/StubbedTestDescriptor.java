@@ -12,14 +12,27 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   private final UniqueId uniqueId;
   private final Type type;
+  private final Optional<TestSource> source;
+  private final Optional<TestDescriptor> parent;
 
   public StubbedTestDescriptor(UniqueId uniqueId) {
     this(uniqueId, Type.TEST);
   }
 
   public StubbedTestDescriptor(UniqueId uniqueId, Type type) {
+    this(uniqueId, type, null);
+  }
+
+  public StubbedTestDescriptor(UniqueId uniqueId, Type type, TestSource source) {
+    this(uniqueId, type, source, null);
+  }
+
+  public StubbedTestDescriptor(
+      UniqueId uniqueId, Type type, TestSource source, TestDescriptor parent) {
     this.uniqueId = uniqueId;
     this.type = type;
+    this.source = Optional.ofNullable(source);
+    this.parent = Optional.ofNullable(parent);
   }
 
   @Override
@@ -39,17 +52,17 @@ public class StubbedTestDescriptor implements TestDescriptor {
 
   @Override
   public Optional<TestSource> getSource() {
-    return Optional.empty();
+    return source;
   }
 
   @Override
   public Optional<TestDescriptor> getParent() {
-    return Optional.empty();
+    return parent;
   }
 
   @Override
   public void setParent(TestDescriptor parent) {
-    // Do nothin
+    // Do nothing
   }
 
   @Override

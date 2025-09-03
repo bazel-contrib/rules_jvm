@@ -1,0 +1,11 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+
+java_export(
+    name = "module2",
+    maven_coordinates = "com.example:module2:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [
+        # baz should be imported transitively
+        "//module2/src/main/java/com/example/module2/bar",
+    ],
+)

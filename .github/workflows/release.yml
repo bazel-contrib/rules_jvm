@@ -1,6 +1,5 @@
-# Cut a release whenever a new tag is pushed to the repo.
-# You should use an annotated tag, like `git tag -a v1.2.3`
-# and put the release notes into the commit message for the tag.
+# This action cuts a GitHub release whenever a new tag is pushed to the repo.
+# See CONTRIBUTING.md for a releasing guide.
 name: Release
 
 on:

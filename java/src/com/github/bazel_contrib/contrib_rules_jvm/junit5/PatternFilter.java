@@ -17,6 +17,10 @@ import org.junit.platform.launcher.PostDiscoveryFilter;
  * class name and the method name.
  */
 public class PatternFilter implements PostDiscoveryFilter {
+  // Kotlin allows methods to have string names. These can include (), {}, *, +, ?, ^, $, and |.
+  // We don't include | in the escape logic because IntelliJ will add it to the filter
+  // when running test classes that contain nested classes.
+  private static final Pattern SPECIAL_CHAR_PATTERN = Pattern.compile("[(){}*+?^$]");
 
   private final String rawPattern;
   private final Predicate<String> pattern;
@@ -38,8 +42,16 @@ public class PatternFilter implements PostDiscoveryFilter {
       return FilterResult.included("Including container: " + object.getDisplayName());
     }
 
-    if (!object.getSource().isPresent()) {
-      return FilterResult.excluded("Skipping a test without a source: " + object.getDisplayName());
+    // Special test frameworks like cucumber do not have sources for their tests.
+    // Find the first parent with a source and apply the filter to that.
+    // This lets running individual tests in IDEs like IntelliJ work while also
+    // running all tests without sources when the '.*' pattern is set.
+    String testDisplayName = object.getDisplayName();
+    while (!object.getSource().isPresent()) {
+      object = object.getParent().orElse(null);
+      if (object == null) {
+        return FilterResult.excluded("Skipping a test without a source: " + testDisplayName);
+      }
     }
 
     TestSource source = object.getSource().get();
@@ -92,8 +104,24 @@ public class PatternFilter implements PostDiscoveryFilter {
         .collect(Collectors.joining("|"));
   }
 
-  /** Appends '$' to patterns like "class#method" or "#method", unless already done. */
+  /**
+   * Escapes specific regex special characters and appends '$' to patterns like "class#method" or
+   * "#method" when needed
+   */
   private static String ensureExactMethodName(String pattern) {
-    return pattern.matches(".*#.*[^$]$") ? pattern + '$' : pattern;
+    boolean matchesEnd = pattern.endsWith("$");
+    if (matchesEnd) {
+      pattern = pattern.substring(0, pattern.length() - 1);
+    }
+
+    // Escape the special characters
+    pattern = SPECIAL_CHAR_PATTERN.matcher(pattern).replaceAll("\\\\$0");
+
+    // Add $ back if it was there originally or add it if needed
+    if (matchesEnd || pattern.matches(".*#.*[^$]$")) {
+      pattern = pattern + '$';
+    }
+
+    return pattern;
   }
 }
