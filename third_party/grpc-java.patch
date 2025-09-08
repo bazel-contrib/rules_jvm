@@ -33,26 +33,6 @@ index 753f48507..43ba0cc35 100644
      ],
  )
  
-diff --git a/java_grpc_library.bzl b/java_grpc_library.bzl
-index 630ced383..7a1be1c51 100644
---- a/java_grpc_library.bzl
-+++ b/java_grpc_library.bzl
-@@ -78,6 +78,7 @@ def _path_ignoring_repository(f):
-         return f.path[f.path.find(f.owner.workspace_root) + len(f.owner.workspace_root) + 1:]
- 
- def _java_rpc_library_impl(ctx):
-+    print("Greetings!")
-     if len(ctx.attr.srcs) != 1:
-         fail("Exactly one src value supported", "srcs")
-     if ctx.attr.srcs[0].label.package != ctx.label.package:
-@@ -96,6 +97,7 @@ def _java_rpc_library_impl(ctx):
-     args.add_joined("--descriptor_set_in", descriptor_set_in, join_with = ctx.configuration.host_path_separator)
-     args.add_all(srcs, map_each = _path_ignoring_repository)
- 
-+    print(args)
-     ctx.actions.run(
-         inputs = depset(srcs, transitive = [descriptor_set_in, toolchain.plugin.files]),
-         outputs = [srcjar],
 diff --git a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
 index dad794e8b..ee0cef45e 100644
 --- a/protobuf-lite/BUILD.bazel
