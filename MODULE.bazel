@@ -124,6 +124,7 @@ maven.install(
     ],
     fail_if_repin_required = True,
     lock_file = "//:contrib_rules_jvm_deps_install.json",
+    resolver = "maven",
 )
 
 # Spotbugs deps
