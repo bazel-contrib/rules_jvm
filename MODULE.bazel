@@ -19,7 +19,7 @@ bazel_dep(name = "protobuf", version = "29.1", repo_name = "com_google_protobuf"
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_go", version = "0.52.0")
 bazel_dep(name = "rules_java", version = "8.5.1")
-bazel_dep(name = "rules_jvm_external", version = "6.7")
+bazel_dep(name = "rules_jvm_external", version = "6.8")
 bazel_dep(name = "rules_proto", version = "7.0.2")
 bazel_dep(name = "aspect_bazel_lib", version = "1.42.3")
 
@@ -143,7 +143,6 @@ maven.install(
     fail_if_repin_required = True,
     generate_compat_repositories = True,
     lock_file = "//:contrib_rules_jvm_deps_install.json",
-    resolver = "maven",
     strict_visibility = False,
 )
 
