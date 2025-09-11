@@ -121,6 +121,11 @@ def create_jvm_test_suite(
         )
         tests.append(test_name)
 
+    if not tests:
+        # test_suite with tests=[] would create a suite containing ALL tests in current package
+        # which would be confusing
+        fail("create_jvm_test_suite tests list is empty, do test files follow test_suffixes pattern?")
+
     native.test_suite(
         name = name,
         tests = tests,
