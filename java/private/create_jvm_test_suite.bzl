@@ -122,7 +122,7 @@ def create_jvm_test_suite(
 
     for src in test_srcs:
         suffix = src.rfind(".")
-        test_name = src[:suffix]
+        test_name = "%s-%s" % (name, src[:suffix])
         test_class = get_class_name(package, src, package_prefixes)
 
         test_name = define_test(
