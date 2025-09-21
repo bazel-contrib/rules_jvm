@@ -178,6 +178,12 @@ var baseJavaLoads = []rule.LoadInfo{
 			"java_export",
 		},
 	},
+	{
+		Name: "@rules_pkg//pkg:mappings.bzl",
+		Symbols: []string{
+			"pkg_files",
+		},
+	},
 }
 
 func (l javaLang) Loads() []rule.LoadInfo {

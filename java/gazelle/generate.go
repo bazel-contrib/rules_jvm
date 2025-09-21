@@ -63,20 +63,44 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
 
+	// Check if this is a resources root directory (ends with /resources)
+	isResourcesRoot := strings.HasSuffix(args.Rel, "/resources")
+	// Check if we're in a subdirectory of a resources root
+	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
+
+	var javaPkg *java.Package
+
 	if len(javaFilenamesRelativeToPackage) == 0 {
-		if !isModule || !cfg.IsModuleRoot() {
+		// If no Java files, check if we should still process this directory
+		if isResourcesSubdir {
+			// Skip subdirectories of resources roots - they shouldn't generate BUILD files
 			return res
 		}
+		if !isResourcesRoot {
+			// Not a resources root directory, apply normal logic
+			if !isModule || !cfg.IsModuleRoot() {
+				return res
+			}
+		}
+		// For resources root directories, continue processing even without Java files
 	}
 
-	sort.Strings(javaFilenamesRelativeToPackage)
+	if len(javaFilenamesRelativeToPackage) == 0 && isResourcesRoot {
+		// Skip Java parsing for resources-only directories
+		javaPkg = &java.Package{
+			Name: types.NewPackageName(""),
+		}
+	} else {
+		sort.Strings(javaFilenamesRelativeToPackage)
 
-	javaPkg, err := l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
-		Rel:   args.Rel,
-		Files: javaFilenamesRelativeToPackage,
-	})
-	if err != nil {
-		log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
+		var err error
+		javaPkg, err = l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
+			Rel:   args.Rel,
+			Files: javaFilenamesRelativeToPackage,
+		})
+		if err != nil {
+			log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
+		}
 	}
 
 	// We exclude intra-package imports to avoid self-dependencies.
@@ -199,8 +223,103 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		javaLibraryKind = kindMap.KindName
 	}
 
-	if productionJavaFiles.Len() > 0 {
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
+	// Check if this is a resources root directory and generate a pkg_files target
+	if isResourcesRoot && len(javaFilenamesRelativeToPackage) == 0 {
+		// Collect resource files recursively from this directory and all subdirectories
+		var allResourceFiles []string
+
+		// Helper function to collect files from a directory
+		collectResourceFiles := func(files []string, dirPrefix string) []string {
+			var resourceFiles []string
+			for _, f := range files {
+				base := filepath.Base(f)
+				// Skip Java files, BUILD files, and common non-resource files
+				if base == "BUILD" || base == "BUILD.bazel" || // actual build files
+					base == "BUILD.in" || base == "BUILD.out" { // files from our tests
+					continue
+				}
+				// Include all other files as resources
+				if dirPrefix != "" {
+					resourceFiles = append(resourceFiles, filepath.Join(dirPrefix, f))
+				} else {
+					resourceFiles = append(resourceFiles, f)
+				}
+			}
+			return resourceFiles
+		}
+
+		// Collect files from the current directory
+		allResourceFiles = append(allResourceFiles, collectResourceFiles(args.RegularFiles, "")...)
+
+		// Collect files from subdirectories
+		for _, subdir := range args.Subdirs {
+			// Skip BUILD directories
+			if subdir == "BUILD" || subdir == "BUILD.bazel" {
+				continue
+			}
+			// Recursively collect from subdirectories
+			subdirFiles := collectResourceFilesRecursively(args, subdir)
+			allResourceFiles = append(allResourceFiles, subdirFiles...)
+		}
+
+		if len(allResourceFiles) > 0 {
+			// Sort the files for deterministic output
+			sort.Strings(allResourceFiles)
+
+			// Always generate a pkg_files target for resources
+			r := rule.NewRule("pkg_files", "resources")
+			r.SetAttr("srcs", allResourceFiles)
+
+			// Set strip_prefix if configured
+			stripPrefix := cfg.StripResourcesPrefix()
+			if stripPrefix != "" {
+				r.SetAttr("strip_prefix", stripPrefix)
+			}
+
+			res.Gen = append(res.Gen, r)
+			res.Imports = append(res.Imports, types.ResolveInput{})
+
+			// In package mode, also generate a java_library wrapper for the resources
+			if !isModule {
+				resourceLib := rule.NewRule(javaLibraryKind, "resources_lib")
+				resourceLib.SetAttr("resources", []string{":resources"})
+				resourceLib.SetAttr("visibility", []string{"//:__subpackages__"})
+				res.Gen = append(res.Gen, resourceLib)
+				res.Imports = append(res.Imports, types.ResolveInput{})
+			}
+		}
+	} else if productionJavaFiles.Len() > 0 {
+		// Generate a normal Java library
+		// Determine how to handle resources based on module vs package mode
+		var resourcesDirectRef string  // For module mode: direct reference to pkg_files
+		var resourcesRuntimeDep string // For package mode: runtime_dep on resources_lib
+
+		if cfg.SourcesetRoot() != "" {
+			// We have a sourceset root configured
+			// The sourceset root is the parent of both java and resources directories
+			// For example, if sourceset root is "src/sample", then:
+			// - Java files are in "src/sample/java/..."
+			// - Resources are in "src/sample/resources"
+
+			// Build the resources path from the sourceset root
+			resourcesPath := filepath.Join(cfg.SourcesetRoot(), "resources")
+
+			// Check if the resources directory actually exists
+			// We need to check relative to the repository root
+			fullResourcesPath := filepath.Join(args.Config.RepoRoot, resourcesPath)
+			if _, err := os.Stat(fullResourcesPath); err == nil {
+				// Resources directory exists, add the reference
+				if isModule {
+					// Module mode: reference pkg_files directly as resources
+					resourcesDirectRef = "//" + resourcesPath + ":resources"
+				} else {
+					// Package mode: reference resources_lib as runtime_deps
+					resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
+				}
+			}
+		}
+
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
 	}
 
 	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
@@ -236,7 +355,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
+			// Test helper libraries typically don't have resources
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
 		}
 	}
 
@@ -471,7 +591,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, packages, imports, exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports, exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
 	r := rule.NewRule(javaLibraryRuleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
@@ -480,8 +600,25 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	}
 	sort.Strings(srcs)
 
+	// Handle resources based on mode
+	if resourcesDirectRef != "" {
+		// Module mode: add resources directly to the library
+		r.SetAttr("resources", []string{resourcesDirectRef})
+	}
+
 	// This is so we would default ALL runtime_deps to "keep" mode
 	runtimeDeps := l.collectRuntimeDeps(javaLibraryRuleKind, name, file)
+
+	// Package mode: add resources_lib as runtime_deps
+	if resourcesRuntimeDep != "" {
+		parsedLabel, err := label.Parse(resourcesRuntimeDep)
+		if err != nil {
+			l.logger.Error().Err(err).Str("label", resourcesRuntimeDep).Msg("Failed to parse resources runtime dep label")
+		} else {
+			runtimeDeps.Add(parsedLabel)
+		}
+	}
+
 	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
@@ -662,6 +799,46 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
+}
+
+// collectResourceFilesRecursively walks through subdirectories and collects resource files
+func collectResourceFilesRecursively(args language.GenerateArgs, subdirPath string) []string {
+	var resourceFiles []string
+
+	// Read the subdirectory using os.ReadDir
+	fullPath := filepath.Join(args.Dir, subdirPath)
+	entries, err := os.ReadDir(fullPath)
+	if err != nil {
+		// If we can't read the directory, skip it
+		return resourceFiles
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// Skip BUILD files and other non-resource files
+		if name == "BUILD" || name == "BUILD.bazel" ||
+			name == "BUILD.in" || name == "BUILD.out" {
+			continue
+		}
+
+		entryPath := filepath.Join(subdirPath, name)
+
+		if entry.IsDir() {
+			// Recursively collect from subdirectories
+			subFiles := collectResourceFilesRecursively(args, entryPath)
+			resourceFiles = append(resourceFiles, subFiles...)
+		} else {
+			// Check if this is a resource file
+			ext := filepath.Ext(name)
+			if ext != ".java" && ext != ".md" {
+				// This is a resource file
+				resourceFiles = append(resourceFiles, entryPath)
+			}
+		}
+	}
+
+	return resourceFiles
 }
 
 func filterStrSlice(elts []string, f func(string) bool) []string {

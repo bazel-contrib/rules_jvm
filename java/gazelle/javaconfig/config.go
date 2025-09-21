@@ -60,6 +60,16 @@ const (
 	// Can be either "true" or "false". Defaults to "true".
 	// Inherited by children packages, can only be set at the root of the repository.
 	JavaResolveToJavaExports = "java_resolve_to_java_exports"
+
+	// JavaSourcesetRoot explicitly marks a directory as the root of a sourceset.
+	// This provides a clear override to the auto-detection algorithm.
+	// Example: # gazelle:java_sourceset_root my/custom/src
+	JavaSourcesetRoot = "java_sourceset_root"
+
+	// JavaStripResourcesPrefix overrides the path-stripping behavior for resources.
+	// This is a direct way to specify the resource_strip_prefix for all resources in a directory.
+	// Example: # gazelle:java_strip_resources_prefix my/data/config
+	JavaStripResourcesPrefix = "java_strip_resources_prefix"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -124,6 +134,8 @@ type Config struct {
 	annotationToWrapper                                map[string]string
 	mavenRepositoryName                                string
 	annotationProcessorFullQualifiedClassToPluginClass map[string]*sorted_set.SortedSet[types.ClassName]
+	sourcesetRoot                                      string
+	stripResourcesPrefix                               string
 }
 
 type LoadInfo struct {
@@ -148,6 +160,8 @@ func New(repoRoot string) *Config {
 		annotationToWrapper:    make(map[string]string),
 		mavenRepositoryName:    "maven",
 		annotationProcessorFullQualifiedClassToPluginClass: make(map[string]*sorted_set.SortedSet[types.ClassName]),
+		sourcesetRoot:        "",
+		stripResourcesPrefix: "",
 	}
 }
 
@@ -314,6 +328,22 @@ func (c *Config) CanSetResolveToJavaExports() bool {
 
 func (c *Config) SetResolveToJavaExports(resolve bool) {
 	c.resolveToJavaExports.Initialize(resolve)
+}
+
+func (c *Config) SourcesetRoot() string {
+	return c.sourcesetRoot
+}
+
+func (c *Config) SetSourcesetRoot(root string) {
+	c.sourcesetRoot = root
+}
+
+func (c *Config) StripResourcesPrefix() string {
+	return c.stripResourcesPrefix
+}
+
+func (c *Config) SetStripResourcesPrefix(prefix string) {
+	c.stripResourcesPrefix = prefix
 }
 
 func equalStringSlices(l, r []string) bool {
