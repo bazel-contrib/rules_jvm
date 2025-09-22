@@ -60,16 +60,16 @@ public class BazelJUnitOutputListenerTest {
   private TestDescriptor testDescriptor = new StubbedTestDescriptor(createId("descriptors"));
   private TestIdentifier identifier = TestIdentifier.from(testDescriptor);
 
-  /** This latch is used in TestAfterAllFails for testAfterAllFailuresAreReported */
-  private static final AtomicBoolean causeFailure = new AtomicBoolean(false);
+  /** This latch is used in TestAfterAllErrors for testAfterAllFailuresAreReported */
+  private static final AtomicBoolean causeError = new AtomicBoolean(false);
 
-  static final class TestAfterAllFails {
+  static final class TestAfterAllErrors {
 
     @SuppressFBWarnings(value = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION")
     @AfterAll
     static void afterAll() {
-      if (causeFailure.get()) {
-        throw new RuntimeException("I always fail.");
+      if (causeError.get()) {
+        throw new RuntimeException("I always error.");
       }
     }
 
@@ -79,11 +79,11 @@ public class BazelJUnitOutputListenerTest {
 
   @Test
   public void testAfterAllFailuresAreReported() throws IOException {
-    causeFailure.set(true);
+    causeError.set(true);
 
     // First let's do a sanity test that we have the expected failures for the @AfterAll
     EngineTestKit.engine("junit-jupiter")
-        .selectors(selectClass(TestAfterAllFails.class))
+        .selectors(selectClass(TestAfterAllErrors.class))
         .execute()
         .containerEvents()
         .assertStatistics(stats -> stats.skipped(0).started(2).succeeded(1).aborted(0).failed(1));
@@ -97,7 +97,7 @@ public class BazelJUnitOutputListenerTest {
     Launcher launcher = LauncherFactory.create(config);
 
     LauncherDiscoveryRequestBuilder request =
-        LauncherDiscoveryRequestBuilder.request().selectors(selectClass(TestAfterAllFails.class));
+        LauncherDiscoveryRequestBuilder.request().selectors(selectClass(TestAfterAllErrors.class));
 
     launcher.discover(request.build());
 
@@ -106,7 +106,7 @@ public class BazelJUnitOutputListenerTest {
 
     // now write an assertion to validate the XML file has an error
     String[] expectedStrings = {
-      "<failure message=\"I always fail.\" type=\"java.lang.RuntimeException\">", "failures=\"1\"",
+      "<error message=\"I always error.\" type=\"java.lang.RuntimeException\">", "errors=\"1\"",
     };
 
     // Useful for debugging the expected output
@@ -118,7 +118,7 @@ public class BazelJUnitOutputListenerTest {
           "Expected to find " + expected + " in " + xmlFile);
     }
 
-    causeFailure.set(false);
+    causeError.set(false);
   }
 
   @Test
@@ -338,14 +338,14 @@ public class BazelJUnitOutputListenerTest {
     assertEquals(1, testsuiteList.getLength());
     Element testsuite = (Element) testsuiteList.item(0);
     assertEquals("4", testsuite.getAttribute("tests"));
-    assertEquals("4", testsuite.getAttribute("failures"));
+    assertEquals("4", testsuite.getAttribute("errors"));
 
     NodeList testcaseList = testsuite.getElementsByTagName("testcase");
     assertEquals(4, testcaseList.getLength());
 
     for (int i = 0; i < testcaseList.getLength(); i++) {
       Element testcase = (Element) testcaseList.item(i);
-      assertNotNull(getChild("failure", testcase));
+      assertNotNull(getChild("error", testcase));
     }
   }
 
@@ -357,10 +357,10 @@ public class BazelJUnitOutputListenerTest {
     assertNotNull(root);
     assertEquals("testcase", root.getTagName());
 
-    var failures = root.getElementsByTagName("failure");
-    assertEquals(1, failures.getLength());
+    var errors = root.getElementsByTagName("error");
+    assertEquals(1, errors.getLength());
 
-    var message = failures.item(0).getAttributes().getNamedItem("message");
+    var message = errors.item(0).getAttributes().getNamedItem("message");
     assertNotNull(message);
     assertEquals("null", message.getTextContent());
   }
@@ -387,10 +387,10 @@ public class BazelJUnitOutputListenerTest {
     assertNotNull(root);
     assertEquals("testcase", root.getTagName());
 
-    var failures = root.getElementsByTagName("failure");
-    assertEquals(1, failures.getLength());
+    var errors = root.getElementsByTagName("error");
+    assertEquals(1, errors.getLength());
 
-    var message = failures.item(0).getAttributes().getNamedItem("message");
+    var message = errors.item(0).getAttributes().getNamedItem("message");
     assertNotNull(message);
     assertEquals(
         "legal:   |   |   | [ -\uD7FF] | [\uE000-�]"
