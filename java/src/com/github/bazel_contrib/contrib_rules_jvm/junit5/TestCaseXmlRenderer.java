@@ -1,6 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.escapeIllegalCharacters;
+import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeCData;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTextElement;
 
 import java.io.PrintWriter;
@@ -38,12 +39,7 @@ class TestCaseXmlRenderer {
     if (test.isDynamic()) {
       name = id.getDisplayName(); // [ordinal] name=value...
     } else {
-      // Massage the name
       name = id.getLegacyReportingName();
-      int index = name.indexOf('(');
-      if (index != -1) {
-        name = name.substring(0, index);
-      }
     }
 
     xml.writeStartElement("testcase");
@@ -102,6 +98,6 @@ class TestCaseXmlRenderer {
     StringWriter stringWriter = new StringWriter();
     throwable.printStackTrace(new PrintWriter(stringWriter));
 
-    xml.writeCData(escapeIllegalCharacters(stringWriter.toString()));
+    writeCData(xml, stringWriter.toString());
   }
 }

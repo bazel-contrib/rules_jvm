@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
+load(":gazelle_build_mode.bzl", "gazelle_embedded_javaparser")
 
 # It's important not to add any BUILD.bazel files in any subdirectory of this one. If you find tests failing which look like files are missing, it's likely a BUILD.bazel file has accidentally been added.
 
@@ -14,6 +15,11 @@ gazelle_binary(
         "//java/gazelle",
     ],
     visibility = ["//visibility:private"],
+)
+
+gazelle_embedded_javaparser(
+    name = "gazelle_embedded_javaparser",
+    gazelle_binary = ":gazelle",
 )
 
 # Each of these tests has the following structure:
@@ -44,10 +50,30 @@ SKIPPED_ON_WINDOWS = [
             "GAZELLE_JAVA_LOG_TIMESTAMP": "false",
         },
         gazelle_binary = ":gazelle",
-        gazelle_timeout_seconds = 30,
+        gazelle_timeout_seconds = 60,
         tags = ["skip-windows"] if file[0:-len("/WORKSPACE")] in SKIPPED_ON_WINDOWS else [],
         test_data = glob(
             include = [file[0:-len("/WORKSPACE")] + "/**"],
+        ),
+    )
+    for file in glob(["**/WORKSPACE"])
+]
+
+[
+    gazelle_generation_test(
+        name = file[0:-len("/WORKSPACE")] + "e",  # Windows path limits means that we need to keep these names short. Regrettably, "_embedded" is too long of a suffix, and so is "_e"
+        env = {
+            "GAZELLE_JAVA_LOG_CALLER": "false",
+            "GAZELLE_JAVA_LOG_FORMAT": "json",
+            "GAZELLE_JAVA_LOG_TIMESTAMP": "false",
+        },
+        gazelle_binary = ":gazelle_embedded_javaparser",
+        gazelle_timeout_seconds = 60,
+        tags = ["skip-windows"] if file[0:-len("/WORKSPACE")] in SKIPPED_ON_WINDOWS else [],
+        test_data = glob(
+            include = [
+                file[0:-len("/WORKSPACE")] + "/**",
+            ],
         ),
     )
     for file in glob(["**/WORKSPACE"])

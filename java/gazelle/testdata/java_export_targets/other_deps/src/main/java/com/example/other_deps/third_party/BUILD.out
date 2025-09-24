@@ -1,0 +1,16 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_export(
+    name = "third_party_export",
+    maven_coordinates = "com.example:third_party:0.1",
+    visibility = ["//:__subpackages__"],
+    exports = [":third_party"],
+)
+
+java_library(
+    name = "third_party",
+    srcs = ["ThirdPartyDeps.java"],
+    visibility = ["//other_deps/src/main/java/com/example/other_deps/third_party:__pkg__"],
+    deps = ["@maven//:com_google_guava_guava"],
+)

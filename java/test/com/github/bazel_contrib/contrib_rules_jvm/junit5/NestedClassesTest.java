@@ -19,6 +19,33 @@ public class NestedClassesTest {
     public void shouldBeExecuted() {
       System.out.println(">>>> Executed test in NestedClassesTest$Second");
     }
+
+    @Nested
+    @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
+    class Third {
+      @Test
+      public void shouldBeExecuted() {
+        System.out.println(">>>> Executed test in NestedClassesTest$Second$Third");
+      }
+
+      @Nested
+      @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
+      class Fourth {
+        @Test
+        public void shouldBeExecuted() {
+          System.out.println(">>>> Executed test in NestedClassesTest$Second$Third$Fourth");
+        }
+
+        @Nested
+        @SuppressFBWarnings("SIC_INNER_SHOULD_BE_STATIC")
+        class Fifth {
+          @Test
+          public void shouldBeExecuted() {
+            System.out.println(">>>> Executed test in NestedClassesTest$Second$Third$Fourth$Fifth");
+          }
+        }
+      }
+    }
   }
 
   @Test

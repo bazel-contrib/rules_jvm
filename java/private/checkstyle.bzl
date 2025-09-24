@@ -19,16 +19,16 @@ def _checkstyle_impl(ctx):
         "set +e",
         "OLDPWD=$PWD",
     ] + maybe_cd_config_dir + [
-        "$OLDPWD/{lib} -o checkstyle.xml -f xml -c {config} {srcs}".format(
+        "$OLDPWD/{lib} -o _checkstyle_raw.xml -f xml -c {config} {srcs}".format(
             lib = info.checkstyle.short_path,
             config = config.basename,
             srcs = " ".join(["$OLDPWD/" + f.short_path for f in ctx.files.srcs]),
         ),
         "checkstyle_exit_code=$?",
         # Apply sed to the file in place
-        "sed s:$OLDPWD/::g checkstyle.xml > checkstyle-stripped.xml",
+        "sed s:$OLDPWD/::g _checkstyle_raw.xml > _checkstyle_stripped.xml",
         # Run the Java XSLT transformation tool
-        "$OLDPWD/{xslt_transformer} checkstyle-stripped.xml $OLDPWD/{xslt} > $XML_OUTPUT_FILE".format(
+        "$OLDPWD/{xslt_transformer} _checkstyle_stripped.xml $OLDPWD/{xslt} > $XML_OUTPUT_FILE".format(
             xslt_transformer = ctx.executable._xslt_transformer.short_path,
             xslt = ctx.file.xslt.short_path,
         ),

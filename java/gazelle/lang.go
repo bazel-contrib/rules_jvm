@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java_export_index"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/logconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
@@ -30,6 +32,9 @@ type javaLang struct {
 	// javaPackageCache is used for module granularity support
 	// Key is the path to the java package from the Bazel workspace root.
 	javaPackageCache map[string]*java.Package
+
+	// javaExportIndex holds information about java_export targets and which symbols they make available.
+	javaExportIndex *java_export_index.JavaExportIndex
 
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
@@ -64,6 +69,7 @@ func NewLanguage() language.Language {
 		logger:           logger,
 		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
+		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
@@ -84,6 +90,7 @@ var kindWithRuntimeDeps = rule.KindInfo{
 	MergeableAttrs: map[string]bool{"srcs": true},
 	ResolveAttrs: map[string]bool{
 		"deps":         true,
+		"plugins":      true,
 		"runtime_deps": true,
 	},
 }
@@ -94,7 +101,8 @@ var kindWithoutRuntimeDeps = rule.KindInfo{
 	},
 	MergeableAttrs: map[string]bool{"srcs": true},
 	ResolveAttrs: map[string]bool{
-		"deps": true,
+		"deps":    true,
+		"plugins": true,
 	},
 }
 
@@ -108,6 +116,20 @@ var javaLibraryKind = rule.KindInfo{
 	ResolveAttrs: map[string]bool{
 		"deps":         true,
 		"exports":      true,
+		"plugins":      true,
+		"runtime_deps": true,
+	},
+}
+
+var javaExportKind = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps":         true,
+		"exports":      true,
+		"runtime_deps": true,
+	},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"exports":      true,
 		"runtime_deps": true,
 	},
 }
@@ -117,6 +139,7 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 		"java_binary":        kindWithRuntimeDeps,
 		"java_junit5_test":   kindWithRuntimeDeps,
 		"java_library":       javaLibraryKind,
+		"java_export":        javaExportKind,
 		"java_test":          kindWithRuntimeDeps,
 		"java_test_suite":    kindWithRuntimeDeps,
 		"java_proto_library": kindWithoutRuntimeDeps,
@@ -152,6 +175,7 @@ var baseJavaLoads = []rule.LoadInfo{
 		Symbols: []string{
 			"java_junit5_test",
 			"java_test_suite",
+			"java_export",
 		},
 	},
 }
@@ -183,10 +207,25 @@ func (l javaLang) Loads() []rule.LoadInfo {
 	return loads
 }
 
-func (l javaLang) Fix(c *config.Config, f *rule.File) {}
+func (l javaLang) Fix(c *config.Config, f *rule.File) {
+
+	// We can't put this code in `GenerateRule`, because it doesn't parse the BUILD file at that point,
+	// so we can't identify the `java_export`s already in the file.
+	// And we can't do it at `Imports()` time, because we need to hook into `DoneGeneratingRules`
+	// to know when to populate l.javaExportIndex.
+	packageConfig := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
+	if packageConfig != nil && packageConfig.ResolveToJavaExports() {
+		for _, r := range f.Rules {
+			if r.Kind() == "java_export" {
+				l.javaExportIndex.RecordJavaExport(c.RepoName, r, f)
+			}
+		}
+	}
+}
 
 func (l javaLang) DoneGeneratingRules() {
 	l.parser.ServerManager().Shutdown()
+	l.javaExportIndex.FinalizeIndex()
 }
 
 func (l javaLang) AfterResolvingDeps(_ context.Context) {

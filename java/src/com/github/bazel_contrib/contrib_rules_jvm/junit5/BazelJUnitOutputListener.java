@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -25,6 +25,7 @@ import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -101,54 +102,35 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
     Map<TestData, List<TestData>> knownSuites = new HashMap<>();
 
     // Find the containing test suites for the test cases.
+    // For each test case, we want to find the class container parent of the test. To do so, we loop
+    // over the parent identifiers until we find the parent that is a container and has a class
+    // source. If no such parent is found, we fall back to using the test case itself.
     for (TestData testCase : testCases) {
-      TestData parent;
-
-      // The number of segments in the test case Unique ID depends upon the nature of the test:
-      // 3 segments : Simple tests (engine, class, method)
-      // 4 segments : Parameterized Tests (engine, class, template, invocation)
-      // 5 segments : Suite running simple tests (suite-engine, suite, engine, class, method)
-      // 6 segments : Suite running parameterized test (suite-engine, suite, engine, class,
-      // template, invocation)
-      // In all cases we're looking for the "class" segment, pull the UniqueID and map that from the
-      // results
-      List<UniqueId.Segment> segments = testCase.getId().getUniqueIdObject().getSegments();
-
-      if (segments.size() == 2) {
-        parent = results.get(testCase.getId().getUniqueIdObject());
-      } else if (segments.size() == 3 || segments.size() == 5) {
-        // get class / test data up one level
-        parent =
-            testCase
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-      } else if (segments.size() == 4 || segments.size() == 6) {
-        // get class / test data up two levels
-        parent =
-            testCase
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-        parent =
-            parent
-                .getId()
-                .getParentIdObject()
-                .map(results::get)
-                .orElseThrow(NoSuchElementException::new);
-      } else {
-        // Something is missing from our understanding of test organization,
-        // Ask people to send us a report about what we broke here.
-        LOG.warning("Unexpected test organization for " + testCase.getId());
-        throw new IllegalStateException(
-            "Unexpected test organization for test Case: " + testCase.getId());
+      if (!testCase.getId().isTest()
+          || (!includeIncompleteTests && testCase.getDuration() == null)) {
+        // If this case is not a test or there is no duration and includeIncompleteTests is not set,
+        // skip this test case
+        continue;
       }
-      knownSuites.computeIfAbsent(parent, id -> new ArrayList<>());
-      if (testCase.getId().isTest() && (includeIncompleteTests || testCase.getDuration() != null)) {
-        knownSuites.get(parent).add(testCase);
+
+      // Loop over the segments until we find a parent object that is a container and has a class
+      // source
+      Optional<TestData> parent = testCase.getId().getParentIdObject().map(results::get);
+      while (parent.isPresent()) {
+        TestIdentifier parentIdentifier = parent.get().getId();
+
+        if (parentIdentifier.isContainer()
+            && parentIdentifier.getSource().filter(ClassSource.class::isInstance).isPresent()) {
+          // We found the class container parent, break out of the loop
+          break;
+        }
+
+        parent = parentIdentifier.getParentIdObject().map(results::get);
       }
+
+      // Fallback to using the testCase itself as the suite if it did not have a class container
+      // parent
+      knownSuites.computeIfAbsent(parent.orElse(testCase), id -> new ArrayList<>()).add(testCase);
     }
 
     return knownSuites;

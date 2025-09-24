@@ -1,3 +1,4 @@
+load("@bazel_skylib//lib:collections.bzl", "collections")
 load("//java/private:package.bzl", "get_class_name")
 
 def _is_test(src, test_suffixes, test_suffixes_excludes):
@@ -87,7 +88,7 @@ def create_jvm_test_suite(
             **library_attrs
         )
         if not _contains_label(deps or [], lib_dep_label):
-            deps.append(lib_dep_label)
+            deps = deps + [lib_dep_label]
 
     tests = []
 
@@ -111,6 +112,14 @@ def create_jvm_test_suite(
         **library_attrs
     )
 
+    # Get any deps referenced in make vars
+    make_var_fields = (kwargs.get("jvm_flags", []) +
+                       kwargs.get("javacopts", []) +
+                       kwargs.get("args", []) +
+                       kwargs.get("env", {}).values())
+    make_var_deps = collections.uniq([dep for dep in deps for flag in make_var_fields if dep in flag])
+    make_var_runtime_deps = collections.uniq([dep for dep in runtime_deps for flag in make_var_fields if dep in flag])
+
     for src in test_srcs:
         suffix = src.rfind(".")
         test_name = src[:suffix]
@@ -121,9 +130,9 @@ def create_jvm_test_suite(
             size = size,
             srcs = [src],
             test_class = test_class,
-            deps = [":" + deps_lib_name],
+            deps = [":" + deps_lib_name] + make_var_deps,
             tags = tags,
-            runtime_deps = [":" + runtime_deps_lib_name],
+            runtime_deps = [":" + runtime_deps_lib_name] + make_var_runtime_deps,
             visibility = ["//visibility:private"],
             **kwargs
         )

@@ -166,3 +166,34 @@ func ParseResolvableJavaPackage(s string) (*ResolvableJavaPackage, error) {
 		isTestSuite: isTestSuite,
 	}, nil
 }
+
+// LateInit represents a value that can be initialized exactly once.
+// It can still be accessed before it's initialized, but once initialized its value cannot change.
+// Useful for configuration that "will be initialized at some point, but we're not sure when".
+type LateInit[T any] struct {
+	value       T
+	initialized bool
+}
+
+func NewLateInit[T any](valueWhileUninitialized T) *LateInit[T] {
+	return &LateInit[T]{
+		value:       valueWhileUninitialized,
+		initialized: false,
+	}
+}
+
+func (lib *LateInit[T]) Initialize(value T) {
+	if lib.initialized {
+		panic("Trying to initialize a LateInit that's already initialized.")
+	}
+	lib.value = value
+	lib.initialized = true
+}
+
+func (lib *LateInit[T]) IsInitialized() bool {
+	return lib.initialized
+}
+
+func (lib *LateInit[T]) Value() T {
+	return lib.value
+}

@@ -1,5 +1,9 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@grpc-java//:java_grpc_library.bzl", "java_rpc_toolchain")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_java//java:defs.bzl", "java_library")
+load("//java/private:artifact.bzl", "artifact")
 
 # gazelle:exclude def.bzl
 
@@ -17,6 +21,7 @@ go_library(
     deps = [
         "//java/gazelle/javaconfig",
         "//java/gazelle/private/java",
+        "//java/gazelle/private/java_export_index",
         "//java/gazelle/private/javaparser",
         "//java/gazelle/private/logconfig",
         "//java/gazelle/private/maven",
@@ -69,6 +74,26 @@ go_test(
     ],
 )
 
+java_library(
+    name = "java_grpc_library_deps__do_not_reference",
+    exports = [
+        "@grpc-java//api",
+        "@grpc-java//protobuf",
+        "@grpc-java//stub",
+        "@grpc-java//stub:javax_annotation",
+        artifact("com.google.code.findbugs:jsr305"),
+        artifact("com.google.guava:guava"),
+        artifact("com.google.protobuf:protobuf-java"),
+    ],
+)
+
+java_rpc_toolchain(
+    name = "java_grpc_library_toolchain",
+    plugin = "@grpc-java//compiler:grpc_java_plugin",
+    runtime = [":java_grpc_library_deps__do_not_reference"],
+    visibility = ["//visibility:public"],
+)
+
 bzl_library(
     name = "repositories",
     visibility = ["//visibility:public"],
@@ -86,4 +111,17 @@ bzl_library(
         "//third_party/go:repositories",
         "@contrib_rules_jvm_deps//:defs",
     ],
+)
+
+bool_flag(
+    name = "embed_server",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "embedded_server",
+    flag_values = {
+        "//java/gazelle:embed_server": "True",
+    },
 )

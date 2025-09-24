@@ -3,6 +3,8 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
 
 import java.io.PrintWriter;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,10 +21,18 @@ public class CommandLineSummary implements TestExecutionListener {
   private final Map<TestIdentifier, Failure> failures =
       Collections.synchronizedMap(new LinkedHashMap<>());
   private TestPlan testPlan;
+  private Instant testPlanStart;
+  private Instant testPlanEnd;
 
   @Override
   public void testPlanExecutionStarted(TestPlan testPlan) {
     this.testPlan = Objects.requireNonNull(testPlan);
+    this.testPlanStart = Instant.now();
+  }
+
+  @Override
+  public void testPlanExecutionFinished(TestPlan testPlan) {
+    this.testPlanEnd = Instant.now();
   }
 
   @Override
@@ -51,6 +61,8 @@ public class CommandLineSummary implements TestExecutionListener {
 
       count++;
     }
+
+    writer.printf("Time: %.3f%n", Duration.between(testPlanStart, testPlanEnd).toMillis() / 1000.0);
   }
 
   private static void writeFilteredStackTrace(

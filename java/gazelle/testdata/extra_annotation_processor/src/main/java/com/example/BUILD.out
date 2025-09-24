@@ -1,0 +1,25 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+java_library(
+    name = "example",
+    srcs = [
+        "LogProcessor.java",
+        "Main.java",
+    ],
+    plugins = [
+        "@maven//:com_google_auto_value_auto_value__java_plugin__com_google_auto_value_processor_AutoValueProcessor",
+        "@maven//:org_apache_logging_log4j_log4j_core__java_plugin__org_apache_logging_log4j_core_config_plugins_processor_PluginProcessor",
+    ],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@maven//:com_google_auto_value_auto_value_annotations",
+        "@maven//:org_apache_logging_log4j_log4j_core",
+    ],
+)
+
+java_binary(
+    name = "Main",
+    main_class = "com.example.Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":example"],
+)

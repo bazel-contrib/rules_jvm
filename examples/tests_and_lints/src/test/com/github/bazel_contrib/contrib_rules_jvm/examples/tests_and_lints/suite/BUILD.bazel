@@ -1,0 +1,21 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+load("@rules_jvm_external//:defs.bzl", "artifact")
+
+java_test_suite(
+    name = "ExampleSuite",
+    srcs = glob(["*.java"]),
+    # Test that Make vars expand correctly
+    args = [artifact("org.jmockit:jmockit")],
+    env = {"JMOCKIT": artifact("org.jmockit:jmockit")},
+    jvm_flags = ["-javaagent:$(location @maven//:org_jmockit_jmockit)"],
+    runner = "junit5",
+    runtime_deps = [
+        artifact("org.junit.jupiter:junit-jupiter-engine"),
+    ],
+    deps = [
+        artifact("org.jmockit:jmockit"),
+        artifact("org.junit.jupiter:junit-jupiter-api"),
+        artifact("org.junit.platform:junit-platform-launcher"),
+        artifact("org.junit.platform:junit-platform-reporting"),
+    ],
+)

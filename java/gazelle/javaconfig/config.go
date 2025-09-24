@@ -53,6 +53,13 @@ const (
 	// JavaAnnotationProcessorPlugin tells the code generator about specific java_plugin targets needed to process
 	// specific annotations.
 	JavaAnnotationProcessorPlugin = "java_annotation_processor_plugin"
+
+	// JavaResolveToJavaExports tells the code generator to favour resolving dependencies to java_exports where possible.
+	// If enabled, generated libraries will try to depend on java_exports targets that export a given package, instead of the underlying library.
+	// This allows monorepos to closely match a traditional Gradle/Maven model where subprojects are published in jars.
+	// Can be either "true" or "false". Defaults to "true".
+	// Inherited by children packages, can only be set at the root of the repository.
+	JavaResolveToJavaExports = "java_resolve_to_java_exports"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -75,6 +82,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		resolveToJavaExports:   c.resolveToJavaExports,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
 		repoRoot:               c.repoRoot,
@@ -105,6 +113,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	resolveToJavaExports                               *types.LateInit[bool]
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
 	repoRoot                                           string
@@ -128,6 +137,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		resolveToJavaExports:   types.NewLateInit[bool](true),
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,
@@ -292,6 +302,18 @@ func (c *Config) AddAnnotationProcessorPlugin(annotationClass types.ClassName, p
 		c.annotationProcessorFullQualifiedClassToPluginClass[fullyQualifiedAnnotationClass] = sorted_set.NewSortedSetFn[types.ClassName](nil, types.ClassNameLess)
 	}
 	c.annotationProcessorFullQualifiedClassToPluginClass[fullyQualifiedAnnotationClass].Add(processorClass)
+}
+
+func (c *Config) ResolveToJavaExports() bool {
+	return c.resolveToJavaExports.Value()
+}
+
+func (c *Config) CanSetResolveToJavaExports() bool {
+	return !c.resolveToJavaExports.IsInitialized()
+}
+
+func (c *Config) SetResolveToJavaExports(resolve bool) {
+	c.resolveToJavaExports.Initialize(resolve)
 }
 
 func equalStringSlices(l, r []string) bool {

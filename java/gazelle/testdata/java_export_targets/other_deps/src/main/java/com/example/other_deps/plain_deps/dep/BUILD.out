@@ -1,0 +1,11 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "dep",
+    srcs = ["PlainDep.java"],
+    visibility = [
+        "//other_deps/src/main/java/com/example/other_deps/plain_deps:__pkg__",
+        "//other_deps/src/main/java/com/example/other_deps/plain_deps/dep:__pkg__",
+    ],
+)
+
