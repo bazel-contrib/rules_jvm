@@ -15,7 +15,6 @@ import java.util.Locale;
 import java.util.Set;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -85,7 +84,8 @@ class TestSuiteXmlRenderer {
     Set<String> reportedTests = new HashSet<>();
     for (TestData testCase : tests) {
       // apply duplicate check only for vintage test
-      if (!isVintageTest(testCase.getId()) || reportedTests.add(testCase.getId().getLegacyReportingName())) {
+      if (!isVintageTest(testCase.getId())
+          || reportedTests.add(testCase.getId().getLegacyReportingName())) {
         testRenderer.toXml(xml, testCase);
       }
     }
@@ -106,9 +106,9 @@ class TestSuiteXmlRenderer {
 
   private boolean isVintageTest(TestIdentifier testIdentifier) {
     return testIdentifier
-            .getParentIdObject()
-            .flatMap(UniqueId::getEngineId)
-            .filter("junit-vintage"::equals)
-            .isPresent();
+        .getParentIdObject()
+        .flatMap(UniqueId::getEngineId)
+        .filter("junit-vintage"::equals)
+        .isPresent();
   }
 }
