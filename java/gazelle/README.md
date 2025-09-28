@@ -1,7 +1,6 @@
 # Gazelle Java extension
 
-This provides an experimental [Gazelle][] extension to generate build files for
-Java projects.
+This provides a  [Gazelle][] extension to generate build files for Java projects.
 
 ## Usage
 In the `WORKSPACE` file set up the rules_jvm correctly:
@@ -91,6 +90,99 @@ If these assumptions are violated, the rest of the generation should still funct
 
 We are also aware of the following limitations. This list is not exhaustive, and is not intentional (i.e. if we can fix these limitations, we would like to):
 1. Runtime dependencies are not detected (e.g. loading classes by reflection).
+
+## Flags
+
+The Java plugin for Gazelle adds the following flags to the command line options for Gazelle:
+
++-----------------------------------------------+------------------------------------------------------------+
+| **Name**                                      | **Default value**                                          |
++===============================================+============================================================+
+| java-annotation-to-attribute                  | none                                                       |
++-----------------------------------------------+------------------------------------------------------------+
+| Mapping of annotations (on test classes) to attributes which should be set for that test rule              |
+| Examples: com.example.annotations.FlakyTest=flaky=True com.example.annotations.SlowTest=timeout=\"long\"") |
++-----------------------------------------------+------------------------------------------------------------+
+| java-annotation-to-wrapper                    | none                                                       |
++-----------------------------------------------+------------------------------------------------------------+
+| Mapping of annotations (on test classes) to wrapper rules which should be used around the test rule.       |
+| Example: com.example.annotations.RequiresNetwork=@some//wrapper:file.bzl=requires_network")                |
++-----------------------------------------------+------------------------------------------------------------+
+| java-maven-install-file                       | "maven_install.json"                                       |
++-----------------------------------------------+------------------------------------------------------------+
+| Path of the maven_install.json file.                                                                       |
++-----------------------------------------------+------------------------------------------------------------+
+
+
+## Directives
+
+Gazelle can be configured with directives, which are written as top-level comments in build files. Most options that can be set on the command line can also be set using directives. Some options can only be set with directives.
+
+Directives apply in the directory where they are set and in subdirectories. This means, for example, if you set # gazelle:prefix in the build file in your project's root directory, it affects your whole project. If you set it in a subdirectory, it only affects rules in that subtree.
+
+The following directives specific to the Java extension are recognized:
+
++---------------------------------------------------+------------------------------------------+
+| **Directive**                                     | **Default value**                        |
++===================================================+==========================================+
+| java_exclude_artifact                             | none                                     |
++---------------------------------------------------+------------------------------------------+
+| Tells the resolver to disregard a given maven artifact. Used to resovle duplicate artifacts  |
++---------------------------------------------------+------------------------------------------+
+| java_extension                                    | enabled                                  |
++---------------------------------------------------+------------------------------------------+
+| controls whethe this Java extension is enabled or not. Sub-packages inherit this value.      |
+| Can be either "enabled" or "disabled". Defaults to "enabled".                                |
++---------------------------------------------------+------------------------------------------+
+| java_maven_install_file                           | "maven_install.json"                     |
++---------------------------------------------------+------------------------------------------+
+| Controls where the maven_install.json file is located, and named.                            |
++---------------------------------------------------+------------------------------------------+
+| java_module_granularity                           | "package"                                |
++---------------------------------------------------+------------------------------------------+
+| Controls whether this Java module has a module granularity or a package granularity          |
+| Package granularity builds a `java_library` or `java_test_suite` for eash directory (bazel)  |
+| Module graularity builds a `java_library` or `java_test_suite` for a directory and all       |
+| subdirectories. This can be useful for resolving dependency loops in closely releated code   |
+| Can be either "package" or "module", defaults to "package".                                  |
++---------------------------------------------------+------------------------------------------+
+| java_test_file_suffixes                           | none                                     |
++---------------------------------------------------+------------------------------------------+
+| Indicates within a test directory which files are test classes vs utility classes, based on  |
+| their basename. It should be set up to match the value used for `java_test_suite`'s          |
+| `test_suffixes` attribute. Accepted values are a comma-delimited list of strings.            |
++---------------------------------------------------+------------------------------------------+
+| java_test_mode                                    | "suite"                                  |
++---------------------------------------------------+------------------------------------------+
+| Within a test directory determines the syle of test generation. Suite generates a single     |
+| `java_test_suite` for the whole directory. File generates one `java_test` rule for each test |
+| file in the directory and a `java_library` for the utility classes.                          |
+| Can be either "suite" or "file", defaultes to "suite".                                       |
++---------------------------------------------------+------------------------------------------+
+| java_generate_proto                               | True                                     |
++---------------------------------------------------+------------------------------------------+
+| Tells the code generator to generate `java_proto_library` (and `java_library`) rules when a  |
+| `proto_library` rule is present. Defaults to True.                                           |
++---------------------------------------------------+------------------------------------------+
+| java_maven_repository_name                        | "maven"                                  |
++---------------------------------------------------+------------------------------------------+
+| Tells the code generator what the repository name that contains all maven dependencies is.   |
+| Defaults to "maven"                                                                          |
++---------------------------------------------------+------------------------------------------+
+| java_annotation_processor_plugin                  | none                                     |
++---------------------------------------------------+------------------------------------------+
+| Tells the code generator about specific java_plugin targets needed to process specific       |
+| annotations.                                                                                 |
++---------------------------------------------------+------------------------------------------+
+| java_resolve_to_java_exports                      | True                                     |
++---------------------------------------------------+------------------------------------------+
+| Tells the code generator to favour resolving dependencies to java_exports where possible.    |
+| If enabled, generated libraries will try to depend on java_exports targets that export a     |
+| given package, instead of the underlying library. This allows monorepos to closely match a   |
+| traditional Gradle/Maven model where subprojects are published in jars.                      |
+| Can be either "true" or "false". Defaults to "true". can only be set at the root of the      |
+| repository.                                                                                  |
++---------------------------------------------------+------------------------------------------+
 
 ## Troubleshooting
 
