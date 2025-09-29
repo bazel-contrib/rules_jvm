@@ -63,21 +63,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
 
-	// Check if this is a resources root directory (ends with /resources)
 	isResourcesRoot := strings.HasSuffix(args.Rel, "/resources")
-	// Check if we're in a subdirectory of a resources root
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
 
 	var javaPkg *java.Package
 
 	if len(javaFilenamesRelativeToPackage) == 0 {
-		// If no Java files, check if we should still process this directory
 		if isResourcesSubdir {
 			// Skip subdirectories of resources roots - they shouldn't generate BUILD files
 			return res
 		}
 		if !isResourcesRoot {
-			// Not a resources root directory, apply normal logic
 			if !isModule || !cfg.IsModuleRoot() {
 				return res
 			}
@@ -228,17 +224,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// Collect resource files recursively from this directory and all subdirectories
 		var allResourceFiles []string
 
-		// Helper function to collect files from a directory
 		collectResourceFiles := func(files []string, dirPrefix string) []string {
 			var resourceFiles []string
 			for _, f := range files {
 				base := filepath.Base(f)
 				// Skip Java files, BUILD files, and common non-resource files
-				if base == "BUILD" || base == "BUILD.bazel" || // actual build files
-					base == "BUILD.in" || base == "BUILD.out" { // files from our tests
+				if base == "BUILD" || base == "BUILD.bazel" { // files from our tests
 					continue
 				}
-				// Include all other files as resources
 				if dirPrefix != "" {
 					resourceFiles = append(resourceFiles, filepath.Join(dirPrefix, f))
 				} else {
@@ -248,16 +241,13 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			return resourceFiles
 		}
 
-		// Collect files from the current directory
 		allResourceFiles = append(allResourceFiles, collectResourceFiles(args.RegularFiles, "")...)
 
-		// Collect files from subdirectories
 		for _, subdir := range args.Subdirs {
 			// Skip BUILD directories
 			if subdir == "BUILD" || subdir == "BUILD.bazel" {
 				continue
 			}
-			// Recursively collect from subdirectories
 			subdirFiles := collectResourceFilesRecursively(args, subdir)
 			allResourceFiles = append(allResourceFiles, subdirFiles...)
 		}
@@ -270,7 +260,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			r := rule.NewRule("pkg_files", "resources")
 			r.SetAttr("srcs", allResourceFiles)
 
-			// Set strip_prefix if configured
 			stripPrefix := cfg.StripResourcesPrefix()
 			if stripPrefix != "" {
 				r.SetAttr("strip_prefix", stripPrefix)
@@ -289,8 +278,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 	} else if productionJavaFiles.Len() > 0 {
-		// Generate a normal Java library
-		// Determine how to handle resources based on module vs package mode
 		var resourcesDirectRef string  // For module mode: direct reference to pkg_files
 		var resourcesRuntimeDep string // For package mode: runtime_dep on resources_lib
 
@@ -301,11 +288,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// - Java files are in "src/sample/java/..."
 			// - Resources are in "src/sample/resources"
 
-			// Build the resources path from the sourceset root
 			resourcesPath := filepath.Join(cfg.SourcesetRoot(), "resources")
 
 			// Check if the resources directory actually exists
-			// We need to check relative to the repository root
 			fullResourcesPath := filepath.Join(args.Config.RepoRoot, resourcesPath)
 			if _, err := os.Stat(fullResourcesPath); err == nil {
 				// Resources directory exists, add the reference
@@ -817,22 +802,19 @@ func collectResourceFilesRecursively(args language.GenerateArgs, subdirPath stri
 		name := entry.Name()
 
 		// Skip BUILD files and other non-resource files
-		if name == "BUILD" || name == "BUILD.bazel" ||
-			name == "BUILD.in" || name == "BUILD.out" {
+		if name == "BUILD" || name == "BUILD.bazel" {
 			continue
 		}
 
 		entryPath := filepath.Join(subdirPath, name)
 
 		if entry.IsDir() {
-			// Recursively collect from subdirectories
 			subFiles := collectResourceFilesRecursively(args, entryPath)
 			resourceFiles = append(resourceFiles, subFiles...)
 		} else {
 			// Check if this is a resource file
 			ext := filepath.Ext(name)
-			if ext != ".java" && ext != ".md" {
-				// This is a resource file
+			if ext != ".java" {
 				resourceFiles = append(resourceFiles, entryPath)
 			}
 		}
