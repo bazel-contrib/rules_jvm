@@ -115,10 +115,9 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
-	// Add implicit dependencies to exports (unified exports strategy)
+	// Add implicit dependencies to exports
 	allExportedPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 	allExportedPackageNames.AddAll(resolveInput.ExportedPackageNames)
-	// Add implicit dependencies from all Kotlin language features (inline functions, extension functions, property delegates, etc.)
 	for _, implicitDep := range resolveInput.ImplicitDeps {
 		allExportedPackageNames.Add(implicitDep.PackageName())
 	}

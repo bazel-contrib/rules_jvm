@@ -138,12 +138,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		Strs("implicit_deps_raw", resp.GetImplicitDeps()).
 		Msg("Parsing implicit dependencies from Java response")
 
-	for i, depClass := range resp.GetImplicitDeps() {
-		r.logger.Debug().
-			Int("index", i).
-			Str("dependency", depClass).
-			Msg("Parsing implicit dependency from Java response")
-
+	for _, depClass := range resp.GetImplicitDeps() {
 		className, err := types.ParseClassName(depClass)
 		if err != nil {
 			r.logger.Error().
@@ -153,18 +148,8 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 			return nil, fmt.Errorf("failed to parse implicit dependency %q: %w", depClass, err)
 		}
 
-		r.logger.Debug().
-			Str("dependency", depClass).
-			Str("parsed_package", className.PackageName().Name).
-			Str("parsed_class", className.BareOuterClassName()).
-			Msg("Successfully parsed implicit dependency")
-
 		implicitDeps = append(implicitDeps, *className)
 	}
-
-	r.logger.Debug().
-		Int("final_implicit_deps_count", len(implicitDeps)).
-		Msg("Finished parsing implicit dependencies")
 
 	return &java.Package{
 		Name:                                   packageName,

@@ -5,7 +5,7 @@ class FullyQualifieds {
     workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest()
     workspace.com.gazelle.java.javaparser.utils.Printer.print()
 
-    val response: workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse  =
+    val response: workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse =
         workspace.com.gazelle.java.javaparser.factories.Factory.create()
 
     // instance methods shouldn't get detected as classes (e.g. this.foo).

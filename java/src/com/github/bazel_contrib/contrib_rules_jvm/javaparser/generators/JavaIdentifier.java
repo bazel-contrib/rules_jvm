@@ -10,14 +10,15 @@ public class JavaIdentifier implements Comparable<JavaIdentifier> {
   /**
    * Copied from the KnowTypeSolvers, this is the bazel dependency string where this package/class
    * will be found: The dependency name will be of the form:
-   *
-   * <p>- artifact("com.example.library:library") - For a dependency external to the repo and found
+   * <ul>
+   * <li>`artifact("com.example.library:library")` - For a dependency external to the repo and found
    * in the maven cache *
    *
-   * <p>- //src/java/com/example/library - For a dependency in the repo the root of the source tree
+   * <li>`//src/java/com/example/library` - For a dependency in the repo the root of the source tree
    * for searching
    *
-   * <p>- null - For all dependencies in the default java library or from generated code
+   * <li>`null` - For all dependencies in the default java library or from generated code
+   * </ul>
    */
   private final String sourceLibrary;
 

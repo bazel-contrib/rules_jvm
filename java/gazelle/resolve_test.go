@@ -148,8 +148,7 @@ java_library(
     _imported_packages = ["java.lang"],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
-)
-`,
+)`,
 			},
 			want: `load("@rules_java//java:defs.bzl", "java_library")
 
@@ -157,8 +156,7 @@ java_library(
     name = "hello",
     srcs = ["Hello.java"],
     visibility = ["//:__subpackages__"],
-)
-`,
+)`,
 		},
 		"external": {
 			old: buildFile{
@@ -174,8 +172,7 @@ java_library(
     ],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
-)			
-`,
+)`,
 			},
 			want: `load("@rules_java//java:defs.bzl", "java_library")
 
@@ -184,8 +181,7 @@ java_library(
     srcs = ["App.java"],
     visibility = ["//:__subpackages__"],
     deps = ["@maven//:com_google_guava_guava"],
-)			
-`,
+)`,
 		},
 		"kotlin": {
 			old: buildFile{
@@ -203,8 +199,7 @@ kt_jvm_library(
     ],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
-)			
-`,
+)`,
 			},
 			want: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
 
@@ -215,8 +210,7 @@ kt_jvm_library(
     srcs = ["App.kt"],
     visibility = ["//:__subpackages__"],
     deps = ["@maven//:com_google_guava_guava"],
-)			
-`,
+)`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -25,7 +25,7 @@ def _gazelle_embedded_javaparser_impl(ctx):
     gazelle_runner_script_unix = """#!/bin/bash
 # Because we execute the gazelle binary directly, we can't rely that CWD will be the Bazel sandbox root.
 # Therefore, we have to look in the runfiles dir for the real gazelle binary.
-mkdir -p $RUNFILES_DIR/hack_for_runtime_path
+mkdir $RUNFILES_DIR/hack_for_runtime_path
 export GAZELLE_JAVA_JAVAHOME="$RUNFILES_DIR/hack_for_runtime_path/{java_home}"
 
 # If both the embedded and non-embedded version of a test are running at the same time, they will collide trying to create the port file and crash.

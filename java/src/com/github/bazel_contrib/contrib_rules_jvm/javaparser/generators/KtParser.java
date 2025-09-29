@@ -415,15 +415,6 @@ public class KtParser {
     public void visitTypeReference(KtTypeReference reference) {
       logger.debug("Type reference: " + reference.getText());
 
-      // PsiReference[] references = referenceService.getReferences(
-      //     reference
-      // );
-      // for (PsiReference psiReference : references) {
-      //     logger.info("\tResolved reference: " + psiReference.toString());
-      // }
-      // var ktType = context.get(BindingContext.TYPE, reference);
-      // logger.info("\tResolved KotlinType: " + ktType.toString());
-
       super.visitTypeReference(reference);
     }
 
@@ -436,8 +427,7 @@ public class KtParser {
 
     @Override
     public void visitSimpleNameExpression(KtSimpleNameExpression expression) {
-      logger.debug("Simple name expression: " + expression.getText());
-      logger.debug("\tReferenced name: " + expression.getReferencedName());
+      logger.debug("Simple name expression: {}, Referenced name: {}", expression.getText(), expression.getReferencedName());
 
       // If we're inside an inline function, track class usage
       if (currentInlineFunction != null) {

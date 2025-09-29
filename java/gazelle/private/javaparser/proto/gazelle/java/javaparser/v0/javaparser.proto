@@ -7,7 +7,7 @@ option java_multiple_files = true;
 option java_package = "com.gazelle.java.javaparser.v0";
 
 // JavaParser service is the RPCs between the gazelle java extension and the
-// java and Kotlin parser's.
+// java and Kotlin parsers.
 service JavaParser {
   // Parse a Java or Kotlin package.
   rpc ParsePackage(ParsePackageRequest) returns (Package) {}
@@ -50,8 +50,7 @@ message Package {
   repeated string exported_classes = 6;
 
   // All implicit dependencies that should be added to exports attribute.
-  // This includes dependencies from inline functions, extension functions, property delegates,
-  // and any future Kotlin language features that create implicit cross-package dependencies.
+  // This includes dependencies from Kotlin language features that create implicit cross-package dependencies.
   repeated string implicit_deps = 7;
 }
 

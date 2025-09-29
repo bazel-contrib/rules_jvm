@@ -325,9 +325,8 @@ func TestAddNonLocalImports(t *testing.T) {
 
 func newTestJavaLang(t *testing.T) javaLang {
 	t.Helper()
-	logger := zerolog.New(zerolog.NewTestWriter(t))
 	return javaLang{
-		logger: logger,
+		logger: zerolog.New(zerolog.NewTestWriter(t)),
 	}
 }
 

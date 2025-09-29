@@ -126,7 +126,7 @@ public class GrpcServer {
       List<Path> kotlinFiles =
           files.stream()
               .filter(file -> file.endsWith(".kt"))
-              .map(file -> directory.resolve(file))
+              .map(directory::resolve)
               .collect(Collectors.toList());
       List<String> javaFiles =
           files.stream().filter(file -> file.endsWith(".java")).collect(Collectors.toList());
@@ -209,8 +209,6 @@ public class GrpcServer {
         packageBuilder.putPerClassMetadata(classEntry.getKey(), perClassMetadata.build());
       }
 
-      // Add implicit dependencies (from property delegates and future features)
-      logger.debug("Got implicit dependencies: {}", data.implicitDeps);
       packageBuilder.addAllImplicitDeps(data.implicitDeps);
 
       return packageBuilder.build();

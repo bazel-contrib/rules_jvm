@@ -73,7 +73,7 @@ const (
 
 	// JvmKotlinEnabled tells the code generator whether to support `kt_jvm_library` rules for Kotlin sources.
 	// Can be either "true" or "false". Defaults to "true".
-	// This requires importing the `@rules_kotlin` repository into your workspace.
+	// This requires importing the `@rules_kotlin` repository into your workspace if there are any Kotlin sources in the repo.
 	JvmKotlinEnabled = "jvm_kotlin_enabled"
 )
 
