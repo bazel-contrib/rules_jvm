@@ -72,7 +72,7 @@ const (
 	JavaStripResourcesPrefix = "java_strip_resources_prefix"
 
 	// JvmKotlinEnabled tells the code generator whether to support `kt_jvm_library` rules for Kotlin sources.
-	// Can be either "true" or "false". Defaults to "false".
+	// Can be either "true" or "false". Defaults to "true".
 	// This requires importing the `@rules_kotlin` repository into your workspace.
 	JvmKotlinEnabled = "jvm_kotlin_enabled"
 )
@@ -157,7 +157,7 @@ func New(repoRoot string) *Config {
 		isModuleRoot:           false,
 		generateProto:          true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
-		kotlinEnabled:          false,
+		kotlinEnabled:          true,
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,
