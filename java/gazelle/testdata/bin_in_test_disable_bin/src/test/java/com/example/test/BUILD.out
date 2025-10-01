@@ -1,0 +1,10 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+java_test_suite(
+    name = "test",
+    srcs = [
+        "SomeOtherTest.java",
+        "SomeTestBinary.java",
+    ],
+    deps = ["@maven//:junit_junit"],
+)

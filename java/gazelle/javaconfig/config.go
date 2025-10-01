@@ -60,6 +60,10 @@ const (
 	// Can be either "true" or "false". Defaults to "true".
 	// Inherited by children packages, can only be set at the root of the repository.
 	JavaResolveToJavaExports = "java_resolve_to_java_exports"
+
+	//JavaIncludeBinary tells the code generator to include creating the `java_binary` rules
+	// Can be either "true" or "false". Defaults to "true"
+	JavaIncludeBinary = "java_include_binary"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -82,6 +86,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		includeBinary:          c.includeBinary,
 		resolveToJavaExports:   c.resolveToJavaExports,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
@@ -113,6 +118,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	includeBinary                                      bool
 	resolveToJavaExports                               *types.LateInit[bool]
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
@@ -137,6 +143,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		includeBinary:          true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
@@ -171,6 +178,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) IncludeBinary() bool {
+	return c.includeBinary
+}
+
+func (c *Config) SetIncludeBinary(include bool) {
+	c.includeBinary = include
 }
 
 func (c *Config) MavenRepositoryName() string {

@@ -1,0 +1,2 @@
+# gazelle:resolve java org.junit @maven//:junit_junit
+# gazelle:java_include_binary false

@@ -203,22 +203,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
 	}
 
-	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
-	for _, m := range allMains.SortedSlice() {
-		// Lazily populate because java_binaries are pretty rare
-		if testHelperJavaClasses == nil {
-			testHelperJavaClasses = sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
-			for _, testHelperJavaFile := range testHelperJavaFiles.SortedSlice() {
-				testHelperJavaClasses.Add(*testHelperJavaFile.ClassName())
-			}
-		}
-		isTestOnly := false
-		libName := filepath.Base(args.Rel)
-		if testHelperJavaClasses.Contains(m) {
-			isTestOnly = true
-			libName = testHelperLibname(libName)
-		}
-		l.generateJavaBinary(args.File, m, libName, isTestOnly, &res)
+	if cfg.IncludeBinary() {
+		l.processJavaBinary(args.File, args.Rel, allMains, testHelperJavaFiles, &res)
 	}
 
 	// We add special packages to point to testonly libraries which - this accumulates them,
@@ -511,6 +497,26 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 
 	if cfg.ResolveToJavaExports() {
 		l.javaExportIndex.RecordRuleWithResolveInput(repoName, file, r, resolveInput)
+	}
+}
+
+func (l javaLang) processJavaBinary(file *rule.File, rel string, allMains *sorted_set.SortedSet[types.ClassName], testHelperJavaFiles *sorted_set.SortedSet[javaFile], res *language.GenerateResult) {
+	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
+	for _, m := range allMains.SortedSlice() {
+		// Lazily populate because java_binaries are pretty rare
+		if testHelperJavaClasses == nil {
+			testHelperJavaClasses = sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
+			for _, testHelperJavaFile := range testHelperJavaFiles.SortedSlice() {
+				testHelperJavaClasses.Add(*testHelperJavaFile.ClassName())
+			}
+		}
+		isTestOnly := false
+		libName := filepath.Base(rel)
+		if testHelperJavaClasses.Contains(m) {
+			isTestOnly = true
+			libName = testHelperLibname(libName)
+		}
+		l.generateJavaBinary(file, m, libName, isTestOnly, res)
 	}
 }
 
