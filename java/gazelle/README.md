@@ -127,11 +127,11 @@ The following directives specific to the Java extension are recognized:
 +===================================================+==========================================+
 | java_exclude_artifact                             | none                                     |
 +---------------------------------------------------+------------------------------------------+
-| Tells the resolver to disregard a given maven artifact. Used to resovle duplicate artifacts  |
+| Tells the resolver to disregard a given maven artifact. Used to resolve duplicate artifacts  |
 +---------------------------------------------------+------------------------------------------+
 | java_extension                                    | enabled                                  |
 +---------------------------------------------------+------------------------------------------+
-| controls whethe this Java extension is enabled or not. Sub-packages inherit this value.      |
+| Controls if this Java extension is enabled or not. Sub-packages inherit this value.          |
 | Can be either "enabled" or "disabled". Defaults to "enabled".                                |
 +---------------------------------------------------+------------------------------------------+
 | java_maven_install_file                           | "maven_install.json"                     |
