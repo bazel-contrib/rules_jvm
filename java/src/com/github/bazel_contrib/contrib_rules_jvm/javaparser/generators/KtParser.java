@@ -427,7 +427,10 @@ public class KtParser {
 
     @Override
     public void visitSimpleNameExpression(KtSimpleNameExpression expression) {
-      logger.debug("Simple name expression: {}, Referenced name: {}", expression.getText(), expression.getReferencedName());
+      logger.debug(
+          "Simple name expression: {}, Referenced name: {}",
+          expression.getText(),
+          expression.getReferencedName());
 
       // If we're inside an inline function, track class usage
       if (currentInlineFunction != null) {

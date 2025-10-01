@@ -26,6 +26,7 @@ buildifier(
 # gazelle:resolve java org.slf4j @contrib_rules_jvm_deps//:org_slf4j_slf4j_api
 # gazelle:resolve java org.jetbrains.kotlin.cli.jvm.compiler @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
 # gazelle:resolve java org.jetbrains.kotlin.config @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
+# gazelle:resolve java org.jetbrains.kotlin.lexer @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
 # gazelle:resolve java org.jetbrains.kotlin.name @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
 # gazelle:resolve java org.jetbrains.kotlin.psi @contrib_rules_jvm_deps//:org_jetbrains_kotlin_kotlin_compiler
 

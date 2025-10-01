@@ -1,4 +1,4 @@
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 
 rules_kotlin_version = "1.9.6"
 
@@ -17,9 +17,6 @@ kotlin_repositories()
 load("@rules_kotlin//kotlin:core.bzl", "kt_register_toolchains")
 
 kt_register_toolchains()
-
-# External dependency for testing
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
 
 http_jar(
     name = "gson",
