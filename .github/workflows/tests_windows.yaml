@@ -36,6 +36,9 @@ jobs:
           # Share repository cache between workflows.
           repository-cache: true
 
+      - name: Verify java
+        run: java -version
+
       - name: bzlmod gazelle
         # Ignoring the handful of tests that are failing without other changes for now
-        run: echo %JAVA_HOME% && bazelisk --bazelrc=.github/workflows/ci.bazelrc test --test_tag_filters=-skip-windows //java/gazelle/...
+        run: bazelisk --bazelrc=.github/workflows/ci.bazelrc test --test_tag_filters=-skip-windows //java/gazelle/...
