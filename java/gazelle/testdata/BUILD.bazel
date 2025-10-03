@@ -69,10 +69,7 @@ SKIPPED_ON_WINDOWS = [
         },
         gazelle_binary = ":gazelle_embedded_javaparser",
         gazelle_timeout_seconds = 60,
-        tags = ["skip-windows"] if file[0:-len("/WORKSPACE")] in SKIPPED_ON_WINDOWS else [],
-        tags = [
-            "skip-windows",
-        ],
+        tags = ["skip-windows"],
         test_data = glob(
             include = [
                 file[0:-len("/WORKSPACE")] + "/**",
