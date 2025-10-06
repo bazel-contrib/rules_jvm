@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -227,7 +229,7 @@ public class KtParserTest {
     Set<String> namesSet = Set.of(names);
     return Files.walk(directory)
         .filter(file -> namesSet.contains(file.getFileName().toString()))
-        .toList();
+        .collect(Collectors.toUnmodifiableList());
   }
 
   @Test
