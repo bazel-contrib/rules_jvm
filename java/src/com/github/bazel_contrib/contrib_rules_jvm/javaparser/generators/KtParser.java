@@ -596,7 +596,8 @@ public class KtParser {
       logger.debug("AST: Dot qualified expression: " + expression.getText());
 
       KtExpression selectorExpression = expression.getSelectorExpression();
-      if (selectorExpression instanceof KtCallExpression callExpr) {
+      if (selectorExpression instanceof KtCallExpression) {
+        KtCallExpression callExpr = (KtCallExpression) selectorExpression;
         KtExpression receiverExpression = expression.getReceiverExpression();
         if (receiverExpression != null && callExpr.getCalleeExpression() != null) {
           String receiverType = getSimpleExpressionType(receiverExpression);
@@ -614,7 +615,8 @@ public class KtParser {
       logger.debug("AST: Safe qualified expression: " + expression.getText());
 
       KtExpression selectorExpression = expression.getSelectorExpression();
-      if (selectorExpression instanceof KtCallExpression callExpr) {
+      if (selectorExpression instanceof KtCallExpression) {
+        KtCallExpression callExpr = (KtCallExpression) selectorExpression;
         KtExpression receiverExpression = expression.getReceiverExpression();
         if (receiverExpression != null && callExpr.getCalleeExpression() != null) {
           String receiverType = getSimpleExpressionType(receiverExpression);
@@ -753,48 +755,80 @@ public class KtParser {
 
     /** Map operator tokens to their corresponding function names. */
     private String mapOperatorToFunctionName(String operator) {
-      return switch (operator) {
-        case "PLUS" -> "plus";
-        case "MINUS" -> "minus";
-        case "MUL" -> "times";
-        case "DIV" -> "div";
-        case "PERC" -> "rem";
-        case "PLUSPLUS" -> "inc";
-        case "MINUSMINUS" -> "dec";
-        case "EXCL" -> "not";
-        case "EQEQ" -> "equals";
-        case "GT", "LT", "GTEQ", "LTEQ" -> "compareTo";
-        case "IN_KEYWORD", "NOT_IN" -> "contains";
-        case "RANGE" -> "rangeTo";
-        case "RANGE_UNTIL" -> "rangeUntil";
-        case "PLUSEQ" -> "plusAssign";
-        case "MINUSEQ" -> "minusAssign";
-        case "MULTEQ" -> "timesAssign";
-        case "DIVEQ" -> "divAssign";
-        case "PERCEQ" -> "remAssign";
-        default -> null;
-      };
+      switch (operator) {
+        case "PLUS":
+          return "plus";
+        case "MINUS":
+          return "minus";
+        case "MUL":
+          return "times";
+        case "DIV":
+          return "div";
+        case "PERC":
+          return "rem";
+        case "PLUSPLUS":
+          return "inc";
+        case "MINUSMINUS":
+          return "dec";
+        case "EXCL":
+          return "not";
+        case "EQEQ":
+          return "equals";
+        case "GT":
+        case "LT":
+        case "GTEQ":
+        case "LTEQ":
+          return "compareTo";
+        case "IN_KEYWORD":
+        case "NOT_IN":
+          return "contains";
+        case "RANGE":
+          return "rangeTo";
+        case "RANGE_UNTIL":
+          return "rangeUntil";
+        case "PLUSEQ":
+          return "plusAssign";
+        case "MINUSEQ":
+          return "minusAssign";
+        case "MULTEQ":
+          return "timesAssign";
+        case "DIVEQ":
+          return "divAssign";
+        case "PERCEQ":
+          return "remAssign";
+        default:
+          return null;
+      }
     }
 
     /** Get the type of an expression using simple heuristics. */
     private String getSimpleExpressionType(KtExpression expression) {
-      if (expression instanceof KtSimpleNameExpression simpleExpr) {
+      if (expression instanceof KtSimpleNameExpression) {
+        KtSimpleNameExpression simpleExpr = (KtSimpleNameExpression) expression;
         String name = simpleExpr.getReferencedName();
 
         if (fqImportByNameOrAlias.containsKey(name)) {
           return fqImportByNameOrAlias.get(name).toString();
         }
 
-        return switch (name) {
-          case "String" -> "java.lang.String";
-          case "Int" -> "java.lang.Integer";
-          case "Double" -> "java.lang.Double";
-          case "Boolean" -> "java.lang.Boolean";
-          case "List" -> "java.util.List";
-          case "Set" -> "java.util.Set";
-          case "Map" -> "java.util.Map";
-          default -> name;
-        };
+        switch (name) {
+          case "String":
+            return "java.lang.String";
+          case "Int":
+            return "java.lang.Integer";
+          case "Double":
+            return "java.lang.Double";
+          case "Boolean":
+            return "java.lang.Boolean";
+          case "List":
+            return "java.util.List";
+          case "Set":
+            return "java.util.Set";
+          case "Map":
+            return "java.util.Map";
+          default:
+            return name;
+        }
       }
 
       return expression.getText();
@@ -882,14 +916,16 @@ public class KtParser {
 
     private KtTypeElement getRootType(KtTypeReference typeReference) {
       KtTypeElement typeElement = typeReference.getTypeElement();
-      if (typeElement instanceof KtNullableType nullableType) {
+      if (typeElement instanceof KtNullableType) {
+        KtNullableType nullableType = (KtNullableType) typeElement;
         return nullableType.getInnerType();
       }
       return typeElement;
     }
 
     private Optional<String> tryGetFullyQualifiedName(KtTypeElement typeElement) {
-      if (typeElement instanceof KtUserType userType) {
+      if (typeElement instanceof KtUserType) {
+        KtUserType userType = (KtUserType) typeElement;
         String identifier = userType.getReferencedName();
         if (identifier.contains(".")) {
           return Optional.of(identifier);
@@ -951,13 +987,15 @@ public class KtParser {
       }
 
       // Check if it's inside a class
-      if (function.getParent().getParent() instanceof KtClass clazz) {
+      if (function.getParent().getParent() instanceof KtClass) {
+        KtClass clazz = (KtClass) function.getParent().getParent();
         FqName classFqName = clazz.getFqName();
         return classFqName.child(Name.identifier(functionName));
       }
 
       // Check if it's inside an object
-      if (function.getParent().getParent() instanceof KtObjectDeclaration object) {
+      if (function.getParent().getParent() instanceof KtObjectDeclaration) {
+        KtObjectDeclaration object = (KtObjectDeclaration) function.getParent().getParent();
         FqName objectFqName = object.getFqName();
         return objectFqName.child(Name.identifier(functionName));
       }
@@ -979,13 +1017,15 @@ public class KtParser {
       }
 
       // Check if it's inside a class
-      if (property.getParent().getParent() instanceof KtClass clazz) {
+      if (property.getParent().getParent() instanceof KtClass) {
+        KtClass clazz = (KtClass) property.getParent().getParent();
         FqName classFqName = clazz.getFqName();
         return classFqName.child(Name.identifier(propertyName));
       }
 
       // Check if it's inside an object
-      if (property.getParent().getParent() instanceof KtObjectDeclaration object) {
+      if (property.getParent().getParent() instanceof KtObjectDeclaration) {
+        KtObjectDeclaration object = (KtObjectDeclaration) property.getParent().getParent();
         FqName objectFqName = object.getFqName();
         return objectFqName.child(Name.identifier(propertyName));
       }
@@ -1020,9 +1060,11 @@ public class KtParser {
       }
 
       // Try to resolve the delegate expression type using simple heuristics
-      if (delegateExpression instanceof KtCallExpression callExpr) {
+      if (delegateExpression instanceof KtCallExpression) {
+        KtCallExpression callExpr = (KtCallExpression) delegateExpression;
         KtExpression calleeExpr = callExpr.getCalleeExpression();
-        if (calleeExpr instanceof KtSimpleNameExpression simpleExpr) {
+        if (calleeExpr instanceof KtSimpleNameExpression) {
+          KtSimpleNameExpression simpleExpr = (KtSimpleNameExpression) calleeExpr;
           String calleeName = simpleExpr.getReferencedName();
 
           // Try to resolve from imports
@@ -1040,13 +1082,14 @@ public class KtParser {
     }
 
     private void pushState(KtElement element) {
-      if (element instanceof KtModifierListOwner modifiedThing) {
+      if (element instanceof KtModifierListOwner) {
+        KtModifierListOwner modifiedThing = (KtModifierListOwner) element;
         pushVisibility(modifiedThing);
       }
     }
 
     private void popState(KtElement element) {
-      if (element instanceof KtModifierListOwner modifiedThing) {
+      if (element instanceof KtModifierListOwner) {
         popVisibility();
       }
     }
