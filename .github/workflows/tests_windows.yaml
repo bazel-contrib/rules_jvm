@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v3
 
       # The windows-latest image comes with Java 8 but rules_jvm_external requires at least 11, so we install a newer JDK.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: "zulu"
           java-version: "21"
@@ -35,6 +35,9 @@ jobs:
           disk-cache: true
           # Share repository cache between workflows.
           repository-cache: true
+
+      - name: Verify java
+        run: java -version
 
       - name: bzlmod gazelle
         # Ignoring the handful of tests that are failing without other changes for now
