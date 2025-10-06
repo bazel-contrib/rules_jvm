@@ -137,8 +137,13 @@ func (m *ServerManager) Shutdown() {
 
 	cc := pb.NewLifecycleClient(m.conn)
 
-	// If shutdown returns an error, there's really nothing for us to do.
-	cc.Shutdown(context.Background(), &pb.ShutdownRequest{})
+	// Ask the server to shut down, but don't block indefinitely.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, _ = cc.Shutdown(ctx, &pb.ShutdownRequest{})
+
+	// Give the server a brief moment to send GOAWAY and close cleanly to avoid DEBUG stacktraces.
+	time.Sleep(100 * time.Millisecond)
 
 	m.conn.Close()
 
