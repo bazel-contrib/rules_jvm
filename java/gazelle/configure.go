@@ -3,6 +3,8 @@ package gazelle
 import (
 	"flag"
 	"fmt"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
@@ -67,6 +69,8 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
 		javaconfig.JavaResolveToJavaExports,
+		javaconfig.JavaSourcesetRoot,
+		javaconfig.JavaStripResourcesPrefix,
 	}
 }
 
@@ -88,6 +92,51 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 		cfgs[rel] = cfg
 	}
 
+	// Auto-detect sourceset structure if not explicitly set
+	if cfg.StripResourcesPrefix() == "" && cfg.SourcesetRoot() == "" {
+		// Walk up the directory tree looking for sourceset patterns
+		currentPath := rel
+		for currentPath != "" && currentPath != "." {
+			dir := filepath.Base(currentPath)
+			parent := filepath.Dir(currentPath)
+
+			// Check for Maven-style sourceset pattern: src/main/java or src/test/java
+			if dir == "java" && parent != "" && parent != "." {
+				grandparent := filepath.Dir(parent)
+				parentBase := filepath.Base(parent)
+				if grandparent != "" && filepath.Base(grandparent) == "src" {
+					// Found a sourceset pattern - store the sourceset root
+					// This handles src/main, src/test, src/sample, etc.
+					// Use path.Join to ensure forward slashes for Bazel paths
+					sourcesetRoot := path.Join(grandparent, parentBase)
+					cfg.SetSourcesetRoot(sourcesetRoot)
+					// Also set the strip prefix for resources
+					resourcesRoot := path.Join(sourcesetRoot, "resources")
+					cfg.SetStripResourcesPrefix(resourcesRoot)
+					break
+				}
+			}
+
+			// Also check if we're in a resources directory
+			if dir == "resources" && parent != "" && parent != "." {
+				grandparent := filepath.Dir(parent)
+				parentBase := filepath.Base(parent)
+				if grandparent != "" && filepath.Base(grandparent) == "src" {
+					// Found a sourceset pattern from resources side
+					sourcesetRoot := path.Join(grandparent, parentBase)
+					cfg.SetSourcesetRoot(sourcesetRoot)
+					// Also set the strip prefix for resources
+					resourcesRoot := path.Join(sourcesetRoot, "resources")
+					cfg.SetStripResourcesPrefix(resourcesRoot)
+					break
+				}
+			}
+
+			currentPath = parent
+		}
+	}
+
+	// Process directives from BUILD file
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {
@@ -168,6 +217,12 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
 						javaconfig.JavaResolveToJavaExports, d.Value)
 				}
+
+			case javaconfig.JavaSourcesetRoot:
+				cfg.SetSourcesetRoot(d.Value)
+
+			case javaconfig.JavaStripResourcesPrefix:
+				cfg.SetStripResourcesPrefix(d.Value)
 			}
 
 		}

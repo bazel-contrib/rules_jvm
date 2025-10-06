@@ -1,0 +1,17 @@
+load("@rules_java//java:defs.bzl", "java_library")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
+pkg_files(
+    name = "resources",
+    srcs = [
+        "com/example/app.properties",
+        "config.xml",
+    ],
+    strip_prefix = "src/sample/resources",
+)
+
+java_library(
+    name = "resources_lib",
+    resources = [":resources"],
+    visibility = ["//:__subpackages__"],
+)
