@@ -67,7 +67,8 @@ public class KtParser {
 
   public ParsedPackageData parseClasses(List<Path> files) {
     KtFileVisitor visitor = new KtFileVisitor();
-    List<VirtualFile> virtualFiles = files.stream().map(f -> vfm.findFileByNioPath(f)).collect(Collectors.toUnmodifiableList());
+    List<VirtualFile> virtualFiles =
+        files.stream().map(f -> vfm.findFileByNioPath(f)).collect(Collectors.toUnmodifiableList());
 
     for (VirtualFile virtualFile : virtualFiles) {
       if (virtualFile == null) {

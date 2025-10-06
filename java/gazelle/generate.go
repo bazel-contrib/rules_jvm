@@ -368,8 +368,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				testJavaImportsWithHelpers.Add(tf.pkg)
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
-		// Test helper libraries typically don't have resources
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName, []types.ClassName{})
+			// Test helper libraries typically don't have resources
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName, []types.ClassName{})
 		}
 	}
 
