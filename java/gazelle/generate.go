@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -233,7 +234,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					continue
 				}
 				if dirPrefix != "" {
-					resourceFiles = append(resourceFiles, filepath.Join(dirPrefix, f))
+					resourceFiles = append(resourceFiles, path.Join(dirPrefix, f))
 				} else {
 					resourceFiles = append(resourceFiles, f)
 				}
@@ -288,10 +289,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// - Java files are in "src/sample/java/..."
 			// - Resources are in "src/sample/resources"
 
-			resourcesPath := filepath.Join(cfg.SourcesetRoot(), "resources")
+			resourcesPath := path.Join(cfg.SourcesetRoot(), "resources")
 
 			// Check if the resources directory actually exists
-			fullResourcesPath := filepath.Join(args.Config.RepoRoot, resourcesPath)
+			fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
 			if _, err := os.Stat(fullResourcesPath); err == nil {
 				// Resources directory exists, add the reference
 				if isModule {
@@ -806,7 +807,7 @@ func collectResourceFilesRecursively(args language.GenerateArgs, subdirPath stri
 			continue
 		}
 
-		entryPath := filepath.Join(subdirPath, name)
+		entryPath := path.Join(subdirPath, name)
 
 		if entry.IsDir() {
 			subFiles := collectResourceFilesRecursively(args, entryPath)

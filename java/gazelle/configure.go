@@ -3,6 +3,7 @@ package gazelle
 import (
 	"flag"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -106,10 +107,11 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				if grandparent != "" && filepath.Base(grandparent) == "src" {
 					// Found a sourceset pattern - store the sourceset root
 					// This handles src/main, src/test, src/sample, etc.
-					sourcesetRoot := filepath.Join(grandparent, parentBase)
+					// Use path.Join to ensure forward slashes for Bazel paths
+					sourcesetRoot := path.Join(grandparent, parentBase)
 					cfg.SetSourcesetRoot(sourcesetRoot)
 					// Also set the strip prefix for resources
-					resourcesRoot := filepath.Join(sourcesetRoot, "resources")
+					resourcesRoot := path.Join(sourcesetRoot, "resources")
 					cfg.SetStripResourcesPrefix(resourcesRoot)
 					break
 				}
@@ -121,10 +123,10 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				parentBase := filepath.Base(parent)
 				if grandparent != "" && filepath.Base(grandparent) == "src" {
 					// Found a sourceset pattern from resources side
-					sourcesetRoot := filepath.Join(grandparent, parentBase)
+					sourcesetRoot := path.Join(grandparent, parentBase)
 					cfg.SetSourcesetRoot(sourcesetRoot)
 					// Also set the strip prefix for resources
-					resourcesRoot := filepath.Join(sourcesetRoot, "resources")
+					resourcesRoot := path.Join(sourcesetRoot, "resources")
 					cfg.SetStripResourcesPrefix(resourcesRoot)
 					break
 				}
