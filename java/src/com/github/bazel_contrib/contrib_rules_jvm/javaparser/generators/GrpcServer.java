@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,17 +121,55 @@ public class GrpcServer {
       logger.debug("Working relative directory: {}", request.getRel());
       logger.debug("processing files: {}", files);
 
-      ClasspathParser parser = new ClasspathParser();
       Path directory = workspace.resolve(request.getRel());
+      // TODO: Make this tidier.
+      List<Path> kotlinFiles =
+          files.stream()
+              .filter(file -> file.endsWith(".kt"))
+              .map(directory::resolve)
+              .collect(Collectors.toList());
+      List<String> javaFiles =
+          files.stream().filter(file -> file.endsWith(".java")).collect(Collectors.toList());
 
-      try {
-        parser.parseClasses(directory, files);
-      } catch (IOException exception) {
-        // If we fail to process a directory, which can happen with the module level processing
-        // or can't parse any of the files, just return an empty response.
+      ParsedPackageData data = new ParsedPackageData();
+      if (!kotlinFiles.isEmpty()) {
+        try {
+          KtParser parser = new KtParser();
+          ParsedPackageData kotlinData = parser.parseClasses(kotlinFiles);
+          data.merge(kotlinData);
+        } catch (Exception ex) {
+          logger.error("Error parsing Kotlin files", ex);
+          throw ex;
+        }
+      }
+
+      ClasspathParser parser = new ClasspathParser();
+
+      if (!javaFiles.isEmpty()) {
+        try {
+          parser.parseClasses(directory, javaFiles);
+          ParsedPackageData javaData = parser.getParsedPackageData();
+          data.merge(javaData);
+        } catch (IOException exception) {
+          // If we fail to process a directory, which can happen with the module level processing
+          // or can't parse any of the files, just return an empty response.
+          logger.debug("IOException occurred, returning empty package: {}", exception.getMessage());
+          return Package.newBuilder().setName("").build();
+        } catch (Exception ex) {
+          logger.error("Error parsing Java files", ex);
+          throw ex;
+        }
+      } else {
+        logger.debug("No Java files to process, skipping Java parser");
+      }
+
+      // If we have no files to process, return empty package early
+      if (kotlinFiles.isEmpty() && javaFiles.isEmpty()) {
+        logger.debug("No files to process, returning empty package");
         return Package.newBuilder().setName("").build();
       }
-      Set<String> packages = parser.getPackages();
+
+      Set<String> packages = data.packages;
       if (packages.size() > 1) {
         throw new StatusRuntimeException(
             Status.INVALID_ARGUMENT.withDescription(
@@ -143,21 +182,18 @@ public class GrpcServer {
         packages = ImmutableSet.of("");
       }
       logger.debug("Got package: {}", Iterables.getOnlyElement(packages));
-      logger.debug("Got used types: {}", parser.getUsedTypes());
+      logger.debug("Got used types: {}", data.usedTypes);
       logger.debug(
-          "Got used packages without specific types: {}",
-          parser.getUsedPackagesWithoutSpecificTypes());
+          "Got used packages without specific types: {}", data.usedPackagesWithoutSpecificTypes);
 
       Builder packageBuilder =
           Package.newBuilder()
               .setName(Iterables.getOnlyElement(packages))
-              .addAllImportedClasses(parser.getUsedTypes())
-              .addAllExportedClasses(parser.getExportedTypes())
-              .addAllImportedPackagesWithoutSpecificClasses(
-                  parser.getUsedPackagesWithoutSpecificTypes())
-              .addAllMains(parser.getMainClasses());
-      for (Map.Entry<String, ClasspathParser.PerClassData> classEntry :
-          parser.perClassData.entrySet()) {
+              .addAllImportedClasses(data.usedTypes)
+              .addAllExportedClasses(data.exportedTypes)
+              .addAllImportedPackagesWithoutSpecificClasses(data.usedPackagesWithoutSpecificTypes)
+              .addAllMains(data.mainClasses);
+      for (Map.Entry<String, PerClassData> classEntry : data.perClassData.entrySet()) {
         PerClassMetadata.Builder perClassMetadata =
             PerClassMetadata.newBuilder()
                 .addAllAnnotationClassNames(classEntry.getValue().annotations);
@@ -179,6 +215,7 @@ public class GrpcServer {
         }
         packageBuilder.putPerClassMetadata(classEntry.getKey(), perClassMetadata.build());
       }
+
       return packageBuilder.build();
     }
   }

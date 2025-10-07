@@ -8,6 +8,7 @@ java_test_suite(
     srcs = [
         "ClasspathParserTest.java",
         "JavaIdentifierTest.java",
+        "KtParserTest.java",
     ],
     jvm_flags = [
         "-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG",
@@ -15,6 +16,7 @@ java_test_suite(
     resource_strip_prefix = "java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators",
     resources = [
         ":java-test-workspace",
+        ":kotlin-test-workspace",
     ],
     runner = "junit5",
     runtime_deps = [
@@ -36,4 +38,10 @@ filegroup(
     name = "java-test-workspace",
     testonly = 1,
     srcs = glob(["workspace/**/*.java"]),
+)
+
+filegroup(
+    name = "kotlin-test-workspace",
+    testonly = 1,
+    srcs = glob(["workspace/**/*.kt"]),
 )

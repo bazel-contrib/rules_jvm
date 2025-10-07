@@ -1,0 +1,8 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "hello",
+    srcs = ["Hello.kt"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//src/main/java/com/example/hello/greeter"],
+)

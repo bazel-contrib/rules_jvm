@@ -56,20 +56,33 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		return res
 	}
 
-	isModule := cfg.ModuleGranularity() == "module"
-
 	if cfg.GenerateProto() {
 		generateProtoLibraries(args, log, &res)
 	}
 
-	javaFilenamesRelativeToPackage := filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
+	var srcFilenamesRelativeToPackage []string
+	hasKotlinFiles := false
+	if cfg.KotlinEnabled() {
+		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool {
+			ext := filepath.Ext(f)
+			if ext == ".kt" {
+				hasKotlinFiles = true
+				return true
+			} else {
+				return ext == ".java"
+			}
+		})
+	} else {
+		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
+	}
 
 	isResourcesRoot := strings.HasSuffix(args.Rel, "/resources")
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
+	isModule := cfg.ModuleGranularity() == "module"
 
 	var javaPkg *java.Package
 
-	if len(javaFilenamesRelativeToPackage) == 0 {
+	if len(srcFilenamesRelativeToPackage) == 0 {
 		if isResourcesSubdir {
 			// Skip subdirectories of resources roots - they shouldn't generate BUILD files
 			return res
@@ -82,18 +95,18 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// For resources root directories, continue processing even without Java files
 	}
 
-	if len(javaFilenamesRelativeToPackage) == 0 && isResourcesRoot {
+	if len(srcFilenamesRelativeToPackage) == 0 && isResourcesRoot {
 		// Skip Java parsing for resources-only directories
 		javaPkg = &java.Package{
 			Name: types.NewPackageName(""),
 		}
 	} else {
-		sort.Strings(javaFilenamesRelativeToPackage)
+		sort.Strings(srcFilenamesRelativeToPackage)
 
 		var err error
 		javaPkg, err = l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
 			Rel:   args.Rel,
-			Files: javaFilenamesRelativeToPackage,
+			Files: srcFilenamesRelativeToPackage,
 		})
 		if err != nil {
 			log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
@@ -106,13 +119,20 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	//  2. "What input files did you have" isn't a great heuristic for "What classes are generated"
 	//     (e.g. inner classes, annotation processor generated classes, etc).
 	// But it will do for now.
-	javaClassNamesFromFileNames := sorted_set.NewSortedSet([]string{})
-	for _, filename := range javaFilenamesRelativeToPackage {
-		javaClassNamesFromFileNames.Add(strings.TrimSuffix(filename, ".java"))
+	likelyLocalClassNames := sorted_set.NewSortedSet([]string{})
+	for _, filename := range srcFilenamesRelativeToPackage {
+		if strings.HasSuffix(filename, ".kt") {
+			fileWithoutExtension := strings.TrimSuffix(filename, ".kt")
+			likelyLocalClassNames.Add(fileWithoutExtension)
+			// Top level values and functions in Kotlin are accessible from Java under the <filename>Kt class.
+			likelyLocalClassNames.Add(fileWithoutExtension + "Kt")
+		} else {
+			likelyLocalClassNames.Add(strings.TrimSuffix(filename, ".java"))
+		}
 	}
 
 	if isModule {
-		if len(javaFilenamesRelativeToPackage) > 0 {
+		if len(srcFilenamesRelativeToPackage) > 0 {
 			l.javaPackageCache[args.Rel] = javaPkg
 		}
 
@@ -158,14 +178,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
 				allMains.AddAll(mJavaPkg.Mains)
 			} else {
 				// Tests don't get to export things, as things shouldn't depend on them.
-				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, javaClassNamesFromFileNames)
+				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -183,12 +203,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
 			// Tests don't get to export things, as things shouldn't depend on them.
-			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		} else {
-			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, javaClassNamesFromFileNames)
+			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
-		for _, f := range javaFilenamesRelativeToPackage {
+		for _, f := range srcFilenamesRelativeToPackage {
 			path := filepath.Join(args.Rel, f)
 			if javaPkg.TestPackage {
 				file := javaFile{
@@ -216,12 +236,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	})
 
 	javaLibraryKind := "java_library"
-	if kindMap, ok := args.Config.KindMap["java_library"]; ok {
+	if hasKotlinFiles {
+		javaLibraryKind = "kt_jvm_library"
+	}
+	if kindMap, ok := args.Config.KindMap[javaLibraryKind]; ok {
 		javaLibraryKind = kindMap.KindName
 	}
 
 	// Check if this is a resources root directory and generate a pkg_files target
-	if isResourcesRoot && len(javaFilenamesRelativeToPackage) == 0 {
+	if isResourcesRoot && len(srcFilenamesRelativeToPackage) == 0 {
 		// Collect resource files recursively from this directory and all subdirectories
 		var allResourceFiles []string
 

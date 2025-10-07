@@ -1,0 +1,10 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:jvm_kotlin_enabled true
+
+kt_jvm_library(
+    name = "greeter",
+    srcs = ["Greeter.kt"],
+    visibility = ["//:__subpackages__"],
+)
+

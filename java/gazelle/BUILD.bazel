@@ -23,6 +23,7 @@ go_library(
         "//java/gazelle/private/java",
         "//java/gazelle/private/java_export_index",
         "//java/gazelle/private/javaparser",
+        "//java/gazelle/private/kotlin",
         "//java/gazelle/private/logconfig",
         "//java/gazelle/private/maven",
         "//java/gazelle/private/sorted_multiset",
