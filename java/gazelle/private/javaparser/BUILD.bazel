@@ -22,9 +22,7 @@ go_test(
     srcs = ["javaparser_test.go"],
     embed = [":javaparser"],
     deps = [
-        "//java/gazelle/private/java",
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:gazelle_java_build_v0_go_proto",
         "//java/gazelle/private/types",
-        "@com_github_rs_zerolog//:zerolog",
     ],
 )
