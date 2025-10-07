@@ -162,6 +162,13 @@ public class GrpcServer {
       } else {
         logger.debug("No Java files to process, skipping Java parser");
       }
+
+      // If we have no files to process, return empty package early
+      if (kotlinFiles.isEmpty() && javaFiles.isEmpty()) {
+        logger.debug("No files to process, returning empty package");
+        return Package.newBuilder().setName("").build();
+      }
+
       Set<String> packages = data.packages;
       if (packages.size() > 1) {
         throw new StatusRuntimeException(
