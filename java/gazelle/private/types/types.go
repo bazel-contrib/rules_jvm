@@ -112,7 +112,6 @@ type ResolveInput struct {
 	ImportedPackageNames *sorted_set.SortedSet[PackageName]
 	ExportedPackageNames *sorted_set.SortedSet[PackageName]
 	AnnotationProcessors *sorted_set.SortedSet[ClassName]
-	ImplicitDeps         []ClassName
 }
 
 type ResolvableJavaPackage struct {

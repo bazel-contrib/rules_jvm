@@ -190,38 +190,44 @@ public class KtParserTest {
   public void detectsInlineFunction() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("InlineFunction.kt"));
 
-    // Verify inline function is detected
-    assertNotNull(data.implicitDeps, "inlineFunctions map should not be null");
-    assertEquals(
-        Set.of("com.example.Helper", "com.google.gson.Gson"),
-        data.implicitDeps,
-        "Should detect the inline function processData: " + data.implicitDeps);
+    // Verify inline function dependencies are in exported types
+    assertNotNull(data.exportedTypes, "exportedTypes should not be null");
+    assertTrue(
+        data.exportedTypes.contains("com.example.Helper"),
+        "Should detect Helper dependency from inline function: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.Gson"),
+        "Should detect Gson dependency from inline function: " + data.exportedTypes);
   }
 
   @Test
   public void detectsMultipleInlineFunctions() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("MultipleInlines.kt"));
 
-    assertNotNull(data.implicitDeps, "inlineFunctions map should not be null");
+    assertNotNull(data.exportedTypes, "exportedTypes should not be null");
 
-    // Should detect all three inline functions
-    assertEquals(
-        Set.of("com.example.utils.StringUtils", "java.util.ArrayList"),
-        data.implicitDeps,
-        String.valueOf(data.implicitDeps));
+    // Should detect all three inline functions' dependencies
+    assertTrue(
+        data.exportedTypes.contains("com.example.utils.StringUtils"),
+        "Should detect StringUtils from inline functions: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("java.util.ArrayList"),
+        "Should detect ArrayList from inline functions: " + data.exportedTypes);
   }
 
   @Test
   public void detectsGsonAndArrayListInInlineFunction() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("InlineWithGson.kt"));
 
-    assertNotNull(data.implicitDeps, "inlineFunctions map should not be null");
+    assertNotNull(data.exportedTypes, "exportedTypes should not be null");
 
-    // Should detect the processData inline function
-    assertEquals(
-        Set.of("com.google.gson.Gson", "java.util.ArrayList"),
-        data.implicitDeps,
-        String.valueOf(data.implicitDeps));
+    // Should detect the processData inline function's dependencies
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.Gson"),
+        "Should detect Gson from inline function: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("java.util.ArrayList"),
+        "Should detect ArrayList from inline function: " + data.exportedTypes);
   }
 
   private List<Path> getPathsWithNames(String... names) throws IOException {
@@ -235,18 +241,32 @@ public class KtParserTest {
   public void detectsSimpleExtensionFunctions() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("SimpleExtensions.kt"));
 
-    assertEquals(
-        Set.of("com.example.Helper", "com.google.gson.Gson", "com.google.gson.JsonArray"),
-        data.implicitDeps);
+    // Extension function dependencies should be in exported types
+    assertTrue(
+        data.exportedTypes.contains("com.example.Helper"),
+        "Should detect Helper from extension function: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.Gson"),
+        "Should detect Gson from extension function: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.JsonArray"),
+        "Should detect JsonArray from extension function: " + data.exportedTypes);
   }
 
   @Test
   public void detectsExtensionOperators() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("ExtensionOperators.kt"));
 
-    assertEquals(
-        Set.of("com.example.MathUtils", "com.google.gson.JsonArray", "com.google.gson.JsonObject"),
-        data.implicitDeps);
+    // Extension operator dependencies should be in exported types
+    assertTrue(
+        data.exportedTypes.contains("com.example.MathUtils"),
+        "Should detect MathUtils from extension operator: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.JsonArray"),
+        "Should detect JsonArray from extension operator: " + data.exportedTypes);
+    assertTrue(
+        data.exportedTypes.contains("com.google.gson.JsonObject"),
+        "Should detect JsonObject from extension operator: " + data.exportedTypes);
   }
 
   @Test
@@ -254,54 +274,66 @@ public class KtParserTest {
     // This test verifies that our AST-based enhancements are active and working
     // by checking that the enhanced visitor methods are being called
 
-    // Test with inline functions
+    // Test with inline functions - dependencies should be in exportedTypes
     ParsedPackageData inlineData = parser.parseClasses(getPathsWithNames("InlineWithGson.kt"));
-    assertEquals(
-        Set.of("com.google.gson.Gson", "java.util.ArrayList"),
-        inlineData.implicitDeps,
-        "inlineFunctions map should not be null");
+    assertTrue(
+        inlineData.exportedTypes.contains("com.google.gson.Gson"),
+        "Should detect Gson in exportedTypes: " + inlineData.exportedTypes);
+    assertTrue(
+        inlineData.exportedTypes.contains("java.util.ArrayList"),
+        "Should detect ArrayList in exportedTypes: " + inlineData.exportedTypes);
 
-    // Test with extension functions
+    // Test with extension functions - dependencies should be in exportedTypes
     ParsedPackageData extensionData = parser.parseClasses(getPathsWithNames("SimpleExtensions.kt"));
-    assertEquals(
-        Set.of("com.example.Helper", "com.google.gson.Gson", "com.google.gson.JsonArray"),
-        extensionData.implicitDeps,
-        "extensionFunctions should not be null");
+    assertTrue(
+        extensionData.exportedTypes.contains("com.example.Helper"),
+        "Should detect Helper in exportedTypes: " + extensionData.exportedTypes);
+    assertTrue(
+        extensionData.exportedTypes.contains("com.google.gson.Gson"),
+        "Should detect Gson in exportedTypes: " + extensionData.exportedTypes);
+    assertTrue(
+        extensionData.exportedTypes.contains("com.google.gson.JsonArray"),
+        "Should detect JsonArray in exportedTypes: " + extensionData.exportedTypes);
 
-    // Test with extension operators
+    // Test with extension operators - dependencies should be in exportedTypes
     ParsedPackageData operatorData =
         parser.parseClasses(getPathsWithNames("ExtensionOperators.kt"));
-    assertEquals(
-        Set.of("com.example.MathUtils", "com.google.gson.JsonArray", "com.google.gson.JsonObject"),
-        operatorData.implicitDeps,
-        "extensionFunctions should not be null for operators");
+    assertTrue(
+        operatorData.exportedTypes.contains("com.example.MathUtils"),
+        "Should detect MathUtils in exportedTypes: " + operatorData.exportedTypes);
+    assertTrue(
+        operatorData.exportedTypes.contains("com.google.gson.JsonArray"),
+        "Should detect JsonArray in exportedTypes: " + operatorData.exportedTypes);
+    assertTrue(
+        operatorData.exportedTypes.contains("com.google.gson.JsonObject"),
+        "Should detect JsonObject in exportedTypes: " + operatorData.exportedTypes);
   }
 
   @Test
   public void detectsDestructuringWithCustomComponentFunctions() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("DestructuringWithDeps.kt"));
 
-    assertNotNull(data.implicitDeps, "implicitDeps should not be null");
+    assertNotNull(data.exportedTypes, "exportedTypes should not be null");
 
     // Log what we found for debugging
     logger.info("=== Destructuring Detection Test ===");
-    logger.info("Implicit deps found: " + data.implicitDeps);
+    logger.info("Exported types found: " + data.exportedTypes);
 
-    // Should detect dependencies from componentN() functions
+    // Should detect dependencies from componentN() functions in exportedTypes
     assertTrue(
-        data.implicitDeps.contains("com.google.gson.Gson")
-            || data.implicitDeps.contains("com.google.code.gson.Gson"),
-        "Should detect Gson dependency from component1() function. Found: " + data.implicitDeps);
+        data.exportedTypes.contains("com.google.gson.Gson")
+            || data.exportedTypes.contains("com.google.code.gson.Gson"),
+        "Should detect Gson dependency from component1() function. Found: " + data.exportedTypes);
 
     assertTrue(
-        data.implicitDeps.contains("com.google.common.base.Strings"),
+        data.exportedTypes.contains("com.google.common.base.Strings"),
         "Should detect Guava Strings dependency from component2() function. Found: "
-            + data.implicitDeps);
+            + data.exportedTypes);
 
-    // Verify that we have at least some implicit dependencies
+    // Verify that we have at least some exported types from componentN() functions
     assertTrue(
-        data.implicitDeps.size() > 0,
-        "Should have detected some implicit dependencies from componentN() functions");
+        data.exportedTypes.size() > 0,
+        "Should have detected some exported types from componentN() functions");
 
     logger.info("Destructuring detection working correctly!");
   }

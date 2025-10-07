@@ -328,11 +328,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		var implicitDeps []types.ClassName
-		if !isModule {
-			implicitDeps = javaPkg.ImplicitDeps
-		}
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName, implicitDeps)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
 	}
 
 	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
@@ -369,7 +365,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
 			// Test helper libraries typically don't have resources
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName, []types.ClassName{})
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
 		}
 	}
 
@@ -604,7 +600,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports, exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string, implicitDeps []types.ClassName) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports, exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
 	r := rule.NewRule(javaLibraryRuleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
@@ -655,7 +651,6 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 		ImportedPackageNames: imports,
 		ExportedPackageNames: exports,
 		AnnotationProcessors: annotationProcessorClasses,
-		ImplicitDeps:         implicitDeps,
 	}
 	res.Imports = append(res.Imports, resolveInput)
 

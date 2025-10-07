@@ -3,39 +3,38 @@ package javaparser
 import (
 	"testing"
 
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
-	"github.com/rs/zerolog"
 )
 
-func TestParseImplicitDependencies(t *testing.T) {
-	// Create a mock response with implicit dependencies
+func TestParseExportedClassesFromKotlinFeatures(t *testing.T) {
+	// Create a mock response with classes that should be exported due to Kotlin features
+	// (inline functions, extension functions, property delegates, etc.)
 	resp := &pb.Package{
 		Name: "com.example.test",
-		ImplicitDeps: []string{
+		ExportedClasses: []string{
 			"com.google.gson.Gson",
 			"com.google.common.base.Strings",
 		},
 	}
 
-	// Test parsing the implicit dependencies
-	implicitDeps := make([]types.ClassName, 0)
-	for _, depClass := range resp.GetImplicitDeps() {
-		className, err := types.ParseClassName(depClass)
+	// Parse the exported classes
+	exportedClasses := make([]types.ClassName, 0)
+	for _, exportedClass := range resp.GetExportedClasses() {
+		className, err := types.ParseClassName(exportedClass)
 		if err != nil {
-			t.Fatalf("Failed to parse implicit dependency %q: %v", depClass, err)
+			t.Fatalf("Failed to parse exported class %q: %v", exportedClass, err)
 		}
-		implicitDeps = append(implicitDeps, *className)
+		exportedClasses = append(exportedClasses, *className)
 	}
 
 	// Verify the results
-	if len(implicitDeps) != 2 {
-		t.Fatalf("Expected 2 implicit dependencies, got %d", len(implicitDeps))
+	if len(exportedClasses) != 2 {
+		t.Fatalf("Expected 2 exported classes, got %d", len(exportedClasses))
 	}
 
 	// Check Gson dependency
-	gson := implicitDeps[0]
+	gson := exportedClasses[0]
 	if gson.PackageName().Name != "com.google.gson" {
 		t.Errorf("Expected Gson package 'com.google.gson', got '%s'", gson.PackageName().Name)
 	}
@@ -47,7 +46,7 @@ func TestParseImplicitDependencies(t *testing.T) {
 	}
 
 	// Check Strings dependency
-	strings := implicitDeps[1]
+	strings := exportedClasses[1]
 	if strings.PackageName().Name != "com.google.common.base" {
 		t.Errorf("Expected Strings package 'com.google.common.base', got '%s'", strings.PackageName().Name)
 	}
@@ -58,84 +57,76 @@ func TestParseImplicitDependencies(t *testing.T) {
 		t.Errorf("Expected Strings FQN 'com.google.common.base.Strings', got '%s'", strings.FullyQualifiedClassName())
 	}
 
-	t.Logf("Successfully parsed implicit dependencies:")
-	for i, dep := range implicitDeps {
+	t.Logf("Successfully parsed exported classes from Kotlin features:")
+	for i, dep := range exportedClasses {
 		t.Logf("  [%d] %s -> package: %s, class: %s", i, dep.FullyQualifiedClassName(), dep.PackageName().Name, dep.BareOuterClassName())
 	}
 }
 
-func TestParsePackageWithImplicitDeps(t *testing.T) {
+func TestParsePackageWithKotlinFeatureExports(t *testing.T) {
 	// Create a mock response similar to what the Java parser would send
+	// when parsing Kotlin code with inline functions, extension functions, etc.
 	resp := &pb.Package{
 		Name: "com.example.provider",
 		ImportedClasses: []string{
 			"com.google.gson.Gson",
 			"com.google.common.base.Strings",
 		},
-		ExportedClasses:                        []string{},
-		ImportedPackagesWithoutSpecificClasses: []string{},
-		Mains:                                  []string{},
-		PerClassMetadata:                       map[string]*pb.PerClassMetadata{},
-		ImplicitDeps: []string{
+		// These classes are both imported AND exported because they're used in
+		// Kotlin language features (inline functions, extension functions, etc.)
+		// that leak into the public API
+		ExportedClasses: []string{
 			"com.google.gson.Gson",
 			"com.google.common.base.Strings",
 		},
+		ImportedPackagesWithoutSpecificClasses: []string{},
+		Mains:                                  []string{},
+		PerClassMetadata:                       map[string]*pb.PerClassMetadata{},
 	}
 
-	// Create a test logger
-	logger := zerolog.New(zerolog.NewTestWriter(t)).With().Timestamp().Logger()
-
-	// Simulate the parsing logic from ParsePackage
+	// Simulate what ParsePackage does - just parse the exported classes
 	packageName := types.NewPackageName(resp.GetName())
 
-	// Parse implicit dependencies
-	var implicitDeps []types.ClassName
-	logger.Debug().
-		Int("implicit_deps_count", len(resp.GetImplicitDeps())).
-		Strs("implicit_deps_raw", resp.GetImplicitDeps()).
-		Msg("Parsing implicit dependencies from Java response")
-
-	for i, depClass := range resp.GetImplicitDeps() {
-		logger.Debug().
-			Int("index", i).
-			Str("dependency", depClass).
-			Msg("Parsing implicit dependency from Java response")
-
-		className, err := types.ParseClassName(depClass)
+	exportedClasses := make([]types.ClassName, 0)
+	for _, exportedClass := range resp.GetExportedClasses() {
+		className, err := types.ParseClassName(exportedClass)
 		if err != nil {
-			logger.Error().
-				Str("dependency", depClass).
-				Err(err).
-				Msg("Failed to parse implicit dependency class name")
-			t.Fatalf("Failed to parse implicit dependency %q: %v", depClass, err)
+			t.Fatalf("Failed to parse exported class %q: %v", exportedClass, err)
 		}
-
-		logger.Debug().
-			Str("dependency", depClass).
-			Str("parsed_package", className.PackageName().Name).
-			Str("parsed_class", className.BareOuterClassName()).
-			Msg("Successfully parsed implicit dependency")
-
-		implicitDeps = append(implicitDeps, *className)
-	}
-
-	logger.Debug().
-		Int("final_implicit_deps_count", len(implicitDeps)).
-		Msg("Finished parsing implicit dependencies")
-
-	// Create the java.Package (this is what would be returned)
-	javaPkg := &java.Package{
-		Name:         packageName,
-		ImplicitDeps: implicitDeps,
+		exportedClasses = append(exportedClasses, *className)
 	}
 
 	// Verify the results
-	if len(javaPkg.ImplicitDeps) != 2 {
-		t.Fatalf("Expected 2 implicit dependencies, got %d", len(javaPkg.ImplicitDeps))
+	if len(exportedClasses) != 2 {
+		t.Fatalf("Expected 2 exported classes from Kotlin features, got %d", len(exportedClasses))
 	}
 
-	t.Logf("Successfully created java.Package with implicit dependencies:")
-	for i, dep := range javaPkg.ImplicitDeps {
-		t.Logf("  [%d] %s", i, dep.FullyQualifiedClassName())
+	// Verify package name
+	if packageName.Name != "com.example.provider" {
+		t.Errorf("Expected package name 'com.example.provider', got '%s'", packageName.Name)
+	}
+
+	// Verify the exported classes include dependencies from Kotlin features
+	foundGson := false
+	foundStrings := false
+	for _, className := range exportedClasses {
+		if className.FullyQualifiedClassName() == "com.google.gson.Gson" {
+			foundGson = true
+		}
+		if className.FullyQualifiedClassName() == "com.google.common.base.Strings" {
+			foundStrings = true
+		}
+	}
+
+	if !foundGson {
+		t.Errorf("Expected to find Gson in exported classes from Kotlin features")
+	}
+	if !foundStrings {
+		t.Errorf("Expected to find Strings in exported classes from Kotlin features")
+	}
+
+	t.Logf("Successfully verified package with Kotlin feature exports:")
+	for i, className := range exportedClasses {
+		t.Logf("  [%d] %s", i, className.FullyQualifiedClassName())
 	}
 }

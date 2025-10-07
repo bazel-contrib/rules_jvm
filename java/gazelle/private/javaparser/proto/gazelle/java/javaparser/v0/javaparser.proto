@@ -48,10 +48,6 @@ message Package {
 
   // The list of classes which dependers may need to have exported to them because they are part of the public interface of the request.
   repeated string exported_classes = 6;
-
-  // All implicit dependencies that should be added to exports attribute.
-  // This includes dependencies from Kotlin language features that create implicit cross-package dependencies.
-  repeated string implicit_deps = 7;
 }
 
 message PerClassMetadata {

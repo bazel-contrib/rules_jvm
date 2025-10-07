@@ -27,13 +27,6 @@ class ParsedPackageData {
    */
   final Map<String, PerClassData> perClassData = new TreeMap<>();
 
-  /**
-   * All implicit dependencies that should be added to exports attribute. This includes dependencies
-   * from inline functions, extension functions, property delegates, and any future Kotlin language
-   * features that create implicit cross-package dependencies.
-   */
-  final Set<String> implicitDeps = new TreeSet<>();
-
   ParsedPackageData() {}
 
   void merge(ParsedPackageData other) {
@@ -50,7 +43,5 @@ class ParsedPackageData {
       }
       existing.merge(classData.getValue());
     }
-    // Merge implicit dependencies
-    implicitDeps.addAll(other.implicitDeps);
   }
 }

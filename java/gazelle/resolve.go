@@ -115,15 +115,8 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
-	// Add implicit dependencies to exports
-	allExportedPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
-	allExportedPackageNames.AddAll(resolveInput.ExportedPackageNames)
-	for _, implicitDep := range resolveInput.ImplicitDeps {
-		allExportedPackageNames.Add(implicitDep.PackageName())
-	}
-
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
-	jr.populateAttr(c, packageConfig, r, "exports", allExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
 }

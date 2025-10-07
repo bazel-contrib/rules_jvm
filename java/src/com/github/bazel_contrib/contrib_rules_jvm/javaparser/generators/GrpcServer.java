@@ -216,8 +216,6 @@ public class GrpcServer {
         packageBuilder.putPerClassMetadata(classEntry.getKey(), perClassMetadata.build());
       }
 
-      packageBuilder.addAllImplicitDeps(data.implicitDeps);
-
       return packageBuilder.build();
     }
   }

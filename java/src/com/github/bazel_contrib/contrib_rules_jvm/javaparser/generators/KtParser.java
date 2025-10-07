@@ -253,15 +253,15 @@ public class KtParser {
 
       super.visitProperty(property);
 
-      // If this was a property delegate, add its dependencies to implicit deps
+      // If this was a property delegate, add its dependencies to exported types
       if (property.hasDelegate() && currentlyInPropertyDelegate) {
-        packageData.implicitDeps.addAll(currentPropertyDelegateDeps);
+        packageData.exportedTypes.addAll(currentPropertyDelegateDeps);
         logger.debug(
             "Property delegate "
                 + getPropertyFqName(property)
                 + " added "
                 + currentPropertyDelegateDeps.size()
-                + " implicit dependencies: "
+                + " exported types (from property delegate): "
                 + currentPropertyDelegateDeps);
         currentlyInPropertyDelegate = false;
         currentPropertyDelegateDeps = null;
@@ -357,22 +357,22 @@ public class KtParser {
       // Visit the function body to collect dependencies
       super.visitNamedFunction(function);
 
-      // If this was an inline function, add its dependencies to implicit deps
+      // If this was an inline function, add its dependencies to exported types
       if (isInline) {
-        packageData.implicitDeps.addAll(currentInlineFunctionDeps);
+        packageData.exportedTypes.addAll(currentInlineFunctionDeps);
         logger.debug(
             "Inline function "
                 + currentInlineFunction
                 + " added "
                 + currentInlineFunctionDeps.size()
-                + " implicit dependencies: "
+                + " exported types (from inline function): "
                 + currentInlineFunctionDeps);
         currentInlineFunction = null;
         currentInlineFunctionDeps = null;
       }
-      // If this was an extension function, add its dependencies to implicit deps
+      // If this was an extension function, add its dependencies to exported types
       if (isExtension) {
-        packageData.implicitDeps.addAll(currentExtensionFunctionDeps);
+        packageData.exportedTypes.addAll(currentExtensionFunctionDeps);
         logger.debug(
             "Extension function "
                 + currentExtensionFunction
@@ -380,7 +380,7 @@ public class KtParser {
                 + currentExtensionReceiverType
                 + " added "
                 + currentExtensionFunctionDeps.size()
-                + " implicit dependencies: "
+                + " exported types (from extension function): "
                 + currentExtensionFunctionDeps);
         currentExtensionFunction = null;
         currentExtensionReceiverType = null;
@@ -390,9 +390,9 @@ public class KtParser {
       // If this was a componentN() function, save its dependencies
       if (isComponentFunction) {
         componentFunctionDeps.put(currentComponentFunction, currentComponentFunctionDeps);
-        // Also add these dependencies to the implicit deps since they'll be needed for
+        // Also add these dependencies to the exported types since they'll be needed for
         // destructuring
-        packageData.implicitDeps.addAll(currentComponentFunctionDeps);
+        packageData.exportedTypes.addAll(currentComponentFunctionDeps);
         logger.debug(
             "ComponentN function "
                 + currentComponentFunction
@@ -682,11 +682,11 @@ public class KtParser {
 
         // For destructuring, we don't need to match specific componentN() functions
         // The componentN() functions have already been processed and their dependencies
-        // added to implicitDeps when we visited them. The destructuring just triggers
+        // added to exportedTypes when we visited them. The destructuring just triggers
         // the need for those dependencies to be available.
 
         // Since we're in the same package as the componentN() functions, and those
-        // functions have already added their dependencies to implicitDeps, we don't
+        // functions have already added their dependencies to exportedTypes, we don't
         // need to do anything additional here. The dependencies are already captured.
 
         logger.debug(

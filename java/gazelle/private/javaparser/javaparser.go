@@ -131,26 +131,6 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		mains.Add(types.NewClassName(packageName, main))
 	}
 
-	// Parse implicit dependencies
-	var implicitDeps []types.ClassName
-	r.logger.Debug().
-		Int("implicit_deps_count", len(resp.GetImplicitDeps())).
-		Strs("implicit_deps_raw", resp.GetImplicitDeps()).
-		Msg("Parsing implicit dependencies from Java response")
-
-	for _, depClass := range resp.GetImplicitDeps() {
-		className, err := types.ParseClassName(depClass)
-		if err != nil {
-			r.logger.Error().
-				Str("dependency", depClass).
-				Err(err).
-				Msg("Failed to parse implicit dependency class name")
-			return nil, fmt.Errorf("failed to parse implicit dependency %q: %w", depClass, err)
-		}
-
-		implicitDeps = append(implicitDeps, *className)
-	}
-
 	return &java.Package{
 		Name:                                   packageName,
 		ImportedClasses:                        importedClasses,
@@ -160,6 +140,5 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		Files:                                  sorted_set.NewSortedSet(in.Files),
 		TestPackage:                            java.IsTestPackage(in.Rel),
 		PerClassMetadata:                       perClassMetadata,
-		ImplicitDeps:                           implicitDeps,
 	}, nil
 }
