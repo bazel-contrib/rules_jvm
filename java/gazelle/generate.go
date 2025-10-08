@@ -308,7 +308,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
 	}
 
-	if cfg.IncludeBinary() {
+	if cfg.GenerateBinary() {
 		l.processJavaBinary(args.File, args.Rel, allMains, testHelperJavaFiles, &res)
 	}
 

@@ -71,9 +71,9 @@ const (
 	// Example: # gazelle:java_strip_resources_prefix my/data/config
 	JavaStripResourcesPrefix = "java_strip_resources_prefix"
 
-	//JavaIncludeBinary tells the code generator to include creating the `java_binary` rules
+	//JavaGenerateBinary tells the code generator to generate the `java_binary` rules
 	// Can be either "true" or "false". Defaults to "true"
-	JavaIncludeBinary = "java_include_binary"
+	JavaGenerateBinary = "java_generate_binary"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -96,7 +96,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
-		includeBinary:          c.includeBinary,
+		generateBinary:         c.generateBinary,
 		resolveToJavaExports:   c.resolveToJavaExports,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
@@ -128,7 +128,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
-	includeBinary                                      bool
+	generateBinary                                     bool
 	resolveToJavaExports                               *types.LateInit[bool]
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
@@ -155,7 +155,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
-		includeBinary:          true,
+		generateBinary:         true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
@@ -194,12 +194,12 @@ func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
 }
 
-func (c *Config) IncludeBinary() bool {
-	return c.includeBinary
+func (c *Config) GenerateBinary() bool {
+	return c.generateBinary
 }
 
-func (c *Config) SetIncludeBinary(include bool) {
-	c.includeBinary = include
+func (c *Config) SetGenerateBinary(generate bool) {
+	c.generateBinary = generate
 }
 
 func (c *Config) MavenRepositoryName() string {

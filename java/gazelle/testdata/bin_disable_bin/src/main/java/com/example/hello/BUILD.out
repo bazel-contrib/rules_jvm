@@ -1,6 +1,6 @@
 load("@rules_java//java:defs.bzl", "java_library")
 
-# gazelle:java_include_binary false
+# gazelle:java_generate_binary false
 
 java_library(
     name = "hello",

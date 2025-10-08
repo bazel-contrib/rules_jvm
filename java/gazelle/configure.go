@@ -71,7 +71,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaResolveToJavaExports,
 		javaconfig.JavaSourcesetRoot,
 		javaconfig.JavaStripResourcesPrefix,
-		javaconfig.JavaIncludeBinary,
+		javaconfig.JavaGenerateBinary,
 	}
 }
 
@@ -183,14 +183,14 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				default:
 					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateProto, d.Value)
 				}
-			case javaconfig.JavaIncludeBinary:
+			case javaconfig.JavaGenerateBinary:
 				switch d.Value {
 				case "true":
-					cfg.SetIncludeBinary(true)
+					cfg.SetGenerateBinary(true)
 				case "false":
-					cfg.SetIncludeBinary(false)
+					cfg.SetGenerateBinary(false)
 				default:
-					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaIncludeBinary, d.Value)
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateBinary, d.Value)
 				}
 			case javaconfig.JavaAnnotationProcessorPlugin:
 				// Format: # gazelle:java_annotation_processor_plugin com.example.AnnotationName com.example.AnnotationProcessorImpl
