@@ -25,7 +25,7 @@ In the ``WORKSPACE`` file set up the rules_jvm correctly:
 
 In the top level ``BUILD.bazel`` file, setup Gazelle to use gazelle-languages binary:
 
-.. code::bzl
+.. code:: bzl
     :caption: BUILD.bazel
     load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
 
@@ -44,7 +44,7 @@ In the top level ``BUILD.bazel`` file, setup Gazelle to use gazelle-languages bi
 
 
 Make sure you have everything setup properly by building the gazelle binary:
-`bazel build //:gazelle_bin`
+``bazel build //:gazelle_bin``
 
 To generate BUILD files:
 
@@ -62,9 +62,9 @@ Configuration options
 ---------------------
 
 This Gazelle extension supports some configuration options, which are enabled by
-adding comments to your root `BUILD.bazel` file. For example, to set
-`java_maven_install_file`, you would add the following to your root
-`BUILD.bazel` file:
+adding comments to your root ``BUILD.bazel`` file. For example, to set
+``java_maven_install_file``, you would add the following to your root
+``BUILD.bazel`` file:
 
 .. code::
     # gazelle:java_maven_install_file project/main_maven_install.json
@@ -74,7 +74,7 @@ See [javaconfig/config.go](javaconfig/config.go) for a list of configuration
 options and their documentation.
 
 Additionally, some configuration can only be done by flag. See the
-`RegisterFlags` function in [configure.go](configure.go) for a list of these
+``RegisterFlags`` function in [configure.go](configure.go) for a list of these
 options.
 
 Source code restrictions and limitations
@@ -82,13 +82,26 @@ Source code restrictions and limitations
 
 Currently, the gazelle plugin makes the following assumptions about the code it's generating BUILD files for:
 
-1. All code lives in a non-empty package. Source files must have a `package` declaration, and classes depended on all themselves have a `package` declaration.
-2. Packages only exist in one place. Two different directories or dependencies may not contain classes which belong in the same package. The exception to this is that for each package, there may be a single test directory which uses the same package as that package's non-test directory.
-3. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be removed, you may want to set `# gazelle:java_module_granularity module` in the BUILD file containing the parent-most class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
+1. All code lives in a non-empty package. Source files must have a ``package`` declaration, and classes depended on all
+    themselves have a ``package`` declaration.
+2. Packages only exist in one place. Two different directories or dependencies may not contain classes which belong in
+    the same package. The exception to this is that for each package, there may be a single test directory which uses
+    the same package as that package's non-test directory.
+3. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be
+    removed, you may want to set ``# gazelle:java_module_granularity module`` in the BUILD file containing the parent-most
+    class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
 4. Non-test code doesn't depend on test code.
-5. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on target, because this is an unexpected set-up.
-6. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case, and class and interface names start with Upper Case letters.
-7. Code doesn't use types which it doesn't name _only_ through unnamed means, across multiple calls. For example, if some code calls `x.foo().bar()` where the return type of `foo` is defined in another target, and the calling code explicitly uses a type from that target somewhere else. In the case of `x.foo()`, we add exports so that the caller will have access to the return type of `foo()`, but do not track dependencies on the return types across _multiple_ calls.
+5. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a
+    non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't
+    have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on
+    target, because this is an unexpected set-up.
+6. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case,
+    and class and interface names start with Upper Case letters.
+7. Code doesn't use types which it doesn't name _only_ through unnamed means, across multiple calls. For example, if
+    some code calls ``x.foo().bar()`` where the return type of ``foo`` is defined in another target, and the calling code
+    explicitly uses a type from that target somewhere else. In the case of ``x.foo()``, we add exports so that the caller
+    will have access to the return type of ``foo()``, but do not track dependencies on the return types across _multiple_
+    calls.
 
    This limitation could be lifted, but would require us to export all _transitively_ used symbols from every function. This would serve to add direct dependencies between lots of targets, which can slow down compilation and reduce cache hits.
 
@@ -131,7 +144,7 @@ Gazelle can be configured with directives, which are written as top-level commen
 can be set on the command line can also be set using directives. Some options can only be set with directives.
 
 Directives apply in the directory where they are set and in subdirectories. This means, for example, if you set
-`# gazelle:prefix` in the build file in your project's root directory, it affects your whole project. If you set it
+``# gazelle:prefix`` in the build file in your project's root directory, it affects your whole project. If you set it
 in a subdirectory, it only affects rules in that subtree.
 
 The following directives specific to the Java extension are recognized:
@@ -155,28 +168,28 @@ The following directives specific to the Java extension are recognized:
 | java_module_granularity                           | "package"                                |
 +---------------------------------------------------+------------------------------------------+
 | Controls whether this Java module has a module granularity or a package granularity          |
-| Package granularity builds a `java_library` or `java_test_suite` for eash directory (bazel)  |
-| Module graularity builds a `java_library` or `java_test_suite` for a directory and all       |
+| Package granularity builds a ``java_library`` or ``java_test_suite`` for eash directory (bazel)|
+| Module graularity builds a ``java_library`` or ``java_test_suite`` for a directory and all   |
 | subdirectories. This can be useful for resolving dependency loops in closely releated code   |
 | Can be either "package" or "module", defaults to "package".                                  |
 +---------------------------------------------------+------------------------------------------+
 | java_test_file_suffixes                           | none                                     |
 +---------------------------------------------------+------------------------------------------+
 | Indicates within a test directory which files are test classes vs utility classes, based on  |
-| their basename. It should be set up to match the value used for `java_test_suite`'s          |
-| `test_suffixes` attribute. Accepted values are a comma-delimited list of strings.            |
+| their basename. It should be set up to match the value used for ``java_test_suite``'s        |
+| ``test_suffixes`` attribute. Accepted values are a comma-delimited list of strings.          |
 +---------------------------------------------------+------------------------------------------+
 | java_test_mode                                    | "suite"                                  |
 +---------------------------------------------------+------------------------------------------+
 | Within a test directory determines the syle of test generation. Suite generates a single     |
-| `java_test_suite` for the whole directory. File generates one `java_test` rule for each test |
-| file in the directory and a `java_library` for the utility classes.                          |
-| Can be either "suite" or "file", defaultes to "suite".                                       |
+| ``java_test_suite`` for the whole directory. File generates one ``java_test`` rule for each  |
+| test file in the directory and a ``java_library`` for the utility classes.                   |
+| Can be either "suite" or "file", defaults to "suite".                                        |
 +---------------------------------------------------+------------------------------------------+
 | java_generate_proto                               | True                                     |
 +---------------------------------------------------+------------------------------------------+
-| Tells the code generator to generate `java_proto_library` (and `java_library`) rules when a  |
-| `proto_library` rule is present. Defaults to True.                                           |
+| Tells the code generator to generate ``java_proto_library`` (and ``java_library``) rules when|
+| a ``proto_library`` rule is present. Defaults to True.                                       |
 +---------------------------------------------------+------------------------------------------+
 | java_maven_repository_name                        | "maven"                                  |
 +---------------------------------------------------+------------------------------------------+
@@ -201,24 +214,24 @@ The following directives specific to the Java extension are recognized:
 +---------------------------------------------------+------------------------------------------+
 | Sourceset root explicitly marks a directory as the root of a sourceset. This provides a clear|
 | override to the auto-detection algorithm.                                                    |
-| Example: `# gazelle:java_sourceset_root my/custom/src`                                       |
+| Example: ``# gazelle:java_sourceset_root my/custom/src``                                     |
 +---------------------------------------------------+------------------------------------------+
 | java_strip_resources_prefix                       | none                                     |
 +---------------------------------------------------+------------------------------------------+
 | Strip resources prefix overrides the path-stripping behavior for resources. This is a direct |
 | way to specify the resource_strip_prefix for all resources in a directory.                   |
-| Example: `# gazelle:java_strip_resources_prefix my/data/config`                              |
+| Example: ``# gazelle:java_strip_resources_prefix my/data/config``                            |
 +---------------------------------------------------+------------------------------------------+
 | java_generate_binary                              | True                                     |
 +---------------------------------------------------+------------------------------------------+
-| Controls if the generator adds `java_binary` targets to the build file. If set False, no     |
-| `java_binary` targets are generated for the directories, defaults to True.                   |
+| Controls if the generator adds ``java_binary`` targets to the build file. If set False, no   |
+| ``java_binary`` targets are generated for the directory, defaults to True.                   |
 +---------------------------------------------------+------------------------------------------+
 
 Troubleshooting
 ---------------
 
-If one forgets to run `bazel fetch @maven//...`, the code will complain and tell
+If one forgets to run ``bazel fetch @maven//...``, the code will complain and tell
 you to run this command.
 
 If one forgets to "Update the Maven mapping", they use out of date data for the
@@ -230,14 +243,12 @@ Contibutors documentation
 
 The following are the targets of interest:
 
-- `//java/gazelle` implements a Gazelle extension
-- `//java/gazelle/private/javaparser/cmd/javaparser-wrapper` wraps the java
+- ``//java/gazelle`` implements a Gazelle extension
+- ``//java/gazelle/private/javaparser/cmd/javaparser-wrapper`` wraps the java
   parser with an activity tracker (to stop the parser) and an adapter to prevent
   self imports.
-- `//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main`
+- ``//java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators:Main``
   is the java parser side process
 
-The maven integration relies on using `rules_jvm_external` at least as new as
+The maven integration relies on using ``rules_jvm_external`` at least as new as
 https://github.com/bazelbuild/rules_jvm_external/pull/716
-
-[gazelle]:
