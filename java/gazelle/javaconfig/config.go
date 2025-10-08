@@ -70,6 +70,10 @@ const (
 	// This is a direct way to specify the resource_strip_prefix for all resources in a directory.
 	// Example: # gazelle:java_strip_resources_prefix my/data/config
 	JavaStripResourcesPrefix = "java_strip_resources_prefix"
+
+	//JavaGenerateBinary tells the code generator to generate the `java_binary` rules
+	// Can be either "true" or "false". Defaults to "true"
+	JavaGenerateBinary = "java_generate_binary"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -92,6 +96,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateBinary:         c.generateBinary,
 		resolveToJavaExports:   c.resolveToJavaExports,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
@@ -123,6 +128,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	generateBinary                                     bool
 	resolveToJavaExports                               *types.LateInit[bool]
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
@@ -149,6 +155,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateBinary:         true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
@@ -185,6 +192,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) GenerateBinary() bool {
+	return c.generateBinary
+}
+
+func (c *Config) SetGenerateBinary(generate bool) {
+	c.generateBinary = generate
 }
 
 func (c *Config) MavenRepositoryName() string {
