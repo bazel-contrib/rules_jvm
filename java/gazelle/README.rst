@@ -183,6 +183,23 @@ The following directives specific to the Java extension are recognized:
 | Can be either "true" or "false". Defaults to "true". can only be set at the root of the      |
 | repository.                                                                                  |
 +---------------------------------------------------+------------------------------------------+
+| java_sourceset_root                               | none                                     |
++---------------------------------------------------+------------------------------------------+
+| Sourceset root explicitly marks a directory as the root of a sourceset. This provides a clear|
+| override to the auto-detection algorithm.                                                    |
+| Example: `# gazelle:java_sourceset_root my/custom/src`                                       |
++---------------------------------------------------+------------------------------------------+
+| java_strip_resources_prefix                       | none                                     |
++---------------------------------------------------+------------------------------------------+
+| Strip resources prefix overrides the path-stripping behavior for resources. This is a direct |
+| way to specify the resource_strip_prefix for all resources in a directory.                   |
+| Example: `# gazelle:java_strip_resources_prefix my/data/config`                              |
++---------------------------------------------------+------------------------------------------+
+| java_generate_binary                              | True                                     |
++---------------------------------------------------+------------------------------------------+
+| Controls if the generator adds `java_binary` targets to the build file. If set False, no     |
+| `java_binary` targets are generated for the directories, defaults to True.                   |
++---------------------------------------------------+------------------------------------------+
 
 ## Troubleshooting
 
