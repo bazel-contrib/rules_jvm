@@ -1,12 +1,12 @@
 Gazelle Java extension
 ======================
 
-This provides a  [Gazelle][] extension to generate build files for Java projects.
+This provides a  [Gazelle](https://github.com/bazelbuild/bazel-gazelle) extension to generate build files for Java projects.
 
 Usage
 -----
 
-In the `WORKSPACE` file set up the rules_jvm correctly:
+In the ``WORKSPACE`` file set up the rules_jvm correctly:
 
 .. code:: bzl
     load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
@@ -23,7 +23,7 @@ In the `WORKSPACE` file set up the rules_jvm correctly:
 
     contrib_rules_jvm_gazelle_setup()
 
-In the top level `BUILD.bazel` file, setup Gazelle to use gazelle-languages binary:
+In the top level ``BUILD.bazel`` file, setup Gazelle to use gazelle-languages binary:
 
 .. code::bzl
     :caption: BUILD.bazel
@@ -240,4 +240,4 @@ The following are the targets of interest:
 The maven integration relies on using `rules_jvm_external` at least as new as
 https://github.com/bazelbuild/rules_jvm_external/pull/716
 
-[gazelle]: https://github.com/bazelbuild/bazel-gazelle
+[gazelle]:
