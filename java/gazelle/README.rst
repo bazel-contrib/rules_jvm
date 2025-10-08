@@ -8,8 +8,7 @@ Usage
 
 In the `WORKSPACE` file set up the rules_jvm correctly:
 
-.. code::bzl
-    :caption: WORKSPACE
+.. code:: bzl
     load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
 
     contrib_rules_jvm_deps()
@@ -82,13 +81,14 @@ Source code restrictions and limitations
 ----------------------------------------
 
 Currently, the gazelle plugin makes the following assumptions about the code it's generating BUILD files for:
+
 1. All code lives in a non-empty package. Source files must have a `package` declaration, and classes depended on all themselves have a `package` declaration.
-1. Packages only exist in one place. Two different directories or dependencies may not contain classes which belong in the same package. The exception to this is that for each package, there may be a single test directory which uses the same package as that package's non-test directory.
-1. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be removed, you may want to set `# gazelle:java_module_granularity module` in the BUILD file containing the parent-most class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
-1. Non-test code doesn't depend on test code.
-1. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on target, because this is an unexpected set-up.
-1. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case, and class and interface names start with Upper Case letters.
-1. Code doesn't use types which it doesn't name _only_ through unnamed means, across multiple calls. For example, if some code calls `x.foo().bar()` where the return type of `foo` is defined in another target, and the calling code explicitly uses a type from that target somewhere else. In the case of `x.foo()`, we add exports so that the caller will have access to the return type of `foo()`, but do not track dependencies on the return types across _multiple_ calls.
+2. Packages only exist in one place. Two different directories or dependencies may not contain classes which belong in the same package. The exception to this is that for each package, there may be a single test directory which uses the same package as that package's non-test directory.
+3. There are no circular dependencies that extend beyond a single package. If these are present, and can't easily be removed, you may want to set `# gazelle:java_module_granularity module` in the BUILD file containing the parent-most class in the dependency cycle, which may fix the problem, but will slow down your builds. Ideally, remove dependency cycles.
+4. Non-test code doesn't depend on test code.
+5. Non-test code used by one package of tests either lives in the same directory as those tests, or lives in a non-test-code directory. We also detect non-test code used from another test package, if that other package doesn't have a corresponding non-test code directory, but require you to manually set the visibility on the depended-on target, because this is an unexpected set-up.
+6. Package names and class/interface names follow standard java conventions; that is: package names are all lower-case, and class and interface names start with Upper Case letters.
+7. Code doesn't use types which it doesn't name _only_ through unnamed means, across multiple calls. For example, if some code calls `x.foo().bar()` where the return type of `foo` is defined in another target, and the calling code explicitly uses a type from that target somewhere else. In the case of `x.foo()`, we add exports so that the caller will have access to the return type of `foo()`, but do not track dependencies on the return types across _multiple_ calls.
 
    This limitation could be lifted, but would require us to export all _transitively_ used symbols from every function. This would serve to add direct dependencies between lots of targets, which can slow down compilation and reduce cache hits.
 
@@ -97,6 +97,7 @@ Currently, the gazelle plugin makes the following assumptions about the code it'
 If these assumptions are violated, the rest of the generation should still function properly, but the specific files which violate the assumptions (or depend on files which violate the assumptions) will not get complete results. We strive to emit warnings when this happens.
 
 We are also aware of the following limitations. This list is not exhaustive, and is not intentional (i.e. if we can fix these limitations, we would like to):
+
 1. Runtime dependencies are not detected (e.g. loading classes by reflection).
 
 Flags
