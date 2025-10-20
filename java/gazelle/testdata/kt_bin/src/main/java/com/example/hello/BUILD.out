@@ -1,0 +1,16 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "hello",
+    srcs = ["Hello.kt"],
+    visibility = ["//:__subpackages__"],
+)
+
+java_binary(
+    name = "HelloKt",
+    main_class = "com.example.hello.HelloKt",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":hello"],
+)
+

@@ -49,6 +49,20 @@ func TestParseClassName(t *testing.T) {
 				innerClassNames:    []string{""},
 			},
 		},
+		"gson class": {
+			from: "com.google.gson.Gson",
+			want: &ClassName{
+				packageName:        NewPackageName("com.google.gson"),
+				bareOuterClassName: "Gson",
+			},
+		},
+		"guava strings class": {
+			from: "com.google.common.base.Strings",
+			want: &ClassName{
+				packageName:        NewPackageName("com.google.common.base"),
+				bareOuterClassName: "Strings",
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := ParseClassName(tc.from)
