@@ -41,6 +41,7 @@ def java_test_suite(
         srcs,
         runner = "junit4",
         test_suffixes = DEFAULT_TEST_SUFFIXES,
+        test_generators = _TEST_GENERATORS,
         package = None,
         deps = None,
         runtime_deps = [],
@@ -65,6 +66,7 @@ def java_test_suite(
       name: A unique name for this rule. Will be used to generate a `test_suite`
       srcs: Source files to create test rules for.
       runner: One of `junit4` or `junit5`.
+        Pass `test_generators` if you need a custom runner.
       package: The package name used by the tests. If not set, this is
         inferred from the current bazel package name.
       deps: A list of `java_*` dependencies.
@@ -72,6 +74,9 @@ def java_test_suite(
       size: The size of the test, passed to `java_test`
       test_suffixes: The file name suffix used to identify if a file
         contains a test class.
+      test_generators: A dictionary of functions that generate a java_test target.
+        The keys should be "junit4" and "junit5". Include additional keys if you
+        need to support other runners.
     """
     create_jvm_test_suite(
         name,
@@ -80,7 +85,7 @@ def java_test_suite(
         package = package,
         define_library = _define_library,
         # Default to bazel's default test runner if we don't know what people want
-        define_test = _TEST_GENERATORS.get(runner, _define_junit4_test),
+        define_test = test_generators.get(runner, _define_junit4_test),
         deps = deps,
         runtime_deps = runtime_deps,
         size = size,
