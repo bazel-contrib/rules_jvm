@@ -71,6 +71,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaResolveToJavaExports,
 		javaconfig.JavaSourcesetRoot,
 		javaconfig.JavaStripResourcesPrefix,
+		javaconfig.JavaGenerateBinary,
 		javaconfig.JvmKotlinEnabled,
 	}
 }
@@ -83,6 +84,8 @@ func (jc *Configurer) initRootConfig(c *config.Config) javaconfig.Configs {
 	}
 	return c.Exts[languageName].(javaconfig.Configs)
 }
+
+const binaryConfigError string = "invalid value for directive %q: %s: possible values are true/false"
 
 func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	cfgs := jc.initRootConfig(c)
@@ -179,8 +182,16 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				case "false":
 					cfg.SetGenerateProto(false)
 				default:
-					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
-						javaconfig.JavaGenerateProto, d.Value)
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateProto, d.Value)
+				}
+			case javaconfig.JavaGenerateBinary:
+				switch d.Value {
+				case "true":
+					cfg.SetGenerateBinary(true)
+				case "false":
+					cfg.SetGenerateBinary(false)
+				default:
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateBinary, d.Value)
 				}
 			case javaconfig.JavaAnnotationProcessorPlugin:
 				// Format: # gazelle:java_annotation_processor_plugin com.example.AnnotationName com.example.AnnotationProcessorImpl
@@ -215,8 +226,7 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				case "false":
 					cfg.SetResolveToJavaExports(false)
 				default:
-					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
-						javaconfig.JavaResolveToJavaExports, d.Value)
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaResolveToJavaExports, d.Value)
 				}
 
 			case javaconfig.JavaSourcesetRoot:

@@ -71,6 +71,10 @@ const (
 	// Example: # gazelle:java_strip_resources_prefix my/data/config
 	JavaStripResourcesPrefix = "java_strip_resources_prefix"
 
+	//JavaGenerateBinary tells the code generator to generate the `java_binary` rules
+	// Can be either "true" or "false". Defaults to "true"
+	JavaGenerateBinary = "java_generate_binary"
+
 	// JvmKotlinEnabled tells the code generator whether to support `kt_jvm_library` rules for Kotlin sources.
 	// Can be either "true" or "false". Defaults to "true".
 	// This requires importing the `@rules_kotlin` repository into your workspace if there are any Kotlin sources in the repo.
@@ -97,6 +101,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateBinary:         c.generateBinary,
 		resolveToJavaExports:   c.resolveToJavaExports,
 		kotlinEnabled:          c.kotlinEnabled,
 		mavenInstallFile:       c.mavenInstallFile,
@@ -129,6 +134,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	generateBinary                                     bool
 	resolveToJavaExports                               *types.LateInit[bool]
 	kotlinEnabled                                      bool
 	mavenInstallFile                                   string
@@ -156,6 +162,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateBinary:         true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
 		kotlinEnabled:          true,
 		mavenInstallFile:       "maven_install.json",
@@ -193,6 +200,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) GenerateBinary() bool {
+	return c.generateBinary
+}
+
+func (c *Config) SetGenerateBinary(generate bool) {
+	c.generateBinary = generate
 }
 
 func (c *Config) KotlinEnabled() bool {
