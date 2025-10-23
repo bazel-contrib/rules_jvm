@@ -1,0 +1,10 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "hello",
+    srcs = [
+        "Goodbye.java",
+        "Hello.kt",
+    ],
+    visibility = ["//:__subpackages__"],
+)

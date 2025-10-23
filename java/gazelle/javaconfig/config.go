@@ -74,6 +74,11 @@ const (
 	//JavaGenerateBinary tells the code generator to generate the `java_binary` rules
 	// Can be either "true" or "false". Defaults to "true"
 	JavaGenerateBinary = "java_generate_binary"
+
+	// JvmKotlinEnabled tells the code generator whether to support `kt_jvm_library` rules for Kotlin sources.
+	// Can be either "true" or "false". Defaults to "true".
+	// This requires importing the `@rules_kotlin` repository into your workspace if there are any Kotlin sources in the repo.
+	JvmKotlinEnabled = "jvm_kotlin_enabled"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -98,6 +103,7 @@ func (c *Config) NewChild() *Config {
 		generateProto:          true,
 		generateBinary:         c.generateBinary,
 		resolveToJavaExports:   c.resolveToJavaExports,
+		kotlinEnabled:          c.kotlinEnabled,
 		mavenInstallFile:       c.mavenInstallFile,
 		moduleGranularity:      c.moduleGranularity,
 		repoRoot:               c.repoRoot,
@@ -130,6 +136,7 @@ type Config struct {
 	generateProto                                      bool
 	generateBinary                                     bool
 	resolveToJavaExports                               *types.LateInit[bool]
+	kotlinEnabled                                      bool
 	mavenInstallFile                                   string
 	moduleGranularity                                  string
 	repoRoot                                           string
@@ -157,6 +164,7 @@ func New(repoRoot string) *Config {
 		generateProto:          true,
 		generateBinary:         true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
+		kotlinEnabled:          true,
 		mavenInstallFile:       "maven_install.json",
 		moduleGranularity:      "package",
 		repoRoot:               repoRoot,
@@ -200,6 +208,12 @@ func (c *Config) GenerateBinary() bool {
 
 func (c *Config) SetGenerateBinary(generate bool) {
 	c.generateBinary = generate
+func (c *Config) KotlinEnabled() bool {
+	return c.kotlinEnabled
+}
+
+func (c *Config) SetKotlinEnabled(enabled bool) {
+	c.kotlinEnabled = enabled
 }
 
 func (c *Config) MavenRepositoryName() string {

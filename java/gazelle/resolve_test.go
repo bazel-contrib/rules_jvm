@@ -24,6 +24,108 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
+func TestImports(t *testing.T) {
+	type buildFile struct {
+		rel, content string
+	}
+
+	type wantImport struct {
+		importSpec resolve.ImportSpec
+		labelName  string
+	}
+
+	type testCase struct {
+		old  buildFile
+		want []wantImport
+	}
+
+	for name, tc := range map[string]testCase{
+		"java": {
+			old: buildFile{
+				rel: "",
+				content: `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "hello",
+    srcs = ["Hello.java"],
+	_packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)`,
+			},
+			want: []wantImport{
+				wantImport{
+					importSpec: resolve.ImportSpec{
+						Lang: "java",
+						Imp:  "com.example",
+					},
+					labelName: "hello",
+				},
+			},
+		},
+		"kotlin": {
+			old: buildFile{
+				rel: "",
+				content: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:jvm_kotlin_enabled true
+
+kt_jvm_library(
+    name = "hello",
+    srcs = ["Hello.kt"],
+	_packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)`,
+			},
+			want: []wantImport{
+				wantImport{
+					importSpec: resolve.ImportSpec{
+						Lang: "java",
+						Imp:  "com.example",
+					},
+					labelName: "hello",
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, langs, confs := testConfig(t)
+
+			mrslv, exts := InitTestResolversAndExtensions(langs)
+			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+			buildPath := filepath.Join(filepath.FromSlash(tc.old.rel), "BUILD.bazel")
+			f, err := rule.LoadData(buildPath, tc.old.rel, []byte(tc.old.content))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, configurer := range confs {
+				// Update the config to handle gazelle directives in the BUILD file.
+				configurer.Configure(c, tc.old.rel, f)
+			}
+			for _, r := range f.Rules {
+				// Explicitly set the private `_java_packages` attribute for import resolution,
+				// This must be done manually as all the attributes stated in the BUILD file are
+				// considered public.
+				setPackagesPrivateAttr(r)
+				ix.AddRule(c, r, f)
+				t.Logf("added rule %s", r.Name())
+			}
+			ix.Finish()
+
+			for _, want := range tc.want {
+				results := ix.FindRulesByImportWithConfig(c, want.importSpec, "java")
+				if len(results) != 1 {
+					t.Errorf("expected 1 result, got %d for import %v", len(results), want.importSpec.Imp)
+				} else {
+					if results[0].Label.Name != want.labelName {
+						t.Errorf("expected label %s, got %s", want.labelName, results[0].Label)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestResolve(t *testing.T) {
 	type buildFile struct {
 		rel, content string
@@ -46,8 +148,7 @@ java_library(
     _imported_packages = ["java.lang"],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
-)
-`,
+)`,
 			},
 			want: `load("@rules_java//java:defs.bzl", "java_library")
 
@@ -55,8 +156,7 @@ java_library(
     name = "hello",
     srcs = ["Hello.java"],
     visibility = ["//:__subpackages__"],
-)
-`,
+)`,
 		},
 		"external": {
 			old: buildFile{
@@ -72,8 +172,7 @@ java_library(
     ],
     _packages = ["com.example"],
     visibility = ["//:__subpackages__"],
-)			
-`,
+)`,
 			},
 			want: `load("@rules_java//java:defs.bzl", "java_library")
 
@@ -82,8 +181,36 @@ java_library(
     srcs = ["App.java"],
     visibility = ["//:__subpackages__"],
     deps = ["@maven//:com_google_guava_guava"],
-)			
-`,
+)`,
+		},
+		"kotlin": {
+			old: buildFile{
+				rel: "",
+				content: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:jvm_kotlin_enabled true
+
+kt_jvm_library(
+    name = "myproject",
+    srcs = ["App.kt"],
+    _imported_packages = [
+        "com.google.common.primitives",
+        "kotlin.collections",
+    ],
+    _packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)`,
+			},
+			want: `load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:jvm_kotlin_enabled true
+
+kt_jvm_library(
+    name = "myproject",
+    srcs = ["App.kt"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@maven//:com_google_guava_guava"],
+)`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -175,6 +302,16 @@ func stubModInfo(importPath string) (string, error) {
 		return "example.com/repo", nil
 	}
 	return "", fmt.Errorf("could not find module for import path: %q", importPath)
+}
+
+func setPackagesPrivateAttr(r *rule.Rule) {
+	packages := r.AttrStrings("_packages")
+	resolvablePackages := make([]types.ResolvableJavaPackage, 0, len(packages))
+	for _, pkg := range packages {
+		pkgName := types.NewPackageName(pkg)
+		resolvablePackages = append(resolvablePackages, *types.NewResolvableJavaPackage(pkgName, false, false))
+	}
+	r.SetPrivateAttr(packagesKey, resolvablePackages)
 }
 
 func convertImportsAttr(r *rule.Rule) types.ResolveInput {

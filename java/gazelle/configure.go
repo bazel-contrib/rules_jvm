@@ -72,6 +72,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaSourcesetRoot,
 		javaconfig.JavaStripResourcesPrefix,
 		javaconfig.JavaGenerateBinary,
+		javaconfig.JvmKotlinEnabled,
 	}
 }
 
@@ -233,8 +234,18 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.JavaStripResourcesPrefix:
 				cfg.SetStripResourcesPrefix(d.Value)
-			}
 
+			case javaconfig.JvmKotlinEnabled:
+				switch d.Value {
+				case "true":
+					cfg.SetKotlinEnabled(true)
+				case "false":
+					cfg.SetKotlinEnabled(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JvmKotlinEnabled, d.Value)
+				}
+			}
 		}
 	}
 
