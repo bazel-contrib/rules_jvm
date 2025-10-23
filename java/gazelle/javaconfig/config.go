@@ -208,6 +208,8 @@ func (c *Config) GenerateBinary() bool {
 
 func (c *Config) SetGenerateBinary(generate bool) {
 	c.generateBinary = generate
+}
+
 func (c *Config) KotlinEnabled() bool {
 	return c.kotlinEnabled
 }
