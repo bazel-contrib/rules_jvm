@@ -1,5 +1,6 @@
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load(":java_test_suite_test_suite.bzl", "java_test_suite_test_suite")
 
 java_test_suite(
     name = "ExampleSuite",
@@ -19,3 +20,5 @@ java_test_suite(
         artifact("org.junit.platform:junit-platform-reporting"),
     ],
 )
+
+java_test_suite_test_suite(name = "JavaTestSuiteTestSuite")
