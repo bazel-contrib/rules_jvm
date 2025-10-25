@@ -47,3 +47,8 @@ use_repo(
     maven,
     "maven",
 )
+
+register_toolchains(
+    "@@bazel_skylib//toolchains/unittest:cmd_toolchain",
+    "@@bazel_skylib//toolchains/unittest:bash_toolchain",
+)
