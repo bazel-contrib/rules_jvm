@@ -1,5 +1,6 @@
 load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_test", "java_junit5_test")
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load(":java_junit5_test_test_suite.bzl", "java_junit5_test_test_suite")
 
 java_junit5_test(
     name = "ExampleTest",
@@ -14,6 +15,10 @@ java_junit5_test(
         artifact("org.junit.platform:junit-platform-launcher"),
         artifact("org.junit.platform:junit-platform-reporting"),
     ],
+)
+
+java_junit5_test_test_suite(
+    name = "java_junit5_test_test",
 )
 
 checkstyle_test(

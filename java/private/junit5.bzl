@@ -20,6 +20,8 @@ See `java_junit5_test` for more details.
 """
 JUNIT5_DEPS = junit5_deps()
 
+JUNIT5_MAIN_CLASS = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner"
+
 JUNIT5_VINTAGE_DEPS = junit5_vintage_deps()
 
 def java_junit5_test(
@@ -100,7 +102,8 @@ def java_junit5_test(
 
     java_test(
         name = name,
-        main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
+        # Use the passed main_class value or JUNIT5_MAIN_CLASS if not provided
+        main_class = kwargs.pop("main_class", JUNIT5_MAIN_CLASS),
         test_class = clazz,
         runtime_deps = runtime_deps + [
             "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
