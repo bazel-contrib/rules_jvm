@@ -283,23 +283,27 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return l
 	}
 
-	if l, err := jr.lang.MavenResolverForInstallFile(pc.MavenInstallFile()).Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
-		var noExternal *maven.NoExternalImportsError
-		var multipleExternal *maven.MultipleExternalImportsError
-
-		if errors.As(err, &noExternal) {
-			// do not fail, the package might be provided elsewhere
-		} else if errors.As(err, &multipleExternal) {
-			jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
-			for _, possible := range multipleExternal.PossiblePackages {
-				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
-			}
-			jr.lang.hasHadErrors = true
-		} else {
-			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
-		}
+	if mavenResolver, err := jr.lang.MavenResolverForInstallFile(pc.MavenInstallFile()); err != nil {
+		jr.lang.logger.Fatal().Err(err).Msg("error creating Maven resolver")
 	} else {
-		return l
+		if l, err := mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
+			var noExternal *maven.NoExternalImportsError
+			var multipleExternal *maven.MultipleExternalImportsError
+
+			if errors.As(err, &noExternal) {
+				// do not fail, the package might be provided elsewhere
+			} else if errors.As(err, &multipleExternal) {
+				jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
+				for _, possible := range multipleExternal.PossiblePackages {
+					jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
+				}
+				jr.lang.hasHadErrors = true
+			} else {
+				jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
+			}
+		} else {
+			return l
+		}
 	}
 
 	if isTestRule {

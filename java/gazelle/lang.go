@@ -256,9 +256,9 @@ func (l javaLang) DoneGeneratingRules() {
 	l.javaExportIndex.FinalizeIndex()
 }
 
-func (l javaLang) MavenResolverForInstallFile(installFile string) maven.Resolver {
+func (l javaLang) MavenResolverForInstallFile(installFile string) (maven.Resolver, error) {
 	if resolver, exists := l.mavenResolvers[installFile]; exists {
-		return *resolver
+		return *resolver, nil
 	}
 
 	l.logger.Debug().Msgf("Create resolver for %s", installFile)
@@ -267,10 +267,11 @@ func (l javaLang) MavenResolverForInstallFile(installFile string) maven.Resolver
 		l.logger,
 	)
 	if err != nil {
-		l.logger.Fatal().Err(err).Msg("error creating Maven resolver")
+		return nil, err
 	}
+
 	l.mavenResolvers[installFile] = &resolver
-	return resolver
+	return resolver, nil
 }
 
 func (l javaLang) AfterResolvingDeps(_ context.Context) {
