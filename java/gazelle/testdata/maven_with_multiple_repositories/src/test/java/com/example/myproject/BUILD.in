@@ -1,0 +1,2 @@
+# gazelle:java_maven_repository_name junit_java
+# gazelle:java_maven_install_file maven_install.junit.json
