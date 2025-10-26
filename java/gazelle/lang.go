@@ -70,7 +70,7 @@ func NewLanguage() language.Language {
 		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
-		mavenResolvers: make(map[string]*maven.Resolver),
+		mavenResolvers:   make(map[string]*maven.Resolver),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
