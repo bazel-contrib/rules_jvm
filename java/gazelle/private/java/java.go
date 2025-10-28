@@ -19,6 +19,9 @@ func IsTestPackage(pkg string) bool {
 		if strings.HasSuffix(strings.ToLower(firstDir), "test") {
 			return true
 		}
+		if strings.HasSuffix(strings.ToLower(firstDir), "main") {
+			return false
+		}
 	}
 
 	return strings.Contains(pkg, "/test/") || strings.HasSuffix(pkg, "/test")
