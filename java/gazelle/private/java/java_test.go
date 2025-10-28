@@ -16,6 +16,7 @@ func TestIsTestPackage(t *testing.T) {
 		"project1/src/integrationTest/more":            true,
 		"src/main/java/com/example/myproject":          false,
 		"src/test/java/com/example/myproject":          true,
+		"src/main/com/example/test":                    false,
 		"src/main/com/example/perftest":                false,
 		"test-utils/src/main/com/example/project":      false,
 		"foo/bar/test":                                 true,
