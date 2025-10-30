@@ -1,0 +1,10 @@
+load("//libs/bazel/java:rules_java.bzl", "generic_java_test_suite")
+
+# gazelle:map_kind java_test_suite generic_java_test_suite //libs/bazel/java:rules_java.bzl
+
+generic_java_test_suite(
+    name = "hello",
+    srcs = ["HelloTest.java"],
+    visibility = ["//:__subpackages__"],
+    runtime_deps = ["//foo/bar"],
+)

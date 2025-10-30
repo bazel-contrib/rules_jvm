@@ -7,4 +7,5 @@ generic_java_library(
     srcs = ["Hello.java"],
     visibility = ["//:__subpackages__"],
     runtime_deps = ["//foo/bar"],
+    deps = ["//foo/extra"],
 )
