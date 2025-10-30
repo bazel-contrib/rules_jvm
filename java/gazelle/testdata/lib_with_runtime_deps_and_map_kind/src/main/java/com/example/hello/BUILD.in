@@ -2,7 +2,7 @@ load("//libs/bazel/java:rules_java.bzl", "generic_java_library")
 
 # gazelle:map_kind java_library generic_java_library //libs/bazel/java:rules_java.bzl
 
-generic_java_library(
+java_library(
     name = "hello",
     srcs = ["Hello.java"],
     visibility = ["//:__subpackages__"],

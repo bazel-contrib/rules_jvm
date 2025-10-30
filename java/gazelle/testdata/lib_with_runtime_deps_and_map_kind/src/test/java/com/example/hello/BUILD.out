@@ -7,4 +7,5 @@ generic_java_test_suite(
     srcs = ["HelloTest.java"],
     visibility = ["//:__subpackages__"],
     runtime_deps = ["//foo/bar"],
+    deps = ["//src/main/java/com/example/hello"],
 )
