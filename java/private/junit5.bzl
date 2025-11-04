@@ -20,8 +20,6 @@ See `java_junit5_test` for more details.
 """
 JUNIT5_DEPS = junit5_deps()
 
-JUNIT5_MAIN_CLASS = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner"
-
 JUNIT5_VINTAGE_DEPS = junit5_vintage_deps()
 
 def java_junit5_test(
@@ -34,6 +32,7 @@ def java_junit5_test(
         exclude_tags = [],
         include_engines = [],
         exclude_engines = [],
+        main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         **kwargs):
     """Run junit5 tests using Bazel.
 
@@ -75,6 +74,7 @@ def java_junit5_test(
       exclude_tags: Junit tag expressions to exclude execution of tagged tests.
       include_engines: A list of JUnit Platform test engine IDs to include.
       exclude_engines: A list of JUnit Platform test engine IDs to exclude.
+      main_class: The main class to be used for the test runner.
     """
     if test_class:
         clazz = test_class
@@ -102,8 +102,7 @@ def java_junit5_test(
 
     java_test(
         name = name,
-        # Use the passed main_class value or JUNIT5_MAIN_CLASS if not provided
-        main_class = kwargs.pop("main_class", JUNIT5_MAIN_CLASS),
+        main_class = main_class,
         test_class = clazz,
         runtime_deps = runtime_deps + [
             "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
