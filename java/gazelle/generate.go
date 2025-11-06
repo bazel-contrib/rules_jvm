@@ -239,9 +239,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	if hasKotlinFiles {
 		javaLibraryKind = "kt_jvm_library"
 	}
-	if kindMap, ok := args.Config.KindMap[javaLibraryKind]; ok {
-		javaLibraryKind = kindMap.KindName
-	}
 
 	// Check if this is a resources root directory and generate a pkg_files target
 	if isResourcesRoot && len(srcFilenamesRelativeToPackage) == 0 {
@@ -431,7 +428,7 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 	}
 
 	for _, r := range file.Rules {
-		if r.Kind() != kind || r.Name() != name {
+		if r.Name() != name {
 			continue
 		}
 
@@ -794,10 +791,13 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 		if importsJunit4(imports) {
 			runtimeDeps.Add(maven.LabelFromArtifact(mavenRepositoryName, "org.junit.vintage:junit-vintage-engine"))
 		}
-		// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
-		// but we don't currently wire up the resolver to do this.
-		// We probably should.
-		// In the mean time, hard-code some labels.
+	}
+
+	// This should probably register imports here, and then allow the resolver to resolve this to an artifact,
+	// but we don't currently wire up the resolver to do this.
+	// We probably should.
+	// In the mean time, hard-code some labels.
+	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
 
