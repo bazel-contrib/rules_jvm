@@ -4,6 +4,23 @@ stardoc(
     name = "java-docs",
     out = "java-docs.md",
     input = "//java:defs.bzl",
+    symbol_names = [
+        "checkstyle_binary",
+        "checkstyle_config",
+        "checkstyle_test",
+        "java_binary",
+        "java_export",
+        "java_library",
+        "java_junit5_test",
+        "java_test",
+        "java_test_suite",
+        "pmd_binary",
+        "pmd_ruleset",
+        "pmd_test",
+        "spotbugs_binary",
+        "spotbugs_config",
+        "spotbugs_test",
+    ],
     tags = [
         # Stardoc doesn't work with bzlmod
         "manual",
