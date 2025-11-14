@@ -2,6 +2,10 @@ load("@rules_jvm_external//:defs.bzl", "DEFAULT_REPOSITORY_NAME", "artifact")
 load("//java/private:library.bzl", "java_test")
 load("//java/private:package.bzl", "get_package_name")
 
+JUNIT5_RUNTIME_DEPS = [
+    "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
+]
+
 def junit5_deps(repository_name = DEFAULT_REPOSITORY_NAME):
     return [
         artifact("org.junit.jupiter:junit-jupiter-engine", repository_name),
@@ -13,6 +17,28 @@ def junit5_vintage_deps(repository_name = DEFAULT_REPOSITORY_NAME):
     return junit5_deps(repository_name) + [
         artifact("org.junit.vintage:junit-vintage-engine", repository_name),
     ]
+
+def junit5_jvm_flags(jvm_flags, include_tags = [], exclude_tags = [], include_engines = [], exclude_engines = []):
+    if include_tags:
+        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_TAGS=" + ",".join(include_tags)]
+
+    if exclude_tags:
+        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_TAGS=" + ",".join(exclude_tags)]
+
+    if include_engines:
+        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_ENGINES=%s" % ",".join(include_engines)]
+
+    if exclude_engines:
+        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
+
+    security_manager_flag_seen = False
+    for flag in jvm_flags:
+        if flag.startswith("-Djava.security.manager="):
+            security_manager_flag_seen = True
+    if not security_manager_flag_seen:
+        jvm_flags = jvm_flags + ["-Djava.security.manager=allow"]
+
+    return jvm_flags
 
 """Dependencies typically required by JUnit 5 tests.
 
@@ -32,7 +58,6 @@ def java_junit5_test(
         exclude_tags = [],
         include_engines = [],
         exclude_engines = [],
-        main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         **kwargs):
     """Run junit5 tests using Bazel.
 
@@ -74,39 +99,19 @@ def java_junit5_test(
       exclude_tags: Junit tag expressions to exclude execution of tagged tests.
       include_engines: A list of JUnit Platform test engine IDs to include.
       exclude_engines: A list of JUnit Platform test engine IDs to exclude.
-      main_class: The main class to be used for the test runner.
     """
     if test_class:
         clazz = test_class
     else:
         clazz = get_package_name(package_prefixes) + name
 
-    if include_tags:
-        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_TAGS=" + ",".join(include_tags)]
-
-    if exclude_tags:
-        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_TAGS=" + ",".join(exclude_tags)]
-
-    if include_engines:
-        jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_ENGINES=%s" % ",".join(include_engines)]
-
-    if exclude_engines:
-        jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
-
-    security_manager_flag_seen = False
-    for flag in jvm_flags:
-        if flag.startswith("-Djava.security.manager="):
-            security_manager_flag_seen = True
-    if not security_manager_flag_seen:
-        jvm_flags = jvm_flags + ["-Djava.security.manager=allow"]
+    jvm_flags = junit5_jvm_flags(jvm_flags, include_tags, exclude_tags, include_engines, exclude_engines)
 
     java_test(
         name = name,
-        main_class = main_class,
+        main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         test_class = clazz,
-        runtime_deps = runtime_deps + [
-            "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
-        ],
+        runtime_deps = runtime_deps + JUNIT5_RUNTIME_DEPS,
         jvm_flags = jvm_flags,
         **kwargs
     )
