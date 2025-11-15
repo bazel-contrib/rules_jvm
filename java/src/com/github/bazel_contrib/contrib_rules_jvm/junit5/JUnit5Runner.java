@@ -87,19 +87,13 @@ public class JUnit5Runner {
         System.err.println("Failed to load Java 17 system exit override: " + e.getMessage());
       }
 
-      // Install a shutdown hook so people can track down what went wrong
-      // if a test calls `System.exit`
-      Thread shutdownHook = SystemExitDetectingShutdownHook.newShutdownHook(System.err);
-      Runtime.getRuntime().addShutdownHook(shutdownHook);
-
       // Fall through
+      System.err.println(
+          "Unable to create a mechanism to prevent `System.exit` being called. "
+              + "Tests may cause `bazel test` to exit prematurely.");
+
+      return new NullSystemExitToggle();
     }
-
-    System.err.println(
-        "Unable to create a mechanism to prevent `System.exit` being called. "
-            + "Tests may cause `bazel test` to exit prematurely.");
-
-    return new NullSystemExitToggle();
   }
 
   private static void detectJUnit5Classes() {
