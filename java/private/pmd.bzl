@@ -21,7 +21,7 @@ def _pmd_test_impl(ctx):
     file_list = ctx.actions.declare_file("%s-pmd-srcs" % ctx.label.name)
     ctx.actions.write(
         file_list,
-        ",".join([src.path for src in ctx.files.srcs]),
+        ",".join([src.short_path for src in ctx.files.srcs]),
     )
     cmd.extend(["--file-list", file_list.short_path])
     inputs.extend(ctx.files.srcs)
