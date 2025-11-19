@@ -1,10 +1,26 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 
 stardoc(
     name = "java-docs",
     out = "java-docs.md",
-    input = "stardoc-input.bzl",
+    input = "//java:defs.bzl",
+    symbol_names = [
+        "checkstyle_binary",
+        "checkstyle_config",
+        "checkstyle_test",
+        "java_binary",
+        "java_export",
+        "java_library",
+        "java_junit5_test",
+        "java_test",
+        "java_test_suite",
+        "pmd_binary",
+        "pmd_ruleset",
+        "pmd_test",
+        "spotbugs_binary",
+        "spotbugs_config",
+        "spotbugs_test",
+    ],
     tags = [
         # Stardoc doesn't work with bzlmod
         "manual",
@@ -28,11 +44,4 @@ genrule(
         "manual",
     ],
     visibility = ["//tools:__pkg__"],
-)
-
-bzl_library(
-    name = "stardoc-input",
-    srcs = ["stardoc-input.bzl"],
-    visibility = ["//visibility:public"],
-    deps = ["//java:defs"],
 )

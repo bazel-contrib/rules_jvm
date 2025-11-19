@@ -73,7 +73,7 @@ The gazelle plugin requires Go 1.18 or above.
 ## checkstyle_config
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "checkstyle_config")
+load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_config")
 
 checkstyle_config(<a href="#checkstyle_config-name">name</a>, <a href="#checkstyle_config-data">data</a>, <a href="#checkstyle_config-checkstyle_binary">checkstyle_binary</a>, <a href="#checkstyle_config-config_file">config_file</a>, <a href="#checkstyle_config-output_format">output_format</a>)
 </pre>
@@ -99,7 +99,7 @@ checkstyle should run.
 ## pmd_ruleset
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "pmd_ruleset")
+load("@contrib_rules_jvm//java:defs.bzl", "pmd_ruleset")
 
 pmd_ruleset(<a href="#pmd_ruleset-name">name</a>, <a href="#pmd_ruleset-format">format</a>, <a href="#pmd_ruleset-pmd_binary">pmd_binary</a>, <a href="#pmd_ruleset-rulesets">rulesets</a>, <a href="#pmd_ruleset-shallow">shallow</a>)
 </pre>
@@ -123,7 +123,7 @@ Select a rule set for PMD tests.
 ## pmd_test
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "pmd_test")
+load("@contrib_rules_jvm//java:defs.bzl", "pmd_test")
 
 pmd_test(<a href="#pmd_test-name">name</a>, <a href="#pmd_test-srcs">srcs</a>, <a href="#pmd_test-ruleset">ruleset</a>, <a href="#pmd_test-target">target</a>)
 </pre>
@@ -146,7 +146,7 @@ Use PMD to lint the `srcs`.
 ## spotbugs_config
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "spotbugs_config")
+load("@contrib_rules_jvm//java:defs.bzl", "spotbugs_config")
 
 spotbugs_config(<a href="#spotbugs_config-name">name</a>, <a href="#spotbugs_config-effort">effort</a>, <a href="#spotbugs_config-exclude_filter">exclude_filter</a>, <a href="#spotbugs_config-fail_on_warning">fail_on_warning</a>, <a href="#spotbugs_config-plugin_list">plugin_list</a>, <a href="#spotbugs_config-spotbugs_binary">spotbugs_binary</a>)
 </pre>
@@ -171,7 +171,7 @@ Configuration used for spotbugs, typically by the `//lint` rules.
 ## spotbugs_test
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "spotbugs_test")
+load("@contrib_rules_jvm//java:defs.bzl", "spotbugs_test")
 
 spotbugs_test(<a href="#spotbugs_test-name">name</a>, <a href="#spotbugs_test-deps">deps</a>, <a href="#spotbugs_test-config">config</a>, <a href="#spotbugs_test-only_output_jars">only_output_jars</a>)
 </pre>
@@ -194,7 +194,7 @@ Use spotbugs to lint the `srcs`.
 ## checkstyle_binary
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "checkstyle_binary")
+load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_binary")
 
 checkstyle_binary(<a href="#checkstyle_binary-name">name</a>, <a href="#checkstyle_binary-main_class">main_class</a>, <a href="#checkstyle_binary-deps">deps</a>, <a href="#checkstyle_binary-runtime_deps">runtime_deps</a>, <a href="#checkstyle_binary-srcs">srcs</a>, <a href="#checkstyle_binary-visibility">visibility</a>, <a href="#checkstyle_binary-kwargs">kwargs</a>)
 </pre>
@@ -238,7 +238,7 @@ checkstyle_binary(
 ## checkstyle_test
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "checkstyle_test")
+load("@contrib_rules_jvm//java:defs.bzl", "checkstyle_test")
 
 checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_test-size">size</a>, <a href="#checkstyle_test-timeout">timeout</a>, <a href="#checkstyle_test-kwargs">kwargs</a>)
 </pre>
@@ -261,7 +261,7 @@ checkstyle_test(<a href="#checkstyle_test-name">name</a>, <a href="#checkstyle_t
 ## java_binary
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_binary")
+load("@contrib_rules_jvm//java:defs.bzl", "java_binary")
 
 java_binary(<a href="#java_binary-name">name</a>, <a href="#java_binary-kwargs">kwargs</a>)
 </pre>
@@ -282,7 +282,7 @@ Adds linting tests to Bazel's own `java_binary`
 ## java_export
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_export")
+load("@contrib_rules_jvm//java:defs.bzl", "java_export")
 
 java_export(<a href="#java_export-name">name</a>, <a href="#java_export-maven_coordinates">maven_coordinates</a>, <a href="#java_export-pom_template">pom_template</a>, <a href="#java_export-deploy_env">deploy_env</a>, <a href="#java_export-visibility">visibility</a>, <a href="#java_export-kwargs">kwargs</a>)
 </pre>
@@ -307,7 +307,7 @@ Adds linting tests to `rules_jvm_external`'s `java_export`
 ## java_junit5_test
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_junit5_test")
+load("@contrib_rules_jvm//java:defs.bzl", "java_junit5_test")
 
 java_junit5_test(<a href="#java_junit5_test-name">name</a>, <a href="#java_junit5_test-test_class">test_class</a>, <a href="#java_junit5_test-runtime_deps">runtime_deps</a>, <a href="#java_junit5_test-package_prefixes">package_prefixes</a>, <a href="#java_junit5_test-jvm_flags">jvm_flags</a>, <a href="#java_junit5_test-include_tags">include_tags</a>,
                  <a href="#java_junit5_test-exclude_tags">exclude_tags</a>, <a href="#java_junit5_test-include_engines">include_engines</a>, <a href="#java_junit5_test-exclude_engines">exclude_engines</a>, <a href="#java_junit5_test-kwargs">kwargs</a>)
@@ -367,7 +367,7 @@ its goals, but this is not complete or available yet.
 ## java_library
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_library")
+load("@contrib_rules_jvm//java:defs.bzl", "java_library")
 
 java_library(<a href="#java_library-name">name</a>, <a href="#java_library-kwargs">kwargs</a>)
 </pre>
@@ -388,7 +388,7 @@ Adds linting tests to Bazel's own `java_library`
 ## java_test
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_test")
+load("@contrib_rules_jvm//java:defs.bzl", "java_test")
 
 java_test(<a href="#java_test-name">name</a>, <a href="#java_test-kwargs">kwargs</a>)
 </pre>
@@ -409,7 +409,7 @@ Adds linting tests to Bazel's own `java_test`
 ## java_test_suite
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "java_test_suite")
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
 java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
@@ -451,7 +451,7 @@ attribute to allow all the tests to be run in one go.
 ## pmd_binary
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "pmd_binary")
+load("@contrib_rules_jvm//java:defs.bzl", "pmd_binary")
 
 pmd_binary(<a href="#pmd_binary-name">name</a>, <a href="#pmd_binary-main_class">main_class</a>, <a href="#pmd_binary-deps">deps</a>, <a href="#pmd_binary-runtime_deps">runtime_deps</a>, <a href="#pmd_binary-srcs">srcs</a>, <a href="#pmd_binary-visibility">visibility</a>, <a href="#pmd_binary-kwargs">kwargs</a>)
 </pre>
@@ -495,7 +495,7 @@ pmd_binary(
 ## spotbugs_binary
 
 <pre>
-load("@contrib_rules_jvm//docs:stardoc-input.bzl", "spotbugs_binary")
+load("@contrib_rules_jvm//java:defs.bzl", "spotbugs_binary")
 
 spotbugs_binary(<a href="#spotbugs_binary-name">name</a>, <a href="#spotbugs_binary-main_class">main_class</a>, <a href="#spotbugs_binary-deps">deps</a>, <a href="#spotbugs_binary-runtime_deps">runtime_deps</a>, <a href="#spotbugs_binary-srcs">srcs</a>, <a href="#spotbugs_binary-visibility">visibility</a>, <a href="#spotbugs_binary-kwargs">kwargs</a>)
 </pre>
