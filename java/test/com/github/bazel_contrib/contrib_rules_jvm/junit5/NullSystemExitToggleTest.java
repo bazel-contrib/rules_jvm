@@ -19,7 +19,6 @@ public class NullSystemExitToggleTest {
     toggle.allow();
   }
 
-
   @Test
   public void allow_alreadyAllowed_throwsRuntimeException() {
     // Arrange.
@@ -41,5 +40,4 @@ public class NullSystemExitToggleTest {
       toggle.allow();
     }
   }
-
 }
