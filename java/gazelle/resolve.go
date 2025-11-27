@@ -63,6 +63,22 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
+	if classes := r.PrivateAttr(classesKey); classes != nil {
+		isTestRule := false
+		if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
+			if literalExpr.Token == "True" {
+				isTestRule = true
+			}
+		}
+
+		for _, class := range classes.([]types.ClassName) {
+			imp := class.FullyQualifiedClassName()
+			if isTestRule {
+				imp += "!testonly"
+			}
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: imp})
+		}
+	}
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
@@ -123,8 +139,29 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, sorted_set.LabelLess)
+	resolvedPackages := make(map[types.PackageName]bool)
+
+	if importedClasses != nil {
+		for _, className := range importedClasses.SortedSlice() {
+			l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+			if err != nil {
+				jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+				continue
+			}
+			if l == label.NoLabel {
+				l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+			}
+			if l != label.NoLabel {
+				labels.Add(simplifyLabel(c.RepoName, l, from))
+				resolvedPackages[className.PackageName()] = true
+			}
+		}
+	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
+		if resolvedPackages[imp] {
+			continue
+		}
 		var pkgClasses []string
 		if importedClasses != nil {
 			for _, cls := range importedClasses.SortedSlice() {
@@ -337,6 +374,57 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		Strs("classes", pkgClasses).
 		Msg("Unable to find package for import in any dependency")
 	jr.lang.hasHadErrors = true
+
+	return label.NoLabel
+}
+
+func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label, isTestRule bool) (out label.Label) {
+	imp := className.FullyQualifiedClassName()
+	importSpec := resolve.ImportSpec{Lang: languageName, Imp: imp}
+	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
+		return ol
+	}
+
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+
+	if pc.ResolveToJavaExports() {
+		matches = jr.tryResolvingToJavaExport(matches, from)
+	} else {
+		nonExportMatches := make([]resolve.FindResult, 0)
+		for _, match := range matches {
+			if !jr.lang.javaExportIndex.IsJavaExport(match.Label) {
+				nonExportMatches = append(nonExportMatches, match)
+			}
+		}
+		matches = nonExportMatches
+	}
+
+	if len(matches) == 1 {
+		return matches[0].Label
+	}
+
+	if len(matches) > 1 {
+		labels := make([]string, 0, len(matches))
+		for _, match := range matches {
+			labels = append(labels, match.Label.String())
+		}
+		sort.Strings(labels)
+
+		jr.lang.logger.Error().
+			Str("class", imp).
+			Strs("targets", labels).
+			Msg("resolveSingleClass found MULTIPLE results in rule index")
+		return label.NoLabel
+	}
+
+	if isTestRule {
+		testImp := imp + "!testonly"
+		testSpec := resolve.ImportSpec{Lang: languageName, Imp: testImp}
+		testMatches := ix.FindRulesByImportWithConfig(c, testSpec, languageName)
+		if len(testMatches) == 1 {
+			return simplifyLabel(c.RepoName, testMatches[0].Label, from)
+		}
+	}
 
 	return label.NoLabel
 }

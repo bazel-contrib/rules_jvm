@@ -14,6 +14,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.InstanceOfTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
@@ -22,6 +23,8 @@ import com.sun.source.tree.PackageTree;
 import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.TypeCastTree;
+import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreeScanner;
@@ -195,6 +198,10 @@ public class ClasspathParser {
     @Override
     public Void visitClass(ClassTree t, Void v) {
       stack.addLast(t);
+      checkFullyQualifiedType(t.getExtendsClause());
+      for (Tree implement : t.getImplementsClause()) {
+        checkFullyQualifiedType(implement);
+      }
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
@@ -228,6 +235,10 @@ public class ClasspathParser {
         if (!m.getModifiers().getFlags().contains(PRIVATE)) {
           data.exportedTypes.addAll(types);
         }
+      }
+
+      for (ExpressionTree thrown : m.getThrows()) {
+        checkFullyQualifiedType(thrown);
       }
 
       handleAnnotations(m.getModifiers().getAnnotations());
@@ -337,6 +348,9 @@ public class ClasspathParser {
 
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
+      if (identifier == null) {
+        return null;
+      }
       Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {

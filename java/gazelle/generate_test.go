@@ -309,7 +309,7 @@ func TestAddNonLocalImports(t *testing.T) {
 
 	depsDst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 	exportsDst := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
-	addNonLocalImportsAndExports(depsDst, nil, exportsDst, src, sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess), sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess), types.NewPackageName("com.example.a.b"), sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
+	addNonLocalImportsAndExports(depsDst, nil, exportsDst, nil, src, sorted_set.NewSortedSetFn[types.PackageName]([]types.PackageName{}, types.PackageNameLess), sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess), types.NewPackageName("com.example.a.b"), sorted_set.NewSortedSet([]string{"Foo", "Bar"}))
 
 	want := stringsToPackageNames([]string{
 		"com.another.a.b",

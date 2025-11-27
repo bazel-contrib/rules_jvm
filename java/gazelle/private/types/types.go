@@ -112,6 +112,7 @@ type ResolveInput struct {
 	ImportedPackageNames *sorted_set.SortedSet[PackageName]
 	ImportedClasses      *sorted_set.SortedSet[ClassName]
 	ExportedPackageNames *sorted_set.SortedSet[PackageName]
+	ExportedClassNames   *sorted_set.SortedSet[ClassName]
 	AnnotationProcessors *sorted_set.SortedSet[ClassName]
 }
 
