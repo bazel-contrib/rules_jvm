@@ -153,11 +153,13 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// Files and imports for code which isn't tests, and isn't used as helpers in tests.
 	productionJavaFiles := sorted_set.NewSortedSet([]string{})
 	productionJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	productionJavaImportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
 	nonLocalJavaExports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 
 	// Files and imports for actual test classes.
 	testJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
 	testJavaImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	testJavaImportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
 
 	// Java Test files which need to be generated separately from any others because they have explicit attribute overrides.
 	separateTestJavaFiles := make(map[javaFile]separateJavaTestReasons)
@@ -178,14 +180,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
+				addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 				}
 				allMains.AddAll(mJavaPkg.Mains)
 			} else {
 				// Tests don't get to export things, as things shouldn't depend on them.
-				addNonLocalImportsAndExports(testJavaImports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
+				addNonLocalImportsAndExports(testJavaImports, testJavaImportedClasses, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					path := filepath.Join(mRel, f)
 					file := javaFile{
@@ -203,9 +205,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		allPackageNames.Add(javaPkg.Name)
 		if javaPkg.TestPackage {
 			// Tests don't get to export things, as things shouldn't depend on them.
-			addNonLocalImportsAndExports(testJavaImports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
+			addNonLocalImportsAndExports(testJavaImports, testJavaImportedClasses, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		} else {
-			addNonLocalImportsAndExports(productionJavaImports, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
+			addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
 		for _, f := range srcFilenamesRelativeToPackage {
@@ -229,6 +231,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
 		for _, n := range allPackageNamesSlice {
 			if i.Name == n.Name {
+				return false
+			}
+		}
+		return true
+	})
+	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
+		for _, n := range allPackageNamesSlice {
+			if c.PackageName().Name == n.Name {
 				return false
 			}
 		}
@@ -325,7 +335,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
+		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
 	}
 
 	if cfg.GenerateBinary() {
@@ -348,7 +358,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
 			// Test helper libraries typically don't have resources
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
+			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, testJavaImportedClasses, nonLocalJavaExports, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
 		}
 	}
 
@@ -360,7 +370,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				separateJavaTestReasons := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, testJavaImportedClasses, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 
 		case "suite":
@@ -388,6 +398,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					packageNames,
 					cfg.MavenRepositoryName(),
 					testJavaImportsWithHelpers,
+					testJavaImportedClasses,
 					annotationProcessorClasses,
 					cfg.GetCustomJavaTestFileSuffixes(),
 					testHelperJavaFiles.Len() > 0,
@@ -405,7 +416,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperDep = ptr(testHelperLibname(suiteName))
 				}
 				separateJavaTestReasons := separateTestJavaFiles[src]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testJavaImportedClasses, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 		}
 	}
@@ -510,15 +521,15 @@ func generateProtoLibraries(args language.GenerateArgs, log zerolog.Logger, res 
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
 // toExports is optional and may be nil. All other parameters are required and must be non-nil.
-func addNonLocalImportsAndExports(toImports *sorted_set.SortedSet[types.PackageName], toExports *sorted_set.SortedSet[types.PackageName], fromImportedClasses *sorted_set.SortedSet[types.ClassName], fromPackages *sorted_set.SortedSet[types.PackageName], fromExportedClasses *sorted_set.SortedSet[types.ClassName], pkg types.PackageName, localClasses *sorted_set.SortedSet[string]) {
+func addNonLocalImportsAndExports(toImports *sorted_set.SortedSet[types.PackageName], toImportedClasses *sorted_set.SortedSet[types.ClassName], toExports *sorted_set.SortedSet[types.PackageName], fromImportedClasses *sorted_set.SortedSet[types.ClassName], fromPackages *sorted_set.SortedSet[types.PackageName], fromExportedClasses *sorted_set.SortedSet[types.ClassName], pkg types.PackageName, localClasses *sorted_set.SortedSet[string]) {
 	toImports.AddAll(fromPackages)
-	addFilteringOutOwnPackage(toImports, fromImportedClasses, pkg, localClasses)
+	addFilteringOutOwnPackage(toImports, toImportedClasses, fromImportedClasses, pkg, localClasses)
 	if toExports != nil {
-		addFilteringOutOwnPackage(toExports, fromExportedClasses, pkg, localClasses)
+		addFilteringOutOwnPackage(toExports, nil, fromExportedClasses, pkg, localClasses)
 	}
 }
 
-func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from *sorted_set.SortedSet[types.ClassName], ownPackage types.PackageName, localOuterClassNames *sorted_set.SortedSet[string]) {
+func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], toClasses *sorted_set.SortedSet[types.ClassName], from *sorted_set.SortedSet[types.ClassName], ownPackage types.PackageName, localOuterClassNames *sorted_set.SortedSet[string]) {
 	for _, fromPackage := range from.SortedSlice() {
 		if ownPackage == fromPackage.PackageName() {
 			if localOuterClassNames.Contains(fromPackage.BareOuterClassName()) {
@@ -531,6 +542,9 @@ func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], from
 		}
 
 		to.Add(fromPackage.PackageName())
+		if toClasses != nil {
+			toClasses.Add(fromPackage)
+		}
 	}
 }
 
@@ -583,7 +597,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports, exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], exports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
 	r := rule.NewRule(javaLibraryRuleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
@@ -632,6 +646,7 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	resolveInput := types.ResolveInput{
 		PackageNames:         packages,
 		ImportedPackageNames: imports,
+		ImportedClasses:      importedClasses,
 		ExportedPackageNames: exports,
 		AnnotationProcessors: annotationProcessorClasses,
 	}
@@ -682,7 +697,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -742,6 +757,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 	resolveInput := types.ResolveInput{
 		PackageNames:         sorted_set.NewSortedSetFn([]types.PackageName{f.pkg}, types.PackageNameLess),
 		ImportedPackageNames: testImports,
+		ImportedClasses:      importedClasses,
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
@@ -770,7 +786,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
@@ -811,6 +827,7 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	resolveInput := types.ResolveInput{
 		PackageNames:         packageNames,
 		ImportedPackageNames: suiteImports,
+		ImportedClasses:      importedClasses,
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)

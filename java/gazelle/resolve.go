@@ -115,17 +115,26 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
-	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
-	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, resolveInput.ImportedClasses, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, nil, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
 }
 
-func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
+func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, sorted_set.LabelLess)
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
-		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames)
+		var pkgClasses []string
+		if importedClasses != nil {
+			for _, cls := range importedClasses.SortedSlice() {
+				if cls.PackageName() == imp {
+					pkgClasses = append(pkgClasses, cls.BareOuterClassName())
+				}
+			}
+		}
+
+		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
 		if dep == label.NoLabel {
 			continue
 		}
@@ -140,7 +149,7 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 func (jr *Resolver) populatePluginsAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, packageConfig *javaconfig.Config, from label.Label, isTestRule bool, r *rule.Rule) {
 	pluginLabels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, labelLess)
 	for _, annotationProcessor := range resolveInput.AnnotationProcessors.SortedSlice() {
-		dep := jr.resolveSinglePackage(c, packageConfig, annotationProcessor.PackageName(), ix, from, isTestRule, resolveInput.PackageNames)
+		dep := jr.resolveSinglePackage(c, packageConfig, annotationProcessor.PackageName(), ix, from, isTestRule, resolveInput.PackageNames, []string{annotationProcessor.BareOuterClassName()})
 		if dep == label.NoLabel {
 			continue
 		}
@@ -206,7 +215,7 @@ func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *
 	}
 }
 
-func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName]) (out label.Label) {
+func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName], pkgClasses []string) (out label.Label) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
@@ -281,7 +290,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		if errors.As(err, &noExternal) {
 			// do not fail, the package might be provided elsewhere
 		} else if errors.As(err, &multipleExternal) {
-			jr.lang.logger.Error().Msg("Append one of the following to BUILD.bazel:")
+			jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
 			for _, possible := range multipleExternal.PossiblePackages {
 				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
 			}
@@ -325,6 +334,7 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	jr.lang.logger.Warn().
 		Str("package", imp.Name).
 		Str("from rule", from.String()).
+		Strs("classes", pkgClasses).
 		Msg("Unable to find package for import in any dependency")
 	jr.lang.hasHadErrors = true
 
