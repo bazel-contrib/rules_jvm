@@ -1,0 +1,11 @@
+{
+  "version": "2",
+  "artifacts": {
+    "com.example:lib-a": {
+      "version": "1.0"
+    },
+    "com.example:lib-b": {
+      "version": "1.0"
+    }
+  }
+}

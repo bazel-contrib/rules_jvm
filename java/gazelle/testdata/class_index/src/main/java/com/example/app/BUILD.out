@@ -1,0 +1,11 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "app",
+    srcs = ["Main.java"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@maven//:com_example_lib_a",
+        "@maven//:com_example_lib_b",
+    ],
+)
