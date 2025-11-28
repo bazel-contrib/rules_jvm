@@ -1,5 +1,5 @@
-{"level":"error","message":"Append one of the following to BUILD.bazel:"}
+{"level":"error","classes":["Ints"],"message":"Append one of the following to BUILD.bazel:"}
 {"level":"error","message":"# gazelle:resolve java com.google.common.primitives @maven//:com_google_guava_guava"}
 {"level":"error","message":"# gazelle:resolve java com.google.common.primitives @maven//:com_google_guava_guava_sources"}
-{"level":"warn","package":"com.google.common.primitives","from rule":"//src/main/java/com/example/myproject","message":"Unable to find package for import in any dependency"}
+{"level":"warn","package":"com.google.common.primitives","from rule":"//src/main/java/com/example/myproject","classes":["Ints"],"message":"Unable to find package for import in any dependency"}
 {"level":"fatal","message":"the java extension encountered errors that will create invalid build files"}
