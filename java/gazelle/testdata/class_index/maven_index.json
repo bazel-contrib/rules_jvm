@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "classes": {
+    "com.example:lib-a": {
+      "com.example.split": [
+        "ClassA"
+      ]
+    },
+    "com.example:lib-b": {
+      "com.example.split": [
+        "ClassB"
+      ]
+    }
+  }
+}

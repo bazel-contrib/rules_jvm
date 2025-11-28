@@ -103,6 +103,23 @@ type lockFileV2_Artifact struct {
 	Version string            `json:"version"`
 }
 
+type IndexFile struct {
+	Version int                            `json:"version"`
+	Classes map[string]map[string][]string `json:"classes"`
+}
+
+func loadIndex(filename string) (*IndexFile, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	var index IndexFile
+	if err := json.Unmarshal(data, &index); err != nil {
+		return nil, err
+	}
+	return &index, nil
+}
+
 func loadConfiguration(filename string) (lockFile, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {

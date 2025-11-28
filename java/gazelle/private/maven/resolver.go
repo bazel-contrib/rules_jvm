@@ -2,6 +2,7 @@ package maven
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
@@ -43,7 +44,7 @@ type resolver struct {
 	logger     zerolog.Logger
 }
 
-func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
+func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
 		data:       multiset.NewStringMultiSet(),
 		classIndex: make(map[string]string),
@@ -54,6 +55,17 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 	if err != nil {
 		r.logger.Warn().Err(err).Msg("not loading maven dependencies")
 		return &r, nil
+	}
+
+	var index *IndexFile
+	if indexFile != "" {
+		var err error
+		index, err = loadIndex(indexFile)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				r.logger.Warn().Err(err).Msg("failed to load index file")
+			}
+		}
 	}
 
 	dependencies := c.ListDependencies()
@@ -70,6 +82,19 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 		}
 		for _, class := range c.ListDependencyClasses(depName) {
 			r.classIndex[class] = coords.ArtifactString()
+		}
+		if index != nil {
+			if pkgMap, ok := index.Classes[depName]; ok {
+				for pkg, classes := range pkgMap {
+					for _, cls := range classes {
+						fqcn := cls
+						if pkg != "" {
+							fqcn = pkg + "." + cls
+						}
+						r.classIndex[fqcn] = coords.ArtifactString()
+					}
+				}
+			}
 		}
 	}
 
