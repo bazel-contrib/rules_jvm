@@ -187,7 +187,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			allPackageNames.Add(mJavaPkg.Name)
 
 			if !mJavaPkg.TestPackage {
-				addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
+				addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 					jf := javaFile{pathRelativeToBazelWorkspaceRoot: filepath.Join(mRel, f), pkg: mJavaPkg.Name}
@@ -216,7 +216,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// Tests don't get to export things, as things shouldn't depend on them.
 			addNonLocalImportsAndExports(testJavaImports, testJavaImportedClasses, nil, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		} else {
-			addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
+			addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		}
 		allMains.AddAll(javaPkg.Mains)
 		for _, f := range srcFilenamesRelativeToPackage {
