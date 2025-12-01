@@ -403,6 +403,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src.pathRelativeToBazelWorkspaceRoot), args.Rel+"/"))
 				}
 			}
+			sort.Strings(srcs)
 			if len(srcs) > 0 {
 				l.generateJavaTestSuite(
 					args.File,
