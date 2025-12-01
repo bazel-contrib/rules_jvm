@@ -104,8 +104,9 @@ type lockFileV2_Artifact struct {
 }
 
 type IndexFile struct {
-	Version int                            `json:"version"`
-	Classes map[string]map[string][]string `json:"classes"`
+	Version  int                            `json:"version"`
+	Classes  map[string]map[string][]string `json:"classes"`
+	Packages map[string][]string            `json:"packages"`
 }
 
 func loadIndex(filename string) (*IndexFile, error) {
