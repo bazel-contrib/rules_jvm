@@ -84,6 +84,7 @@ func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (R
 			r.classIndex[class] = coords.ArtifactString()
 		}
 		if index != nil {
+			// Use classes section for split package class-level resolution
 			if pkgMap, ok := index.Classes[depName]; ok {
 				for pkg, classes := range pkgMap {
 					for _, cls := range classes {
@@ -93,6 +94,12 @@ func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (R
 						}
 						r.classIndex[fqcn] = coords.ArtifactString()
 					}
+				}
+			}
+			// Use packages section for simple package→artifact lookup
+			if packages, ok := index.Packages[depName]; ok {
+				for _, pkg := range packages {
+					r.data.Add(pkg, coords.ArtifactString())
 				}
 			}
 		}
