@@ -51,21 +51,21 @@ func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (R
 		logger:     logger.With().Str("_c", "maven-resolver").Logger(),
 	}
 
-	c, err := loadConfiguration(installFile)
-	if err != nil {
-		r.logger.Warn().Err(err).Msg("not loading maven dependencies")
-		return &r, nil
-	}
+	c, lockFileErr := loadConfiguration(installFile)
 
 	var index *IndexFile
+	var indexFileErr error
 	if indexFile != "" {
-		var err error
-		index, err = loadIndex(indexFile)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				r.logger.Warn().Err(err).Msg("failed to load index file")
-			}
+		index, indexFileErr = loadIndex(indexFile)
+		if indexFileErr != nil && !os.IsNotExist(indexFileErr) {
+			r.logger.Warn().Err(indexFileErr).Msg("failed to load index file")
 		}
+	}
+
+	// Only warn if neither lock file nor index file is available
+	if lockFileErr != nil && index == nil {
+		r.logger.Warn().Err(lockFileErr).Msg("not loading maven dependencies")
+		return &r, nil
 	}
 
 	dependencies := c.ListDependencies()
