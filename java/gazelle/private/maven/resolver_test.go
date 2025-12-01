@@ -18,7 +18,7 @@ func TestResolver(t *testing.T) {
 
 	m := make(map[string]struct{})
 	m["@maven//:com_google_j2objc_j2objc_annotations"] = struct{}{}
-	r, err := NewResolver("testdata/guava_maven_install.json", logger)
+	r, err := NewResolver("testdata/guava_maven_install.json", "", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
