@@ -195,6 +195,10 @@ public class ClasspathParser {
     @Override
     public Void visitClass(ClassTree t, Void v) {
       stack.addLast(t);
+      checkFullyQualifiedType(t.getExtendsClause());
+      for (Tree implement : t.getImplementsClause()) {
+        checkFullyQualifiedType(implement);
+      }
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
@@ -228,6 +232,10 @@ public class ClasspathParser {
         if (!m.getModifiers().getFlags().contains(PRIVATE)) {
           data.exportedTypes.addAll(types);
         }
+      }
+
+      for (ExpressionTree thrown : m.getThrows()) {
+        checkFullyQualifiedType(thrown);
       }
 
       handleAnnotations(m.getModifiers().getAnnotations());
@@ -337,6 +345,9 @@ public class ClasspathParser {
 
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
+      if (identifier == null) {
+        return null;
+      }
       Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
