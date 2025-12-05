@@ -1,0 +1,47 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+load("//java/private:artifact.bzl", "artifact")
+
+# Core agent class with no ASM dependency.
+# This is used by the test runner to toggle System.exit prevention.
+java_library(
+    name = "agent_core",
+    srcs = ["SystemExitAgent.java"],
+)
+
+# Transformer that uses ASM to modify Runtime.exit().
+# This is loaded via an isolated classloader at runtime to avoid
+# polluting the test classpath with ASM classes.
+java_library(
+    name = "agent_transformer",
+    srcs = ["RuntimeExitTransformer.java"],
+    deps = [
+        artifact("org.ow2.asm:asm"),
+    ],
+)
+
+java_library(
+    name = "toggle",
+    srcs = ["AgentSystemExitToggle.java"],
+    visibility = ["//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5:__pkg__"],
+    deps = [
+        ":agent_core",
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5:system-exit-toggle",
+    ],
+)
+
+# The deploy jar bundles both agent_core and agent_transformer (with ASM).
+# At runtime, SystemExitAgent.premain() loads the transformer via an isolated
+# classloader, keeping ASM invisible to the application classpath.
+java_binary(
+    name = "system-exit-agent",
+    deploy_manifest_lines = [
+        "Premain-Class: com.github.bazel_contrib.contrib_rules_jvm.junit5.agent.SystemExitAgent",
+        "Can-Retransform-Classes: true",
+    ],
+    main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.agent.SystemExitAgent",
+    visibility = ["//visibility:public"],
+    runtime_deps = [
+        ":agent_core",
+        ":agent_transformer",
+    ],
+)

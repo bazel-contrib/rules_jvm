@@ -1,3 +1,4 @@
+# gazelle:exclude
 load("@rules_java//java:defs.bzl", "java_binary", "java_import", "java_library")
 load("//java/private:artifact.bzl", "artifact")
 
@@ -15,22 +16,7 @@ java_import(
         "//visibility:public",
     ],
     deps = [
-        ":allow",
-        ":system-exit-toggle",
-    ],
-)
-
-java_library(
-    name = "allow",
-    srcs = ["allow.java"],
-    # At some point the SecurityManager class is going to go away, so fix a release in which it is
-    # available.
-    javacopts = [
-        "--release",
-        "11",
-    ],
-    deps = [
-        # There must never be dependencies
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5/agent:toggle",
     ],
 )
 
@@ -46,22 +32,14 @@ java_library(
     srcs = glob(
         ["*.java"],
         exclude = [
-            "allow.java",
-            "Java17SystemExitToggle.java",
             "SystemExitToggle.java",
         ],
     ),
-    javacopts = [
-        # Target Java 11, no matter which JDK we're on so that we
-        # can be sure that `SecurityManager` is present, even if
-        # someone rebuilds on a JDK that doesn't have it.
-        "--release",
-        "11",
-    ],
     resource_strip_prefix = package_name(),
     resources = ["META-INF/services/org.junit.jupiter.api.extension.Extension"],
     deps = [
         ":system-exit-toggle",
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5/agent:toggle",
         # The only dependencies here are those required to run
         # a junit5 test. We try not to pollute the classpath, so
         # be very careful when adding new deps here.
@@ -79,16 +57,12 @@ java_library(
     ],
 )
 
-# Do not build with --release 8 to work around https://bugs.openjdk.org/browse/JDK-8214165 (sun.misc
-# is not available with that flag), do not build for a higher release to support Java 8 runtimes.
-# Files in srcs must not reference any # classes that are likely to go away in future Java releases,
-# in particular SecurityManager.
 java_library(
     name = "system-exit-toggle",
     srcs = [
-        "Java17SystemExitToggle.java",
         "SystemExitToggle.java",
     ],
+    visibility = ["//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5:__subpackages__"],
 )
 
 java_binary(

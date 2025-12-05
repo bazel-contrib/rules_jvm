@@ -3,8 +3,10 @@ load("//java/private:library.bzl", "java_test")
 load("//java/private:package.bzl", "get_package_name")
 
 JUNIT5_RUNTIME_DEPS = [
-    "@contrib_rules_jvm//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
+    Label("//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5"),
 ]
+
+_SYSTEM_EXIT_AGENT = Label("//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5/agent:system-exit-agent_deploy.jar")
 
 def junit5_deps(repository_name = DEFAULT_REPOSITORY_NAME):
     return [
@@ -30,13 +32,6 @@ def junit5_jvm_flags(jvm_flags, include_tags = [], exclude_tags = [], include_en
 
     if exclude_engines:
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
-
-    security_manager_flag_seen = False
-    for flag in jvm_flags:
-        if flag.startswith("-Djava.security.manager="):
-            security_manager_flag_seen = True
-    if not security_manager_flag_seen:
-        jvm_flags = jvm_flags + ["-Djava.security.manager=allow"]
 
     return jvm_flags
 
@@ -81,14 +76,8 @@ def java_junit5_test(
     `//java:defs.bzl`
 
     **Note**: The junit5 runner prevents `System.exit` being called
-    using a `SecurityManager`, which means that one test can't
-    prematurely cause an entire test run to finish unexpectedly.
-    This security measure prohibits tests from setting their own `SecurityManager`.
-    To override this, set the `bazel.junit5runner.allowSettingSecurityManager` system property.
-
-    While the `SecurityManager` has been deprecated in recent Java
-    releases, there's no replacement yet. JEP 411 has this as one of
-    its goals, but this is not complete or available yet.
+    using a Java agent, which means that one test can't prematurely
+    cause an entire test run to finish unexpectedly.
 
     Args:
       name: The name of the test.
@@ -107,11 +96,17 @@ def java_junit5_test(
 
     jvm_flags = junit5_jvm_flags(jvm_flags, include_tags, exclude_tags, include_engines, exclude_engines)
 
+    # Add the agent to prevent `System.exit` from being called
+    jvm_flags = ["-javaagent:$(location %s)=$(location %s)" % (_SYSTEM_EXIT_AGENT, _SYSTEM_EXIT_AGENT)] + jvm_flags
+
+    data = kwargs.pop("data", []) + [_SYSTEM_EXIT_AGENT]
+
     java_test(
         name = name,
         main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         test_class = clazz,
         runtime_deps = runtime_deps + JUNIT5_RUNTIME_DEPS,
         jvm_flags = jvm_flags,
+        data = data,
         **kwargs
     )
