@@ -2,8 +2,11 @@ package javaconfig
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
@@ -82,6 +85,38 @@ const (
 
 	// Tells the code generator to generate `pkg_files` rules for the resources directories
 	JavaGenerateResources = "java_generate_resources"
+
+	// JavaSearch tells Gazelle where to look for Java packages during lazy indexing.
+	// Format: # gazelle:java_search <directory> [package=<package_name>]
+	// Examples:
+	//   # gazelle:java_search src/main/java
+	//   # gazelle:java_search third_party/example package=com.example
+	// When package is specified, imports matching that package prefix will have
+	// the package prefix stripped when computing the directory path.
+	JavaSearch = "java_search"
+
+	// JavaSearchExclude tells Gazelle to exclude a directory from source root discovery.
+	// Format: # gazelle:java_search_exclude <directory>
+	// This is useful when java_maven_layout discovers directories that should not be
+	// included as source roots (e.g., build outputs, vendored code, or test fixtures).
+	// The directory path should be relative to the workspace root.
+	// Examples:
+	//   # gazelle:java_search_exclude build/generated
+	//   # gazelle:java_search_exclude third_party/vendored
+	JavaSearchExclude = "java_search_exclude"
+
+	// JavaMavenLayout enables automatic discovery of Maven/Gradle-style source roots.
+	// Format: # gazelle:java_maven_layout [depth=<n>]
+	// This will scan for directories matching the pattern */src/*/{java,kotlin}.
+	// The depth parameter controls how many directory levels can appear before "src":
+	//   - depth=0: matches src/main/java (no nesting)
+	//   - depth=1: also matches moduleA/src/main/java (one level of nesting)
+	//   - depth=2: also matches parent/child/src/main/java (two levels)
+	// Default depth is 5.
+	// Examples:
+	//   # gazelle:java_maven_layout
+	//   # gazelle:java_maven_layout depth=3
+	JavaMavenLayout = "java_maven_layout"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -99,6 +134,12 @@ func (c *Config) NewChild() *Config {
 	for key, value := range c.annotationProcessorFullQualifiedClassToPluginClass {
 		annotationProcessorFullQualifiedClassToPluginClass[key] = value.Clone()
 	}
+	// Clone search paths slice
+	clonedSearchPaths := make([]SearchPath, len(c.searchPaths))
+	copy(clonedSearchPaths, c.searchPaths)
+	// Clone search excludes slice
+	clonedSearchExcludes := make([]string, len(c.searchExcludes))
+	copy(clonedSearchExcludes, c.searchExcludes)
 	return &Config{
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
@@ -118,6 +159,8 @@ func (c *Config) NewChild() *Config {
 		excludedArtifacts:      clonedExcludedArtifacts,
 		mavenRepositoryName:    c.mavenRepositoryName,
 		annotationProcessorFullQualifiedClassToPluginClass: annotationProcessorFullQualifiedClassToPluginClass,
+		searchPaths:    clonedSearchPaths,
+		searchExcludes: clonedSearchExcludes,
 	}
 }
 
@@ -154,11 +197,82 @@ type Config struct {
 	annotationProcessorFullQualifiedClassToPluginClass map[string]*sorted_set.SortedSet[types.ClassName]
 	sourcesetRoot                                      string
 	stripResourcesPrefix                               string
+	searchPaths                                        []SearchPath
+	searchExcludes                                     []string
+	mavenLayoutDiscovered                              bool
 }
 
 type LoadInfo struct {
 	From   string
 	Symbol string
+}
+
+// SearchPath represents a java_search directive for lazy indexing.
+// It tells Gazelle where to look for Java packages.
+type SearchPath struct {
+	// Dir is the directory to search (relative to workspace root)
+	Dir string
+	// Package is the Java package prefix. When non-empty, imports matching
+	// this prefix will have it stripped when computing the directory path.
+	// For example, with Dir="third_party/example" and Package="com.example",
+	// an import of "com.example.util" would look in "third_party/example/util".
+	Package string
+}
+
+// parseSearchDirective parses a java_search directive value.
+// Format: <directory> [package=<package_name>]
+// Examples:
+//
+//	src/main/java
+//	third_party/example package=com.example
+func parseSearchDirective(value string) (SearchPath, error) {
+	parts := strings.Fields(value)
+	if len(parts) == 0 {
+		return SearchPath{}, fmt.Errorf("expected at least a directory")
+	}
+
+	sp := SearchPath{
+		Dir: parts[0],
+	}
+
+	for _, part := range parts[1:] {
+		if strings.HasPrefix(part, "package=") {
+			sp.Package = strings.TrimPrefix(part, "package=")
+		} else {
+			return SearchPath{}, fmt.Errorf("unknown option %q, expected package=<package_name>", part)
+		}
+	}
+
+	return sp, nil
+}
+
+// parseMavenLayoutDirective parses a java_maven_layout directive value.
+// Format: [depth=<n>]
+// Examples:
+//
+//	(empty - uses default depth of 5)
+//	depth=3
+func parseMavenLayoutDirective(value string) (int, error) {
+	parts := strings.Fields(value)
+
+	depth := 5 // default
+	for _, part := range parts {
+		if strings.HasPrefix(part, "depth=") {
+			depthStr := strings.TrimPrefix(part, "depth=")
+			var err error
+			depth, err = strconv.Atoi(depthStr)
+			if err != nil {
+				return 0, fmt.Errorf("invalid depth value %q: %v", depthStr, err)
+			}
+			if depth < 0 {
+				return 0, fmt.Errorf("depth must be non-negative, got %d", depth)
+			}
+		} else {
+			return 0, fmt.Errorf("unknown option %q, expected depth=<n>", part)
+		}
+	}
+
+	return depth, nil
 }
 
 // New creates a new Config.
@@ -401,4 +515,217 @@ func equalStringSlices(l, r []string) bool {
 		}
 	}
 	return true
+}
+
+// AddSearchPath parses and adds a search path for lazy indexing.
+// Format: <directory> [package=<package_name>]
+func (c *Config) AddSearchPath(value string) error {
+	sp, err := parseSearchDirective(value)
+	if err != nil {
+		return err
+	}
+	c.searchPaths = append(c.searchPaths, sp)
+	return nil
+}
+
+// addSearchPathInternal adds a search path directly without parsing.
+func (c *Config) addSearchPathInternal(sp SearchPath) {
+	c.searchPaths = append(c.searchPaths, sp)
+}
+
+// SearchPaths returns the configured search paths.
+func (c *Config) SearchPaths() []SearchPath {
+	return c.searchPaths
+}
+
+// AddSearchExclude adds a directory to exclude from source root discovery.
+func (c *Config) AddSearchExclude(dir string) {
+	c.searchExcludes = append(c.searchExcludes, dir)
+}
+
+// SearchExcludes returns the configured search excludes.
+func (c *Config) SearchExcludes() []string {
+	return c.searchExcludes
+}
+
+// IsSearchExcluded returns true if the given directory should be excluded
+// from source root discovery. The directory is excluded if it matches or
+// is a subdirectory of any excluded path.
+func (c *Config) IsSearchExcluded(dir string) bool {
+	for _, exclude := range c.searchExcludes {
+		if dir == exclude || strings.HasPrefix(dir, exclude+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// PathsForPackage returns the directories that should be indexed
+// for the given Java package name. This is used for lazy indexing.
+func (c *Config) PathsForPackage(pkg string) []string {
+	if len(c.searchPaths) == 0 {
+		return nil
+	}
+
+	// Convert package name to path (com.example.util -> com/example/util)
+	pkgPath := strings.ReplaceAll(pkg, ".", "/")
+
+	var paths []string
+	for _, sp := range c.searchPaths {
+		if sp.Package == "" {
+			// No package prefix specified - use full package path
+			paths = append(paths, path.Join(sp.Dir, pkgPath))
+		} else {
+			// Check if the import matches the package prefix
+			if pkg == sp.Package {
+				// Exact match - the directory itself
+				paths = append(paths, sp.Dir)
+			} else if strings.HasPrefix(pkg, sp.Package+".") {
+				// Prefix match - strip prefix and append remainder
+				remainder := strings.TrimPrefix(pkg, sp.Package+".")
+				remainderPath := strings.ReplaceAll(remainder, ".", "/")
+				paths = append(paths, path.Join(sp.Dir, remainderPath))
+			}
+			// If no match, this search path doesn't apply to this package
+		}
+	}
+
+	return paths
+}
+
+// MavenLayoutDiscovered returns whether maven layout discovery has been run.
+func (c *Config) MavenLayoutDiscovered() bool {
+	return c.mavenLayoutDiscovered
+}
+
+// DiscoverMavenLayout scans the repository for Maven/Gradle-style source roots
+// matching the pattern */src/*/{java,kotlin}.
+// Format: [depth=<n>]
+// The depth parameter controls how many directory levels can appear before "src":
+//   - depth=0: matches src/main/java (no nesting)
+//   - depth=1: also matches moduleA/src/main/java (one level of nesting)
+//   - depth=2: also matches parent/child/src/main/java (two levels)
+//
+// It adds discovered directories as search paths.
+// Returns the list of discovered source roots and any parse error.
+func (c *Config) DiscoverMavenLayout(value string) ([]string, error) {
+	depth, err := parseMavenLayoutDirective(value)
+	if err != nil {
+		return nil, err
+	}
+	return c.discoverMavenLayoutWithDepth(depth), nil
+}
+
+// discoverMavenLayoutWithDepth is the internal implementation that takes a parsed depth.
+func (c *Config) discoverMavenLayoutWithDepth(depth int) []string {
+	if c.mavenLayoutDiscovered {
+		return nil
+	}
+	c.mavenLayoutDiscovered = true
+
+	var discovered []string
+
+	// We need to traverse deep enough to find src/<sourceset>/{java,kotlin}
+	// at any nesting level up to 'depth' directories before src.
+	// So total traversal depth = depth (before src) + 3 (src/<sourceset>/{java,kotlin})
+	maxTraversalDepth := depth + 3
+
+	// Walk the directory tree looking for directories matching the pattern
+	err := walkDirWithDepth(c.repoRoot, maxTraversalDepth, func(dirPath string, d fs.DirEntry) error {
+		if !d.IsDir() {
+			return nil
+		}
+
+		name := d.Name()
+		if name != "java" && name != "kotlin" {
+			return nil
+		}
+
+		// Check if parent matches the pattern: .../src/<sourceset>/{java,kotlin}
+		rel, err := filepath.Rel(c.repoRoot, dirPath)
+		if err != nil {
+			return nil
+		}
+
+		// Split path and check for src/<something>/{java,kotlin} pattern
+		parts := strings.Split(filepath.ToSlash(rel), "/")
+		if len(parts) < 3 {
+			return nil
+		}
+
+		// Check if the pattern matches: .../src/<sourceset>/{java,kotlin}
+		// The last element is java or kotlin (already checked above)
+		// The second-to-last can be anything (main, test, integrationTest, etc.)
+		// The third-to-last should be "src"
+		if parts[len(parts)-3] != "src" {
+			return nil
+		}
+
+		// Count directories before "src" - this is the nesting level
+		// parts = [moduleA, src, main, java] -> nestingLevel = 1
+		// parts = [src, main, java] -> nestingLevel = 0
+		nestingLevel := len(parts) - 3
+		if nestingLevel > depth {
+			return nil
+		}
+
+		// Check if this path is excluded
+		if c.IsSearchExcluded(rel) {
+			return nil
+		}
+
+		// Found a match!
+		discovered = append(discovered, rel)
+		c.addSearchPathInternal(SearchPath{Dir: rel})
+
+		return nil
+	})
+
+	if err != nil {
+		// Log error but don't fail - best effort discovery
+		return discovered
+	}
+
+	return discovered
+}
+
+// walkDirWithDepth walks a directory tree up to a maximum depth.
+// depth=0 means only the root directory, depth=1 means root and immediate children, etc.
+func walkDirWithDepth(root string, maxDepth int, fn func(path string, d fs.DirEntry) error) error {
+	return walkDirWithDepthRecursive(root, 0, maxDepth, fn)
+}
+
+func walkDirWithDepthRecursive(dir string, currentDepth, maxDepth int, fn func(path string, d fs.DirEntry) error) error {
+	if currentDepth > maxDepth {
+		return nil
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil // Skip directories we can't read
+	}
+
+	for _, entry := range entries {
+		// Skip symlinks
+		if entry.Type()&fs.ModeSymlink != 0 {
+			continue
+		}
+
+		entryPath := filepath.Join(dir, entry.Name())
+
+		if err := fn(entryPath, entry); err != nil {
+			if err == fs.SkipDir {
+				continue
+			}
+			return err
+		}
+
+		if entry.IsDir() {
+			if err := walkDirWithDepthRecursive(entryPath, currentDepth+1, maxDepth, fn); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

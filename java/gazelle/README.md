@@ -142,6 +142,8 @@ The following directives specific to the Java extension are recognized:
 | Strip resources prefix overrides the path-stripping behavior for resources. This is a direct way to specify the resource_strip_prefix for all resources in a directory. Example: `# gazelle:java_strip_resources_prefix my/data/config` |
 | java_generate_binary                              | True                                     |
 | Controls if the generator adds `java_binary` targets to the build file. If set False, no `java_binary` targets are generated for the directories, defaults to True. |
+| java_search_exclude                               | none                                     |
+| Excludes a directory from source root discovery when using `java_maven_layout`. This is useful for excluding build outputs, vendored code, or test fixtures. Can be repeated to exclude multiple directories. Example: `# gazelle:java_search_exclude build/generated` |
 
 ## Troubleshooting
 
