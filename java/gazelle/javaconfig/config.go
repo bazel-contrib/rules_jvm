@@ -79,6 +79,9 @@ const (
 	// Can be either "true" or "false". Defaults to "true".
 	// This requires importing the `@rules_kotlin` repository into your workspace if there are any Kotlin sources in the repo.
 	JvmKotlinEnabled = "jvm_kotlin_enabled"
+
+	// Tells the code generator to generate `pkg_files` rules for the resources directories
+	JavaGenerateResources = "java_generate_resources"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -102,6 +105,7 @@ func (c *Config) NewChild() *Config {
 		isModuleRoot:           false,
 		generateProto:          true,
 		generateBinary:         c.generateBinary,
+		generateResources:      c.generateResources,
 		resolveToJavaExports:   c.resolveToJavaExports,
 		kotlinEnabled:          c.kotlinEnabled,
 		mavenInstallFile:       c.mavenInstallFile,
@@ -135,6 +139,7 @@ type Config struct {
 	isModuleRoot                                       bool
 	generateProto                                      bool
 	generateBinary                                     bool
+	generateResources                                  bool
 	resolveToJavaExports                               *types.LateInit[bool]
 	kotlinEnabled                                      bool
 	mavenInstallFile                                   string
@@ -163,6 +168,7 @@ func New(repoRoot string) *Config {
 		isModuleRoot:           false,
 		generateProto:          true,
 		generateBinary:         true,
+		generateResources:      true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
 		kotlinEnabled:          true,
 		mavenInstallFile:       "maven_install.json",
@@ -208,6 +214,14 @@ func (c *Config) GenerateBinary() bool {
 
 func (c *Config) SetGenerateBinary(generate bool) {
 	c.generateBinary = generate
+}
+
+func (c *Config) GenerateResources() bool {
+	return c.generateResources
+}
+
+func (c *Config) SetGenerateResources(enabled bool) {
+	c.generateResources = enabled
 }
 
 func (c *Config) KotlinEnabled() bool {

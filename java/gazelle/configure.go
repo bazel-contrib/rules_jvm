@@ -66,6 +66,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestFileSuffixes,
 		javaconfig.JavaTestMode,
 		javaconfig.JavaGenerateProto,
+		javaconfig.JavaGenerateResources,
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
 		javaconfig.JavaResolveToJavaExports,
@@ -192,6 +193,15 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					cfg.SetGenerateBinary(false)
 				default:
 					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateBinary, d.Value)
+				}
+			case javaconfig.JavaGenerateResources:
+				switch d.Value {
+				case "true":
+					cfg.SetGenerateResources(true)
+				case "false":
+					cfg.SetGenerateResources(false)
+				default:
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateResources, d.Value)
 				}
 			case javaconfig.JavaAnnotationProcessorPlugin:
 				// Format: # gazelle:java_annotation_processor_plugin com.example.AnnotationName com.example.AnnotationProcessorImpl

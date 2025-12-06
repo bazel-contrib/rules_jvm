@@ -80,6 +80,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
 	isModule := cfg.ModuleGranularity() == "module"
 
+	generateResources := cfg.GenerateResources()
+
+	if !generateResources {
+		// java_generate_resources == false: Disable resources logic
+		isResourcesRoot = false
+		isResourcesSubdir = false
+	}
+
 	var javaPkg *java.Package
 
 	if len(srcFilenamesRelativeToPackage) == 0 {
@@ -319,18 +327,20 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// - Java files are in "src/sample/java/..."
 			// - Resources are in "src/sample/resources"
 
-			resourcesPath := path.Join(cfg.SourcesetRoot(), "resources")
+			if generateResources {
+				resourcesPath := path.Join(cfg.SourcesetRoot(), "resources")
 
-			// Check if the resources directory actually exists
-			fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
-			if _, err := os.Stat(fullResourcesPath); err == nil {
-				// Resources directory exists, add the reference
-				if isModule {
-					// Module mode: reference pkg_files directly as resources
-					resourcesDirectRef = "//" + resourcesPath + ":resources"
-				} else {
-					// Package mode: reference resources_lib as runtime_deps
-					resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
+				// Check if the resources directory actually exists
+				fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
+				if _, err := os.Stat(fullResourcesPath); err == nil {
+					// Resources directory exists, add the reference
+					if isModule {
+						// Module mode: reference pkg_files directly as resources
+						resourcesDirectRef = "//" + resourcesPath + ":resources"
+					} else {
+						// Package mode: reference resources_lib as runtime_deps
+						resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
+					}
 				}
 			}
 		}
