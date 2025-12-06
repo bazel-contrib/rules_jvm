@@ -80,6 +80,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
 	isModule := cfg.ModuleGranularity() == "module"
 
+	if !cfg.GenerateResources() {
+		// java_generate_resources == false: Do not generate any resources targets
+		isResourcesRoot = false
+		isResourcesSubdir = false
+	}
+
 	var javaPkg *java.Package
 
 	if len(srcFilenamesRelativeToPackage) == 0 {
@@ -333,6 +339,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
 				}
 			}
+		}
+
+		if !cfg.GenerateResources() {
+			// java_generate_resources == false: Do not pass any references for resources targets
+			resourcesDirectRef = ""
+			resourcesRuntimeDep = ""
 		}
 
 		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
