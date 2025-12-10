@@ -89,7 +89,7 @@ def java_junit5_test_test_suite(name):
         name = "custom_jvm_flags_test",
         target_under_test = ":CustomMainClassTest",
         check_name = "jvm_flags",
-        check_value = ["-DJUNIT5_INCLUDE_TAGS=include_junit5_test", "-Djava.security.manager=allow"],
+        check_value = ["-DJUNIT5_INCLUDE_TAGS=include_junit5_test"],
     )
 
     attr_string_value_test(
