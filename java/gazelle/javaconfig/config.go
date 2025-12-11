@@ -669,14 +669,17 @@ func (c *Config) discoverMavenLayoutWithDepth(depth int) []string {
 			return nil
 		}
 
+		// Normalize to forward slashes
+		normalizedRel := filepath.ToSlash(rel)
+
 		// Check if this path is excluded
-		if c.IsSearchExcluded(rel) {
+		if c.IsSearchExcluded(normalizedRel) {
 			return nil
 		}
 
 		// Found a match!
-		discovered = append(discovered, rel)
-		c.addSearchPathInternal(SearchPath{Dir: rel})
+		discovered = append(discovered, normalizedRel)
+		c.addSearchPathInternal(SearchPath{Dir: normalizedRel})
 
 		return nil
 	})
