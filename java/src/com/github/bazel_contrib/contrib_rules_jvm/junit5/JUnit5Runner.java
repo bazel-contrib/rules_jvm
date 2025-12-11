@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
+import com.github.bazel_contrib.contrib_rules_jvm.junit5.agent.AgentSystemExitToggle;
 import java.lang.reflect.Constructor;
 
 /**
@@ -15,16 +16,10 @@ public class JUnit5Runner {
   private static final String JUNIT5_RUNNER_CLASS =
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
 
-  private static final String JAVA17_SYSTEM_EXIT_TOGGLE =
-      "com.github.bazel_contrib.contrib_rules_jvm.junit5.Java17SystemExitToggle";
-
-  private static final Runtime.Version JAVA_12 = Runtime.Version.parse("12");
-  private static final Runtime.Version JAVA_24 = Runtime.Version.parse("24");
-
   public static void main(String[] args) {
     String testSuite = System.getProperty("bazel.test_suite");
 
-    SystemExitToggle systemExitToggle = getSystemExitToggle();
+    SystemExitToggle systemExitToggle = new AgentSystemExitToggle();
 
     if (testSuite == null || testSuite.chars().allMatch(Character::isWhitespace)) {
       System.err.println("No test suite specified");
@@ -51,49 +46,6 @@ public class JUnit5Runner {
     // Exit manually. If we don't do this then tests which hold resources
     // such as Threads may prevent us from exiting properly.
     exit(systemExitToggle, 0);
-  }
-
-  private static SystemExitToggle getSystemExitToggle() {
-    Runtime.Version javaVersion = Runtime.version();
-
-    // The `Version.compareTo` javadoc states it returns:
-    //
-    // "A negative integer, zero, or a positive integer if this Version is
-    // less than, equal to, or greater than the given Version"
-    if (JAVA_12.compareTo(javaVersion) > 0) {
-      return new Java11SystemExitToggle();
-    }
-
-    // Load the java 17 toggle by reflection, because it's tied
-    // so closely to the OpenJDK (it relies on the internal fields
-    // of both `sun.misc.Unsafe` and `java.lang.System`: it's a
-    // gross hack.
-    try {
-      Class<? extends SystemExitToggle> java17ToggleClazz =
-          Class.forName(JAVA17_SYSTEM_EXIT_TOGGLE).asSubclass(SystemExitToggle.class);
-      return java17ToggleClazz
-          .getDeclaredConstructor(SystemExitToggle.class)
-          .newInstance(new Java11SystemExitToggle());
-    } catch (Exception e) {
-      // We don't care _why_ we can't load the toggle, but we can't. Ideally
-      // this would be a combination of `ReflectiveOperationException` and
-      // `SecurityException`, but the latter is scheduled for removal so
-      // relying on it seems like a Bad Idea.
-
-      // In Java 24 the hook we need for the system exit toggle is gone. If
-      // we're running on a version of Java earlier than that, print a
-      // warning.
-      if (!(JAVA_24.compareTo(javaVersion) < 0)) {
-        System.err.println("Failed to load Java 17 system exit override: " + e.getMessage());
-      }
-
-      // Fall through
-      System.err.println(
-          "Unable to create a mechanism to prevent `System.exit` being called. "
-              + "Tests may cause `bazel test` to exit prematurely.");
-
-      return new NullSystemExitToggle();
-    }
   }
 
   private static void detectJUnit5Classes() {
