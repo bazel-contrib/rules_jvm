@@ -125,4 +125,5 @@ config_setting(
     flag_values = {
         "//java/gazelle:embed_server": "True",
     },
+    visibility = ["//visibility:public"],
 )
