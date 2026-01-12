@@ -27,7 +27,7 @@ def _pmd_test_impl(ctx):
     inputs.extend(ctx.files.srcs)
     inputs.append(file_list)
 
-    cmd.extend(["-R", ",".join([rs.path for rs in pmd_info.rulesets.to_list()])])
+    cmd.extend(["-R", ",".join([rs.short_path for rs in pmd_info.rulesets.to_list()])])
     inputs.extend(pmd_info.rulesets.to_list())
 
     cmd.extend(["-f", pmd_info.format])
