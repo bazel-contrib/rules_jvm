@@ -164,6 +164,13 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 
 		// Only fall back to class-level resolution when package resolution is ambiguous
 		if ambiguous && len(classesByPackage[imp]) > 0 {
+			jr.lang.logger.Debug().
+				Str("package", imp.Name).
+				Strs("classes", pkgClasses).
+				Stringer("from", from).
+				Msg("package has multiple providers, attempting class-level resolution")
+
+			resolvedAny := false
 			for _, className := range classesByPackage[imp] {
 				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
 				if err != nil {
@@ -175,7 +182,17 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 				}
 				if l != label.NoLabel {
 					labels.Add(simplifyLabel(c.RepoName, l, from))
+					resolvedAny = true
 				}
+			}
+
+			if !resolvedAny {
+				jr.lang.logger.Error().
+					Str("package", imp.Name).
+					Strs("classes", pkgClasses).
+					Stringer("from", from).
+					Msg("package has multiple providers and class-level resolution failed for all classes")
+				jr.lang.hasHadErrors = true
 			}
 		}
 	}
