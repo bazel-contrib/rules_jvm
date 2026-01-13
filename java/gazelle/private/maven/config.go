@@ -105,7 +105,7 @@ type lockFileV2_Artifact struct {
 
 type IndexFile struct {
 	Version  int                            `json:"version"`
-	Classes  map[string]map[string][]string `json:"classes"`
+	Classes  map[string]map[string][]string `json:"split_package_classes"`
 	Packages map[string][]string            `json:"packages"`
 }
 
