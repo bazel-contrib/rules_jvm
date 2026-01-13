@@ -3,6 +3,7 @@ package gazelle
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -75,6 +76,10 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		for _, pkg := range pkgs.([]types.ResolvableJavaPackage) {
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
+	} else {
+		// Lazy indexing fallback: GenerateRules wasn't called for this rule,
+		// so we need to infer packages by quick-scanning source files.
+		out = jr.inferPackagesFromSources(c, r, f)
 	}
 	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
 	// Class-level resolution uses a lazy, per-package index built only when needed
@@ -82,6 +87,43 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// This keeps the global index small and fast.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
+	return out
+}
+
+// inferPackagesFromSources scans source files to extract package declarations.
+// This is used during lazy indexing when GenerateRules hasn't been called.
+func (jr *Resolver) inferPackagesFromSources(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	srcs := r.AttrStrings("srcs")
+	if len(srcs) == 0 {
+		return nil
+	}
+
+	packageConfig := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
+	isTestRule := packageConfig != nil && packageConfig.IsTestRule(r.Kind())
+
+	seen := make(map[string]bool)
+	var out []resolve.ImportSpec
+
+	for _, src := range srcs {
+		if !strings.HasSuffix(src, ".java") && !strings.HasSuffix(src, ".kt") {
+			continue
+		}
+
+		// Build full path to source file
+		srcPath := filepath.Join(c.RepoRoot, f.Pkg, src)
+		pkg := java.QuickScanPackage(srcPath)
+		if pkg.Name == "" {
+			continue
+		}
+
+		resolvable := types.NewResolvableJavaPackage(pkg, isTestRule, false)
+		key := resolvable.String()
+		if !seen[key] {
+			seen[key] = true
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: key})
+		}
+	}
+
 	return out
 }
 
