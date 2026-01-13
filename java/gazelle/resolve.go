@@ -30,6 +30,18 @@ const languageName = "java"
 type Resolver struct {
 	lang          *javaLang
 	internalCache *lru.Cache
+	// classIndex is a lazy per-package index, built only for packages with ambiguous
+	// resolution (split packages). Maintains prod/test distinction.
+	classIndex map[types.PackageName]*packageClassIndex
+}
+
+// packageClassIndex maps class names to their providing labels for a single package.
+// Built lazily per-package only when that package has ambiguous resolution.
+type packageClassIndex struct {
+	// prod maps bare outer class name -> providers (non-testonly rules)
+	prod map[string][]label.Label
+	// test maps bare outer class name -> providers (testonly rules)
+	test map[string][]label.Label
 }
 
 func NewResolver(lang *javaLang) *Resolver {
@@ -41,6 +53,7 @@ func NewResolver(lang *javaLang) *Resolver {
 	return &Resolver{
 		lang:          lang,
 		internalCache: internalCache,
+		classIndex:    make(map[types.PackageName]*packageClassIndex),
 	}
 }
 
@@ -63,22 +76,10 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
-	if classes := r.PrivateAttr(classesKey); classes != nil {
-		isTestRule := false
-		if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
-			if literalExpr.Token == "True" {
-				isTestRule = true
-			}
-		}
-
-		for _, class := range classes.([]types.ClassName) {
-			imp := class.FullyQualifiedClassName()
-			if isTestRule {
-				imp += "!testonly"
-			}
-			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: imp})
-		}
-	}
+	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
+	// Class-level resolution uses a lazy, per-package index built only when needed
+	// (when package-level resolution is ambiguous due to split packages).
+	// This keeps the global index small and fast.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
@@ -339,8 +340,13 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 		if errors.As(err, &noExternal) {
 			// do not fail, the package might be provided elsewhere
 		} else if errors.As(err, &multipleExternal) {
-			// Maven has multiple options - signal ambiguity
-			return label.NoLabel, true
+			// Maven has multiple options - show helpful error with resolution hints
+			// This is different from local split packages where we can try class-level resolution
+			jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
+			for _, possible := range multipleExternal.PossiblePackages {
+				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
+			}
+			// Don't return here - let execution continue to produce the warning about unresolved package
 		} else {
 			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
 		}
@@ -392,53 +398,112 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	return out
 }
 
+// buildPackageClassIndex lazily builds a class index for a specific package.
+// Only called when package-level resolution is ambiguous (split packages).
+func (jr *Resolver) buildPackageClassIndex(c *config.Config, pkg types.PackageName, ix *resolve.RuleIndex) *packageClassIndex {
+	if pci, ok := jr.classIndex[pkg]; ok {
+		return pci
+	}
+
+	// Find all rules that provide this package
+	cacheKey := types.NewResolvableJavaPackage(pkg, false, false)
+	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+
+	// Also check for testonly providers
+	testCacheKey := types.NewResolvableJavaPackage(pkg, true, false)
+	testImportSpec := resolve.ImportSpec{Lang: languageName, Imp: testCacheKey.String()}
+	testMatches := ix.FindRulesByImportWithConfig(c, testImportSpec, languageName)
+	matches = append(matches, testMatches...)
+
+	pci := &packageClassIndex{
+		prod: make(map[string][]label.Label),
+		test: make(map[string][]label.Label),
+	}
+
+	for _, m := range matches {
+		info, ok := jr.lang.classExportCache[m.Label.String()]
+		if !ok {
+			continue
+		}
+		for _, cls := range info.classes {
+			if cls.PackageName() != pkg {
+				continue
+			}
+			name := cls.BareOuterClassName()
+			if info.testonly {
+				pci.test[name] = append(pci.test[name], m.Label)
+			} else {
+				pci.prod[name] = append(pci.prod[name], m.Label)
+			}
+		}
+	}
+
+	jr.classIndex[pkg] = pci
+	jr.lang.logger.Debug().
+		Str("package", pkg.Name).
+		Int("prod_classes", len(pci.prod)).
+		Int("test_classes", len(pci.test)).
+		Msg("built class index for split package")
+
+	return pci
+}
+
 func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label, isTestRule bool) (out label.Label) {
 	imp := className.FullyQualifiedClassName()
+	// Check for manual override first
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: imp}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
 		return ol
 	}
 
-	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+	// Build/get the per-package class index
+	pkg := className.PackageName()
+	pci := jr.buildPackageClassIndex(c, pkg, ix)
+	bareClassName := className.BareOuterClassName()
 
-	if pc.ResolveToJavaExports() {
-		matches = jr.tryResolvingToJavaExport(matches, from)
-	} else {
-		nonExportMatches := make([]resolve.FindResult, 0)
-		for _, match := range matches {
-			if !jr.lang.javaExportIndex.IsJavaExport(match.Label) {
-				nonExportMatches = append(nonExportMatches, match)
-			}
+	// Look up candidates - prefer prod classes, but test rules can also use test classes
+	var candidates []label.Label
+	if prodCandidates, ok := pci.prod[bareClassName]; ok {
+		candidates = prodCandidates
+	}
+	if isTestRule {
+		if testCandidates, ok := pci.test[bareClassName]; ok {
+			candidates = append(candidates, testCandidates...)
 		}
-		matches = nonExportMatches
 	}
 
-	if len(matches) == 1 {
-		return matches[0].Label
-	}
-
-	if len(matches) > 1 {
-		labels := make([]string, 0, len(matches))
-		for _, match := range matches {
-			labels = append(labels, match.Label.String())
-		}
-		sort.Strings(labels)
-
-		jr.lang.logger.Error().
-			Str("class", imp).
-			Strs("targets", labels).
-			Msg("resolveSingleClass found MULTIPLE results in rule index")
+	if len(candidates) == 0 {
 		return label.NoLabel
 	}
 
-	if isTestRule {
-		testImp := imp + "!testonly"
-		testSpec := resolve.ImportSpec{Lang: languageName, Imp: testImp}
-		testMatches := ix.FindRulesByImportWithConfig(c, testSpec, languageName)
-		if len(testMatches) == 1 {
-			return simplifyLabel(c.RepoName, testMatches[0].Label, from)
+	if len(candidates) == 1 {
+		return simplifyLabel(c.RepoName, candidates[0], from)
+	}
+
+	// Multiple candidates - try java_export narrowing
+	if pc.ResolveToJavaExports() {
+		results := make([]resolve.FindResult, 0, len(candidates))
+		for _, l := range candidates {
+			results = append(results, resolve.FindResult{Label: l})
+		}
+		narrowed := jr.tryResolvingToJavaExport(results, from)
+		if len(narrowed) == 1 {
+			return simplifyLabel(c.RepoName, narrowed[0].Label, from)
 		}
 	}
+
+	// Still ambiguous - log error
+	labels := make([]string, 0, len(candidates))
+	for _, l := range candidates {
+		labels = append(labels, l.String())
+	}
+	sort.Strings(labels)
+
+	jr.lang.logger.Error().
+		Str("class", imp).
+		Strs("targets", labels).
+		Msg("resolveSingleClass found MULTIPLE providers for class")
 
 	return label.NoLabel
 }

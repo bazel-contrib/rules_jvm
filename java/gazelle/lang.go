@@ -11,6 +11,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/logconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -36,11 +37,22 @@ type javaLang struct {
 	// javaExportIndex holds information about java_export targets and which symbols they make available.
 	javaExportIndex *java_export_index.JavaExportIndex
 
+	// classExportCache maps rule labels to their exported classes and testonly status.
+	// Used for class-level resolution when package resolution is ambiguous.
+	// Key is the stringified label (e.g., "//pkg:name").
+	classExportCache map[string]classExportInfo
+
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
 	// raised that will create invalid build files.
 	hasHadErrors bool
+}
+
+// classExportInfo holds the exported classes and testonly status for a rule.
+type classExportInfo struct {
+	classes  []types.ClassName
+	testonly bool
 }
 
 func NewLanguage() language.Language {
@@ -70,6 +82,7 @@ func NewLanguage() language.Language {
 		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
+		classExportCache: make(map[string]classExportInfo),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{

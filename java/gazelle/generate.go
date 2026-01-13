@@ -656,7 +656,14 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	}
 	r.SetPrivateAttr(packagesKey, resolvablePackages)
 	if exportedClasses != nil {
-		r.SetPrivateAttr(classesKey, exportedClasses.SortedSlice())
+		classes := exportedClasses.SortedSlice()
+		r.SetPrivateAttr(classesKey, classes)
+		// Cache the classes for class-level resolution during the resolve phase
+		ruleLabel := label.New("", pathToPackageRelativeToBazelWorkspace, name)
+		l.classExportCache[ruleLabel.String()] = classExportInfo{
+			classes:  classes,
+			testonly: testonly,
+		}
 	}
 	res.Gen = append(res.Gen, r)
 
