@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "classes": {
+  "packages": {},
+  "split_package_classes": {
     "com.example:lib-a": {
       "com.example.split": [
         "ClassA"
@@ -11,6 +12,5 @@
         "ClassB"
       ]
     }
-  },
-  "packages": {}
+  }
 }
