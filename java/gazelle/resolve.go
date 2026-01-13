@@ -139,44 +139,45 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
 	labels := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, sorted_set.LabelLess)
-	resolvedPackages := make(map[types.PackageName]bool)
 
+	// Build a map of package -> classes for efficient lookup during class-level resolution
+	classesByPackage := make(map[types.PackageName][]types.ClassName)
 	if importedClasses != nil {
-		for _, className := range importedClasses.SortedSlice() {
-			l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
-			if err != nil {
-				jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
-				continue
-			}
-			if l == label.NoLabel {
-				l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
-			}
-			if l != label.NoLabel {
-				labels.Add(simplifyLabel(c.RepoName, l, from))
-				resolvedPackages[className.PackageName()] = true
-			}
+		for _, cls := range importedClasses.SortedSlice() {
+			pkg := cls.PackageName()
+			classesByPackage[pkg] = append(classesByPackage[pkg], cls)
 		}
 	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
-		if resolvedPackages[imp] {
+		var pkgClasses []string
+		for _, cls := range classesByPackage[imp] {
+			pkgClasses = append(pkgClasses, cls.BareOuterClassName())
+		}
+
+		// Try package-level resolution first (fast path)
+		dep, ambiguous := jr.resolveSinglePackageWithAmbiguity(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
+		if dep != label.NoLabel {
+			labels.Add(simplifyLabel(c.RepoName, dep, from))
 			continue
 		}
-		var pkgClasses []string
-		if importedClasses != nil {
-			for _, cls := range importedClasses.SortedSlice() {
-				if cls.PackageName() == imp {
-					pkgClasses = append(pkgClasses, cls.BareOuterClassName())
+
+		// Only fall back to class-level resolution when package resolution is ambiguous
+		if ambiguous && len(classesByPackage[imp]) > 0 {
+			for _, className := range classesByPackage[imp] {
+				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+				if err != nil {
+					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+					continue
+				}
+				if l == label.NoLabel {
+					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+				}
+				if l != label.NoLabel {
+					labels.Add(simplifyLabel(c.RepoName, l, from))
 				}
 			}
 		}
-
-		dep := jr.resolveSinglePackage(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
-		if dep == label.NoLabel {
-			continue
-		}
-
-		labels.Add(simplifyLabel(c.RepoName, dep, from))
 	}
 
 	setLabelAttrIncludingExistingValues(r, attrName, labels)
@@ -252,11 +253,13 @@ func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *
 	}
 }
 
-func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName], pkgClasses []string) (out label.Label) {
+// resolveSinglePackageWithAmbiguity resolves a package import and returns whether there was ambiguity.
+// When ambiguous is true and out is NoLabel, the caller should attempt class-level resolution.
+func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName], pkgClasses []string) (out label.Label, ambiguous bool) {
 	cacheKey := types.NewResolvableJavaPackage(imp, false, false)
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: cacheKey.String()}
 	if ol, found := resolve.FindRuleWithOverride(c, importSpec, languageName); found {
-		return ol
+		return ol, false
 	}
 
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
@@ -274,24 +277,16 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}
 
 	if len(matches) == 1 {
-		return matches[0].Label
+		return matches[0].Label, false
 	}
 
 	if len(matches) > 1 {
-		labels := make([]string, 0, len(matches))
-		for _, match := range matches {
-			labels = append(labels, match.Label.String())
-		}
-		sort.Strings(labels)
-
-		jr.lang.logger.Error().
-			Str("pkg", imp.Name).
-			Strs("targets", labels).
-			Msg("resolveSinglePackage found MULTIPLE results in rule index")
+		// Multiple matches found - signal ambiguity so caller can try class-level resolution
+		return label.NoLabel, true
 	}
 
 	if v, ok := jr.internalCache.Get(cacheKey); ok {
-		return simplifyLabel(c.RepoName, v.(label.Label), from)
+		return simplifyLabel(c.RepoName, v.(label.Label), from), false
 	}
 
 	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
@@ -303,10 +298,10 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 	}()
 
 	if java.IsStdlib(imp) {
-		return label.NoLabel
+		return label.NoLabel, false
 	}
 	if kotlin.IsStdlib(imp) {
-		return label.NoLabel
+		return label.NoLabel, false
 	}
 
 	// As per https://github.com/bazelbuild/bazel/blob/347407a88fd480fc5e0fbd42cc8196e4356a690b/tools/java/runfiles/Runfiles.java#L41
@@ -315,9 +310,9 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		l, err := label.Parse(runfilesLabel)
 		if err != nil {
 			jr.lang.logger.Fatal().Str("label", runfilesLabel).Err(err).Msg("failed to parse known-good runfiles label")
-			return label.NoLabel
+			return label.NoLabel, false
 		}
-		return l
+		return l, false
 	}
 
 	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
@@ -327,16 +322,13 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		if errors.As(err, &noExternal) {
 			// do not fail, the package might be provided elsewhere
 		} else if errors.As(err, &multipleExternal) {
-			jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
-			for _, possible := range multipleExternal.PossiblePackages {
-				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
-			}
-			jr.lang.hasHadErrors = true
+			// Maven has multiple options - signal ambiguity
+			return label.NoLabel, true
 		} else {
 			jr.lang.logger.Fatal().Err(err).Msg("maven resolver error")
 		}
 	} else {
-		return l
+		return l, false
 	}
 
 	if isTestRule {
@@ -346,10 +338,10 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		testonlyMatches := ix.FindRulesByImportWithConfig(c, testonlyImportSpec, languageName)
 		if len(testonlyMatches) == 1 {
 			cacheKey = testonlyCacheKey
-			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from)
+			return simplifyLabel(c.RepoName, testonlyMatches[0].Label, from), false
 		}
 
-		// If there's exactly one testonly match, use it
+		// If there's exactly one testsuite match, use it
 		testsuiteCacheKey := types.NewResolvableJavaPackage(imp, true, true)
 		testsuiteImportSpec := resolve.ImportSpec{Lang: languageName, Imp: testsuiteCacheKey.String()}
 		testsuiteMatches := ix.FindRulesByImportWithConfig(c, testsuiteImportSpec, languageName)
@@ -358,14 +350,14 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 			l := testsuiteMatches[0].Label
 			if l != from {
 				l.Name += "-test-lib"
-				return simplifyLabel(c.RepoName, l, from)
+				return simplifyLabel(c.RepoName, l, from), false
 			}
 		}
 	}
 
 	if isTestRule && ownPackageNames.Contains(imp) {
 		// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
-		return label.NoLabel
+		return label.NoLabel, false
 	}
 
 	jr.lang.logger.Warn().
@@ -375,7 +367,12 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		Msg("Unable to find package for import in any dependency")
 	jr.lang.hasHadErrors = true
 
-	return label.NoLabel
+	return label.NoLabel, false
+}
+
+func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config, imp types.PackageName, ix *resolve.RuleIndex, from label.Label, isTestRule bool, ownPackageNames *sorted_set.SortedSet[types.PackageName], pkgClasses []string) (out label.Label) {
+	out, _ = jr.resolveSinglePackageWithAmbiguity(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
+	return out
 }
 
 func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label, isTestRule bool) (out label.Label) {
