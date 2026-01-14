@@ -283,7 +283,13 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 		return l
 	}
 
-	if l, err := jr.lang.mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
+	mavenResolver, err := jr.lang.MavenResolverForInstallFile(pc.MavenInstallFile())
+	if err != nil {
+		jr.lang.logger.Fatal().Err(err).Msg("error creating Maven resolver")
+		return label.NoLabel
+	}
+
+	if l, err := mavenResolver.Resolve(imp, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); err != nil {
 		var noExternal *maven.NoExternalImportsError
 		var multipleExternal *maven.MultipleExternalImportsError
 

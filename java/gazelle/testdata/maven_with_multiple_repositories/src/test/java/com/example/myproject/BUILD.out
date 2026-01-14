@@ -1,0 +1,13 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+# gazelle:java_maven_repository_name junit_java
+# gazelle:java_maven_install_file src/test/java/com/example/myproject/maven_install.junit.json
+
+java_test_suite(
+    name = "myproject",
+    srcs = ["AppTest.java"],
+    deps = [
+        "//src/main/java/com/example/myproject",
+        "@junit_java//:junit_junit",
+    ],
+)

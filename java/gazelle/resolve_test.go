@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -353,7 +354,9 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 	}
 
 	l := NewLanguage()
-	l.(*javaLang).mavenResolver = &testResolver{}
+	// Create a wrapper that implements maven.Resolver interface
+	var resolver maven.Resolver = NewTestMavenResolver()
+	l.(*javaLang).mavenResolvers["maven_install.json"] = &resolver
 
 	langs := []language.Language{
 		proto.NewLanguage(),
@@ -393,7 +396,9 @@ func InitTestResolversAndExtensions(langs []language.Language) (mapResolver, []i
 	for _, lang := range langs {
 		// TODO There has to be a better way to make this generic.
 		if jLang, ok := lang.(*javaLang); ok {
-			jLang.mavenResolver = NewTestMavenResolver()
+			// Create a wrapper that implements maven.Resolver interface
+			var resolver maven.Resolver = NewTestMavenResolver()
+			jLang.mavenResolvers["maven_install.json"] = &resolver
 			jLang.javaExportIndex.FinalizeIndex()
 		}
 

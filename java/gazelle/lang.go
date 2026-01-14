@@ -24,10 +24,10 @@ type javaLang struct {
 	language.BaseLifecycleManager
 	resolve.Resolver
 
-	parser        *javaparser.Runner
-	logger        zerolog.Logger
-	javaLogLevel  string
-	mavenResolver maven.Resolver
+	parser         *javaparser.Runner
+	logger         zerolog.Logger
+	javaLogLevel   string
+	mavenResolvers map[string]*maven.Resolver
 
 	// javaPackageCache is used for module granularity support
 	// Key is the path to the java package from the Bazel workspace root.
@@ -70,6 +70,7 @@ func NewLanguage() language.Language {
 		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
+		mavenResolvers:   make(map[string]*maven.Resolver),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
@@ -253,6 +254,24 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 func (l javaLang) DoneGeneratingRules() {
 	l.parser.ServerManager().Shutdown()
 	l.javaExportIndex.FinalizeIndex()
+}
+
+func (l javaLang) MavenResolverForInstallFile(installFile string) (maven.Resolver, error) {
+	if resolver, exists := l.mavenResolvers[installFile]; exists {
+		return *resolver, nil
+	}
+
+	l.logger.Debug().Msgf("Create resolver for %s", installFile)
+	resolver, err := maven.NewResolver(
+		installFile,
+		l.logger,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	l.mavenResolvers[installFile] = &resolver
+	return resolver, nil
 }
 
 func (l javaLang) AfterResolvingDeps(_ context.Context) {

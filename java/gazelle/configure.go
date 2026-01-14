@@ -9,7 +9,6 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -265,17 +264,6 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			jc.lang.logger.Fatal().Err(err).Msg("could not start javaparser")
 		}
 		jc.lang.parser = runner
-	}
-
-	if jc.lang.mavenResolver == nil {
-		resolver, err := maven.NewResolver(
-			cfg.MavenInstallFile(),
-			jc.lang.logger,
-		)
-		if err != nil {
-			jc.lang.logger.Fatal().Err(err).Msg("error creating Maven resolver")
-		}
-		jc.lang.mavenResolver = resolver
 	}
 }
 

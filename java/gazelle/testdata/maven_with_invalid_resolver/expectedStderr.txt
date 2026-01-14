@@ -1,0 +1,1 @@
+{"level":"fatal","error":"failed to parse coordinate <nil>: invalid Maven coordinate \"invalid_dependency\" - needed at least 2 :s","message":"error creating Maven resolver"}
