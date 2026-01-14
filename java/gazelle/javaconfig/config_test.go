@@ -135,6 +135,91 @@ func TestPathsForPackage(t *testing.T) {
 	}
 }
 
+func TestPackageFromPath(t *testing.T) {
+	tests := []struct {
+		name        string
+		searchPaths []string
+		filePath    string
+		want        string
+	}{
+		{
+			name:        "simple maven layout",
+			searchPaths: []string{"src/main/java"},
+			filePath:    "src/main/java/com/example/Foo.java",
+			want:        "com.example",
+		},
+		{
+			name:        "nested package",
+			searchPaths: []string{"src/main/java"},
+			filePath:    "src/main/java/com/example/util/helpers/Helper.java",
+			want:        "com.example.util.helpers",
+		},
+		{
+			name:        "kotlin source",
+			searchPaths: []string{"src/main/kotlin"},
+			filePath:    "src/main/kotlin/com/example/Bar.kt",
+			want:        "com.example",
+		},
+		{
+			name:        "module with source root",
+			searchPaths: []string{"moduleA/src/main/java"},
+			filePath:    "moduleA/src/main/java/com/example/Baz.java",
+			want:        "com.example",
+		},
+		{
+			name:        "with package prefix",
+			searchPaths: []string{"third_party/example package=com.example"},
+			filePath:    "third_party/example/util/Helper.java",
+			want:        "com.example.util",
+		},
+		{
+			name:        "file at root of source path with package prefix",
+			searchPaths: []string{"third_party/example package=com.example"},
+			filePath:    "third_party/example/Foo.java",
+			want:        "com.example",
+		},
+		{
+			name:        "path not matching any search path",
+			searchPaths: []string{"src/main/java"},
+			filePath:    "other/path/com/example/Foo.java",
+			want:        "",
+		},
+		{
+			name:        "integration test source root",
+			searchPaths: []string{"src/integrationTest/java"},
+			filePath:    "src/integrationTest/java/com/example/IntegrationTest.java",
+			want:        "com.example",
+		},
+		{
+			name:        "multiple search paths - first match wins",
+			searchPaths: []string{"src/main/java", "src/test/java"},
+			filePath:    "src/main/java/com/example/Foo.java",
+			want:        "com.example",
+		},
+		{
+			name:        "windows path separators",
+			searchPaths: []string{"src/main/java"},
+			filePath:    "src\\main\\java\\com\\example\\Foo.java",
+			want:        "com.example",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := javaconfig.New("/tmp")
+			for _, sp := range tt.searchPaths {
+				if err := config.AddSearchPath(sp); err != nil {
+					t.Fatalf("AddSearchPath(%q) failed: %v", sp, err)
+				}
+			}
+			got := config.PackageFromPath(tt.filePath)
+			if got != tt.want {
+				t.Fatalf("PackageFromPath(%q) = %q, want %q", tt.filePath, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDiscoverMavenLayout(t *testing.T) {
 	// Create a temporary directory structure for testing
 	tmpDir, err := os.MkdirTemp("", "maven-layout-test")
