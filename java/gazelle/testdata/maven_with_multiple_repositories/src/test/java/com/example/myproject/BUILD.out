@@ -1,7 +1,7 @@
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
 # gazelle:java_maven_repository_name junit_java
-# gazelle:java_maven_install_file maven_install.junit.json
+# gazelle:java_maven_install_file src/test/java/com/example/myproject/maven_install.junit.json
 
 java_test_suite(
     name = "myproject",
