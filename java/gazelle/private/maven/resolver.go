@@ -2,6 +2,7 @@ package maven
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
@@ -32,24 +33,38 @@ func (e *MultipleExternalImportsError) Error() string {
 
 type Resolver interface {
 	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
+	ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
 }
 
 // resolver finds Maven provided packages by reading the maven_install.json
 // file from rules_jvm_external.
 type resolver struct {
-	data   *multiset.StringMultiSet
-	logger zerolog.Logger
+	data       *multiset.StringMultiSet
+	classIndex map[string]string
+	logger     zerolog.Logger
 }
 
-func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
+func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
-		data:   multiset.NewStringMultiSet(),
-		logger: logger.With().Str("_c", "maven-resolver").Logger(),
+		data:       multiset.NewStringMultiSet(),
+		classIndex: make(map[string]string),
+		logger:     logger.With().Str("_c", "maven-resolver").Logger(),
 	}
 
-	c, err := loadConfiguration(installFile)
-	if err != nil {
-		r.logger.Warn().Err(err).Msg("not loading maven dependencies")
+	c, lockFileErr := loadConfiguration(installFile)
+
+	var index *IndexFile
+	var indexFileErr error
+	if indexFile != "" {
+		index, indexFileErr = loadIndex(indexFile)
+		if indexFileErr != nil && !os.IsNotExist(indexFileErr) {
+			r.logger.Warn().Err(indexFileErr).Msg("failed to load index file")
+		}
+	}
+
+	// Only warn if neither lock file nor index file is available
+	if lockFileErr != nil && index == nil {
+		r.logger.Warn().Err(lockFileErr).Msg("not loading maven dependencies")
 		return &r, nil
 	}
 
@@ -64,6 +79,29 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 		}
 		for _, pkg := range c.ListDependencyPackages(depName) {
 			r.data.Add(pkg, coords.ArtifactString())
+		}
+		for _, class := range c.ListDependencyClasses(depName) {
+			r.classIndex[class] = coords.ArtifactString()
+		}
+		if index != nil {
+			// Use classes section for split package class-level resolution
+			if pkgMap, ok := index.Classes[depName]; ok {
+				for pkg, classes := range pkgMap {
+					for _, cls := range classes {
+						fqcn := cls
+						if pkg != "" {
+							fqcn = pkg + "." + cls
+						}
+						r.classIndex[fqcn] = coords.ArtifactString()
+					}
+				}
+			}
+			// Use packages section for simple package→artifact lookup
+			if packages, ok := index.Packages[depName]; ok {
+				for _, pkg := range packages {
+					r.data.Add(pkg, coords.ArtifactString())
+				}
+			}
 		}
 	}
 
@@ -103,6 +141,19 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 			PossiblePackages: filtered,
 		}
 	}
+}
+
+func (r *resolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	artifact, found := r.classIndex[className.FullyQualifiedClassName()]
+	if !found {
+		return label.NoLabel, nil
+	}
+
+	if _, excluded := excludedArtifacts[LabelFromArtifact(mavenRepositoryName, artifact).String()]; excluded {
+		return label.NoLabel, nil
+	}
+
+	return LabelFromArtifact(mavenRepositoryName, artifact), nil
 }
 
 func LabelFromArtifact(mavenRepositoryName string, artifact string) label.Label {

@@ -381,6 +381,10 @@ func (*testResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string
 	return label.NoLabel, errors.New("not implemented")
 }
 
+func (*testResolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	return label.NoLabel, errors.New("not implemented")
+}
+
 type mapResolver map[string]resolve.Resolver
 
 func (mr mapResolver) Resolver(r *rule.Rule, f string) resolve.Resolver {
@@ -424,4 +428,8 @@ func (r *TestMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map
 		return label.NoLabel, fmt.Errorf("unexpected import: %s", pkg)
 	}
 	return l, nil
+}
+
+func (r *TestMavenResolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	return label.NoLabel, nil
 }
