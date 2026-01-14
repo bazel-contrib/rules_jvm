@@ -593,6 +593,54 @@ func (c *Config) PathsForPackage(pkg string) []string {
 	return paths
 }
 
+// PackageFromPath attempts to derive a Java package name from a file path
+// using the configured search paths. Returns empty string if the path
+// doesn't match any configured source root.
+//
+// Example: with search path "src/main/java", the path
+// "src/main/java/com/example/Foo.java" returns "com.example"
+func (c *Config) PackageFromPath(filePath string) string {
+	if len(c.searchPaths) == 0 {
+		return ""
+	}
+
+	// Normalize to forward slashes
+	normalized := strings.ReplaceAll(filePath, "\\", "/")
+
+	for _, sp := range c.searchPaths {
+		// Check if the path starts with this search path directory
+		prefix := sp.Dir + "/"
+		if !strings.HasPrefix(normalized, prefix) {
+			continue
+		}
+
+		// Get the path after the source root
+		afterRoot := strings.TrimPrefix(normalized, prefix)
+
+		// Remove the filename to get just the directory path
+		lastSlash := strings.LastIndex(afterRoot, "/")
+		if lastSlash == -1 {
+			// File is directly in the source root - no package
+			if sp.Package != "" {
+				return sp.Package
+			}
+			continue
+		}
+
+		pkgPath := afterRoot[:lastSlash]
+		// Convert path separators to dots
+		pkgName := strings.ReplaceAll(pkgPath, "/", ".")
+
+		// If there's a package prefix, prepend it
+		if sp.Package != "" {
+			return sp.Package + "." + pkgName
+		}
+		return pkgName
+	}
+
+	return ""
+}
+
 // MavenLayoutDiscovered returns whether maven layout discovery has been run.
 func (c *Config) MavenLayoutDiscovered() bool {
 	return c.mavenLayoutDiscovered

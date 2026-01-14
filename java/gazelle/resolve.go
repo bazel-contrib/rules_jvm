@@ -92,6 +92,11 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 
 // inferPackagesFromSources scans source files to extract package declarations.
 // This is used during lazy indexing when GenerateRules hasn't been called.
+//
+// The function uses a two-phase approach for efficiency:
+// 1. First, try to infer the package from the file path using configured search paths
+// 2. If that succeeds, verify by quick-scanning the file for the actual package declaration
+// This avoids scanning files that don't match any configured source root.
 func (jr *Resolver) inferPackagesFromSources(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	srcs := r.AttrStrings("srcs")
 	if len(srcs) == 0 {
@@ -99,7 +104,10 @@ func (jr *Resolver) inferPackagesFromSources(c *config.Config, r *rule.Rule, f *
 	}
 
 	packageConfig := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
-	isTestRule := packageConfig != nil && packageConfig.IsTestRule(r.Kind())
+	if packageConfig == nil {
+		return nil
+	}
+	isTestRule := packageConfig.IsTestRule(r.Kind())
 
 	seen := make(map[string]bool)
 	var out []resolve.ImportSpec
@@ -109,14 +117,25 @@ func (jr *Resolver) inferPackagesFromSources(c *config.Config, r *rule.Rule, f *
 			continue
 		}
 
-		// Build full path to source file
-		srcPath := filepath.Join(c.RepoRoot, f.Pkg, src)
-		pkg := java.QuickScanPackage(srcPath)
-		if pkg.Name == "" {
+		// Build the path relative to workspace root (for matching against search paths)
+		relPath := filepath.ToSlash(filepath.Join(f.Pkg, src))
+
+		// Phase 1: Try to infer package from the path using configured search paths
+		inferredPkg := packageConfig.PackageFromPath(relPath)
+		if inferredPkg == "" {
+			// Path doesn't match any configured source root, skip this file
 			continue
 		}
 
-		resolvable := types.NewResolvableJavaPackage(pkg, isTestRule, false)
+		// Phase 2: Verify by scanning the file for the actual package declaration
+		srcPath := filepath.Join(c.RepoRoot, f.Pkg, src)
+		actualPkg := java.QuickScanPackage(srcPath)
+		if actualPkg.Name == "" {
+			// Couldn't find package declaration, use the inferred one
+			actualPkg = types.NewPackageName(inferredPkg)
+		}
+
+		resolvable := types.NewResolvableJavaPackage(actualPkg, isTestRule, false)
 		key := resolvable.String()
 		if !seen[key] {
 			seen[key] = true
