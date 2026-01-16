@@ -32,19 +32,22 @@ func (e *MultipleExternalImportsError) Error() string {
 
 type Resolver interface {
 	Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
+	ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error)
 }
 
 // resolver finds Maven provided packages by reading the maven_install.json
 // file from rules_jvm_external.
 type resolver struct {
-	data   *multiset.StringMultiSet
-	logger zerolog.Logger
+	data       *multiset.StringMultiSet
+	classIndex map[string]string
+	logger     zerolog.Logger
 }
 
 func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 	r := resolver{
-		data:   multiset.NewStringMultiSet(),
-		logger: logger.With().Str("_c", "maven-resolver").Logger(),
+		data:       multiset.NewStringMultiSet(),
+		classIndex: make(map[string]string),
+		logger:     logger.With().Str("_c", "maven-resolver").Logger(),
 	}
 
 	c, err := loadConfiguration(installFile)
@@ -64,6 +67,9 @@ func NewResolver(installFile string, logger zerolog.Logger) (Resolver, error) {
 		}
 		for _, pkg := range c.ListDependencyPackages(depName) {
 			r.data.Add(pkg, coords.ArtifactString())
+		}
+		for _, class := range c.ListDependencyClasses(depName) {
+			r.classIndex[class] = coords.ArtifactString()
 		}
 	}
 
@@ -103,6 +109,19 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 			PossiblePackages: filtered,
 		}
 	}
+}
+
+func (r *resolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	artifact, found := r.classIndex[className.FullyQualifiedClassName()]
+	if !found {
+		return label.NoLabel, nil
+	}
+
+	if _, excluded := excludedArtifacts[LabelFromArtifact(mavenRepositoryName, artifact).String()]; excluded {
+		return label.NoLabel, nil
+	}
+
+	return LabelFromArtifact(mavenRepositoryName, artifact), nil
 }
 
 func LabelFromArtifact(mavenRepositoryName string, artifact string) label.Label {

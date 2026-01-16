@@ -1,0 +1,11 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "main",
+    srcs = ["Main.kt"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//one/src",
+        "//two/src",
+    ],
+)
