@@ -53,13 +53,13 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 http_archive(
     name = "grpc-java",
-    integrity = "sha256-KUKla3lEeaC8HA5pA5ya5hXxyznQ468SrzXA6zvXP98=",
+    integrity = "sha256-zhr831Ew50E46ToPnwu3ckFhDX8AyYf0bf/F+wg/bwo=",
     patch_args = ["-p1"],
     patches = [
         "//third_party:grpc-java.patch",
     ],
-    strip_prefix = "grpc-java-1.71.0",
-    url = "https://github.com/grpc/grpc-java/archive/refs/tags/v1.71.0.tar.gz",
+    strip_prefix = "grpc-java-1.78.0",
+    url = "https://github.com/grpc/grpc-java/archive/refs/tags/v1.78.0.tar.gz",
 )
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
