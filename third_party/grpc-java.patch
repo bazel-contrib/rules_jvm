@@ -1,8 +1,7 @@
-diff --git a/api/BUILD.bazel b/api/BUILD.bazel
-index 965d14a9e..11e3fd6d5 100644
---- a/api/BUILD.bazel
-+++ b/api/BUILD.bazel
-@@ -8,9 +8,9 @@ java_library(
+diff -ruN a/api/BUILD.bazel b/api/BUILD.bazel
+--- a/api/BUILD.bazel	2026-01-16 15:19:23
++++ b/api/BUILD.bazel	2026-01-16 15:19:32
+@@ -9,9 +9,9 @@
      ]),
      visibility = ["//visibility:public"],
      deps = [
@@ -16,14 +15,13 @@ index 965d14a9e..11e3fd6d5 100644
 +        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
-diff --git a/compiler/BUILD.bazel b/compiler/BUILD.bazel
-index 753f48507..43ba0cc35 100644
---- a/compiler/BUILD.bazel
-+++ b/compiler/BUILD.bazel
-@@ -23,9 +23,9 @@ java_library(
+diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
+--- a/compiler/BUILD.bazel	2026-01-16 15:19:24
++++ b/compiler/BUILD.bazel	2026-01-16 15:19:57
+@@ -24,9 +24,9 @@
+         "//api",
          "//protobuf",
          "//stub",
-         "//stub:javax_annotation",
 -        artifact("com.google.code.findbugs:jsr305"),
 -        artifact("com.google.guava:guava"),
 -        "@com_google_protobuf//:protobuf_java",
@@ -33,78 +31,21 @@ index 753f48507..43ba0cc35 100644
      ],
  )
  
-diff --git a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
-index dad794e8b..ee0cef45e 100644
---- a/protobuf-lite/BUILD.bazel
-+++ b/protobuf-lite/BUILD.bazel
-@@ -8,12 +8,10 @@ java_library(
-     visibility = ["//visibility:public"],
-     deps = [
-         "//api",
--        artifact("com.google.code.findbugs:jsr305"),
--        artifact("com.google.guava:guava"),
--    ] + select({
--        ":android": ["@com_google_protobuf//:protobuf_javalite"],
--        "//conditions:default": ["@com_google_protobuf//:protobuf_java"],
--    }),
-+        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
-+    ],
- )
- 
- # This config is not fully-reliable. If it breaks, it is probably because you
-diff --git a/protobuf/BUILD.bazel b/protobuf/BUILD.bazel
-index 02a136554..de3635480 100644
---- a/protobuf/BUILD.bazel
-+++ b/protobuf/BUILD.bazel
-@@ -9,10 +9,10 @@ java_library(
-     deps = [
+@@ -36,8 +36,8 @@
          "//api",
          "//protobuf-lite",
--        "@com_google_protobuf//:protobuf_java",
--        artifact("com.google.api.grpc:proto-google-common-protos"),
+         "//stub",
 -        artifact("com.google.code.findbugs:jsr305"),
--        artifact("com.google.errorprone:error_prone_annotations"),
 -        artifact("com.google.guava:guava"),
-+        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.api.grpc:proto-google-common-protos", repository_name = "contrib_rules_jvm_deps"),
 +        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.errorprone:error_prone_annotations", repository_name = "contrib_rules_jvm_deps"),
 +        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
-     ],
- )
-diff --git a/stub/BUILD.bazel b/stub/BUILD.bazel
-index 572ea681e..a7a92630d 100644
---- a/stub/BUILD.bazel
-+++ b/stub/BUILD.bazel
-@@ -9,10 +9,10 @@ java_library(
-     deps = [
-         "//api",
-         "//context",
--        artifact("com.google.code.findbugs:jsr305"),
--        artifact("com.google.errorprone:error_prone_annotations"),
--        artifact("com.google.guava:guava"),
--        artifact("org.codehaus.mojo:animal-sniffer-annotations"),
-+        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.errorprone:error_prone_annotations", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
-+        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
  
-@@ -22,5 +22,5 @@ java_library(
-     name = "javax_annotation",
-     neverlink = 1,  # @Generated is source-retention
-     visibility = ["//visibility:public"],
--    exports = [artifact("org.apache.tomcat:annotations-api")],
-+    exports = [artifact("org.apache.tomcat:annotations-api", repository_name = "contrib_rules_jvm_deps")],
- )
-diff --git a/netty/BUILD.bazel b/netty/BUILD.bazel
-index 1234567..abcdefg 100644
---- a/netty/BUILD.bazel
-+++ b/netty/BUILD.bazel
-@@ -12,19 +12,19 @@ java_library(
+diff -ruN a/netty/BUILD.bazel b/netty/BUILD.bazel
+--- a/netty/BUILD.bazel	2026-01-16 15:19:23
++++ b/netty/BUILD.bazel	2026-01-16 15:19:32
+@@ -13,22 +13,22 @@
      deps = [
          "//api",
          "//core:internal",
@@ -142,3 +83,68 @@ index 1234567..abcdefg 100644
 +        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
+ 
+diff -ruN a/protobuf/BUILD.bazel b/protobuf/BUILD.bazel
+--- a/protobuf/BUILD.bazel	2026-01-16 15:19:24
++++ b/protobuf/BUILD.bazel	2026-01-16 15:20:11
+@@ -10,10 +10,10 @@
+     deps = [
+         "//api",
+         "//protobuf-lite",
+-        "@com_google_protobuf//:protobuf_java",
+-        artifact("com.google.api.grpc:proto-google-common-protos"),
+-        artifact("com.google.code.findbugs:jsr305"),
+-        artifact("com.google.errorprone:error_prone_annotations"),
+-        artifact("com.google.guava:guava"),
++        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.api.grpc:proto-google-common-protos", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.errorprone:error_prone_annotations", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
+     ],
+ )
+diff -ruN a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
+--- a/protobuf-lite/BUILD.bazel	2026-01-16 15:19:24
++++ b/protobuf-lite/BUILD.bazel	2026-01-16 15:19:43
+@@ -9,12 +9,10 @@
+     visibility = ["//visibility:public"],
+     deps = [
+         "//api",
+-        artifact("com.google.code.findbugs:jsr305"),
+-        artifact("com.google.guava:guava"),
+-    ] + select({
+-        ":android": ["@com_google_protobuf//:protobuf_javalite"],
+-        "//conditions:default": ["@com_google_protobuf//:protobuf_java"],
+-    }),
++        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
++    ],
+ )
+ 
+ # This config is not fully-reliable. If it breaks, it is probably because you
+diff -ruN a/stub/BUILD.bazel b/stub/BUILD.bazel
+--- a/stub/BUILD.bazel	2026-01-16 15:19:23
++++ b/stub/BUILD.bazel	2026-01-16 15:19:32
+@@ -10,9 +10,17 @@
+     deps = [
+         "//api",
+         "//context",
+-        artifact("com.google.code.findbugs:jsr305"),
+-        artifact("com.google.errorprone:error_prone_annotations"),
+-        artifact("com.google.guava:guava"),
+-        artifact("org.codehaus.mojo:animal-sniffer-annotations"),
++        artifact("com.google.code.findbugs:jsr305", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.errorprone:error_prone_annotations", repository_name = "contrib_rules_jvm_deps"),
++        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
++        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
+     ],
+ )
++
++# Backwards compatibility shim for @Generated annotation
++java_library(
++    name = "javax_annotation",
++    neverlink = 1,  # @Generated is source-retention
++    visibility = ["//visibility:public"],
++    exports = [artifact("org.apache.tomcat:annotations-api", repository_name = "contrib_rules_jvm_deps")],
++)
