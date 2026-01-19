@@ -264,7 +264,9 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 }
 
 func (l javaLang) DoneGeneratingRules() {
-	l.parser.ServerManager().Shutdown()
+	if l.parser != nil {
+		l.parser.ServerManager().Shutdown()
+	}
 	l.javaExportIndex.FinalizeIndex()
 }
 

@@ -43,12 +43,20 @@ go_library(
 )
 
 go_test(
+    name = "lang_test",
+    size = "small",
+    srcs = ["lang_test.go"],
+    embed = [":gazelle"],
+)
+
+go_test(
     name = "gazelle_test",
     size = "medium",
     timeout = "short",
     srcs = [
         "configure_test.go",
         "generate_test.go",
+        "lang_test.go",
         "resolve_test.go",
     ],
     embed = [":gazelle"],
