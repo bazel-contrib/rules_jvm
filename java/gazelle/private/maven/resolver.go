@@ -87,6 +87,11 @@ func NewResolver(installFile string, indexFile string, logger zerolog.Logger) (R
 			// Use classes section for split package class-level resolution
 			if pkgMap, ok := index.Classes[depName]; ok {
 				for pkg, classes := range pkgMap {
+					// Seed package→artifact mapping so split packages are detected
+					// as "multiple providers" rather than "not found"
+					if pkg != "" {
+						r.data.Add(pkg, coords.ArtifactString())
+					}
 					for _, cls := range classes {
 						fqcn := cls
 						if pkg != "" {

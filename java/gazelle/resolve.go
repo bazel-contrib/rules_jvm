@@ -340,8 +340,17 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 		if errors.As(err, &noExternal) {
 			// do not fail, the package might be provided elsewhere
 		} else if errors.As(err, &multipleExternal) {
-			// Maven has multiple options - show helpful error with resolution hints
-			// This is different from local split packages where we can try class-level resolution
+			// Maven has multiple options (split package) - check if class-level resolution is available
+			if len(pkgClasses) > 0 {
+				// Only signal ambiguity if we have class index data for at least one class
+				for _, className := range pkgClasses {
+					cls := types.NewClassName(imp, className)
+					if resolved, _ := jr.lang.mavenResolver.ResolveClass(cls, pc.ExcludedArtifacts(), pc.MavenRepositoryName()); resolved != label.NoLabel {
+						return label.NoLabel, true
+					}
+				}
+			}
+			// No class-level resolution available, show helpful error with resolution hints
 			jr.lang.logger.Error().Strs("classes", pkgClasses).Msg("Append one of the following to BUILD.bazel:")
 			for _, possible := range multipleExternal.PossiblePackages {
 				jr.lang.logger.Error().Msgf("# gazelle:resolve java %s %s", imp.Name, possible)
