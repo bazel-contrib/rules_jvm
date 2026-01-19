@@ -1,0 +1,19 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java:defs.bzl", "java_test_suite", "junit5_deps")
+
+# Test that java_test_suite handles select() in deps without failing at loading time.
+# This validates the fix for iterating over select() objects which are not iterable.
+java_test_suite(
+    name = "select-deps-tests",
+    size = "small",
+    srcs = ["SelectDepsTest.java"],
+    runner = "junit5",
+    deps = select({
+        "@platforms//os:linux": [],
+        "@platforms//os:macos": [],
+        "@platforms//os:windows": [],
+        "//conditions:default": [],
+    }) + [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)

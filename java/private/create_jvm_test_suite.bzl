@@ -117,8 +117,19 @@ def create_jvm_test_suite(
                        kwargs.get("javacopts", []) +
                        kwargs.get("args", []) +
                        kwargs.get("env", {}).values())
-    make_var_deps = collections.uniq([dep for dep in deps for flag in make_var_fields if dep in flag])
-    make_var_runtime_deps = collections.uniq([dep for dep in runtime_deps for flag in make_var_fields if dep in flag])
+
+    # Handle select() in deps or make_var_fields - select is not iterable, so skip make_var extraction
+    can_extract_make_vars = (
+        type(deps) == "list" and
+        type(runtime_deps) == "list" and
+        type(make_var_fields) == "list"
+    )
+    if can_extract_make_vars:
+        make_var_deps = collections.uniq([dep for dep in deps for flag in make_var_fields if dep in flag])
+        make_var_runtime_deps = collections.uniq([dep for dep in runtime_deps for flag in make_var_fields if dep in flag])
+    else:
+        make_var_deps = []
+        make_var_runtime_deps = []
 
     for src in test_srcs:
         suffix = src.rfind(".")
