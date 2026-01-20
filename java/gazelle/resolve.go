@@ -422,7 +422,9 @@ func (jr *Resolver) buildPackageClassIndex(c *config.Config, pkg types.PackageNa
 	}
 
 	for _, m := range matches {
-		info, ok := jr.lang.classExportCache[m.Label.String()]
+		// Try lookup without repo prefix since that's how we store entries
+		cacheLabel := label.New("", m.Label.Pkg, m.Label.Name)
+		info, ok := jr.lang.classExportCache[cacheLabel.String()]
 		if !ok {
 			continue
 		}

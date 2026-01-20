@@ -6,6 +6,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-cmp/cmp"
 	"github.com/rs/zerolog"
@@ -336,4 +337,61 @@ func stringsToPackageNames(strs []string) *sorted_set.SortedSet[types.PackageNam
 		ret.Add(types.NewPackageName(s))
 	}
 	return ret
+}
+
+func TestSnakeToPascalCase(t *testing.T) {
+	for name, tc := range map[string]struct {
+		input string
+		want  string
+	}{
+		"empty":          {input: "", want: ""},
+		"single_char":    {input: "a", want: "A"},
+		"already_pascal": {input: "Http", want: "Http"},
+		"simple":         {input: "http", want: "Http"},
+		"snake_case":     {input: "sawmill_raw_http_request", want: "SawmillRawHttpRequest"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := snakeToPascalCase(tc.input)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestProtoOuterClassName(t *testing.T) {
+	for name, tc := range map[string]struct {
+		fileInfo proto.FileInfo
+		want     string
+	}{
+		"simple_file_name": {
+			fileInfo: proto.FileInfo{Name: "http.proto"},
+			want:     "Http",
+		},
+		"snake_case_file_name": {
+			fileInfo: proto.FileInfo{Name: "sawmill_raw_http_request.proto"},
+			want:     "SawmillRawHttpRequest",
+		},
+		"file_with_path": {
+			fileInfo: proto.FileInfo{Name: "squareup/logging/http.proto"},
+			want:     "Http",
+		},
+		"explicit_outer_classname": {
+			fileInfo: proto.FileInfo{
+				Name:    "http.proto",
+				Options: []proto.Option{{Key: "java_outer_classname", Value: "HttpProtos"}},
+			},
+			want: "HttpProtos",
+		},
+		"explicit_outer_classname_overrides_filename": {
+			fileInfo: proto.FileInfo{
+				Name:    "some_other_name.proto",
+				Options: []proto.Option{{Key: "java_outer_classname", Value: "CustomName"}},
+			},
+			want: "CustomName",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := protoOuterClassName(tc.fileInfo)
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
