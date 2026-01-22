@@ -132,7 +132,7 @@ maven.install(
         "org.junit:junit-bom:5.11.3",
     ],
     fail_if_repin_required = True,
-    lock_file = "//:contrib_rules_jvm_deps_install.json",
+    lock_file = "//third_party/maven:contrib_rules_jvm_deps_install.json",
     resolver = "maven",
     strict_visibility = True,
 )
