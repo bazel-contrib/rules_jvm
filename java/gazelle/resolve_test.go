@@ -433,3 +433,112 @@ func (r *TestMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map
 func (r *TestMavenResolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	return label.NoLabel, nil
 }
+
+func TestProtoSplitPackageClassResolution(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+	pkg := "protos/logging"
+	javaPackage := types.NewPackageName("com.example.protos.logging.http")
+
+	httpLibContent := `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "http_java_library",
+    _packages = ["com.example.protos.logging.http"],
+    exports = [":http_java_proto"],
+)
+`
+	sawmillLibContent := `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "sawmill_raw_http_request_java_library",
+    _packages = ["com.example.protos.logging.http"],
+    exports = [":sawmill_raw_http_request_java_proto"],
+)
+`
+
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+
+	httpFile, err := rule.LoadData(buildPath, pkg, []byte(httpLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sawmillFile, err := rule.LoadData(buildPath, pkg, []byte(sawmillLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found in langs")
+	}
+
+	httpRule := httpFile.Rules[0]
+	setPackagesPrivateAttr(httpRule)
+	httpLabel := label.New("", pkg, "http_java_library")
+	javaLangInstance.classExportCache[httpLabel.String()] = classExportInfo{
+		classes: []types.ClassName{
+			types.NewClassName(javaPackage, "Http"),
+			types.NewClassName(javaPackage, "Request"),
+		},
+		testonly: false,
+	}
+	ix.AddRule(c, httpRule, httpFile)
+
+	sawmillRule := sawmillFile.Rules[0]
+	setPackagesPrivateAttr(sawmillRule)
+	sawmillLabel := label.New("", pkg, "sawmill_raw_http_request_java_library")
+	javaLangInstance.classExportCache[sawmillLabel.String()] = classExportInfo{
+		classes: []types.ClassName{
+			types.NewClassName(javaPackage, "SawmillRawHttpRequest"),
+		},
+		testonly: false,
+	}
+	ix.AddRule(c, sawmillRule, sawmillFile)
+
+	ix.Finish()
+
+	importSpec := resolve.ImportSpec{Lang: "java", Imp: javaPackage.Name}
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, "java")
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 providers for the package, got %d", len(matches))
+	}
+
+	resolver := NewResolver(javaLangInstance)
+
+	pci := resolver.buildPackageClassIndex(c, javaPackage, ix)
+
+	if _, ok := pci.prod["Http"]; !ok {
+		t.Error("Http class should be indexed")
+	} else if len(pci.prod["Http"]) != 1 {
+		t.Errorf("Http should have exactly 1 provider, got %d", len(pci.prod["Http"]))
+	} else if pci.prod["Http"][0] != httpLabel {
+		t.Errorf("Http should be provided by http_java_library, got %s", pci.prod["Http"][0])
+	}
+
+	if _, ok := pci.prod["Request"]; !ok {
+		t.Error("Request class should be indexed")
+	} else if len(pci.prod["Request"]) != 1 {
+		t.Errorf("Request should have exactly 1 provider, got %d", len(pci.prod["Request"]))
+	} else if pci.prod["Request"][0] != httpLabel {
+		t.Errorf("Request should be provided by http_java_library, got %s", pci.prod["Request"][0])
+	}
+
+	if _, ok := pci.prod["SawmillRawHttpRequest"]; !ok {
+		t.Error("SawmillRawHttpRequest class should be indexed")
+	} else if len(pci.prod["SawmillRawHttpRequest"]) != 1 {
+		t.Errorf("SawmillRawHttpRequest should have exactly 1 provider, got %d", len(pci.prod["SawmillRawHttpRequest"]))
+	} else if pci.prod["SawmillRawHttpRequest"][0] != sawmillLabel {
+		t.Errorf("SawmillRawHttpRequest should be provided by sawmill_raw_http_request_java_library, got %s", pci.prod["SawmillRawHttpRequest"][0])
+	}
+}

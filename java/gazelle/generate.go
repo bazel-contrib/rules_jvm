@@ -63,7 +63,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	if cfg.GenerateProto() {
-		generateProtoLibraries(args, log, &res)
+		generateProtoLibraries(&l, args, log, &res)
 	}
 
 	var srcFilenamesRelativeToPackage []string
@@ -489,7 +489,7 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 	return runtimeDeps
 }
 
-func generateProtoLibraries(args language.GenerateArgs, log zerolog.Logger, res *language.GenerateResult) {
+func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog.Logger, res *language.GenerateResult) {
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
@@ -536,11 +536,83 @@ func generateProtoLibraries(args language.GenerateArgs, log zerolog.Logger, res 
 		packageName := types.NewPackageName(protoPackage.Options["java_package"])
 		log.Debug().Str("pkg", packageName.Name).Msg("adding the proto import statement")
 		rjl.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{*types.NewResolvableJavaPackage(packageName, false, false)})
+
+		// Extract class names from proto files for class-level resolution.
+		// Proto compilation generates Java classes for each message, enum, service,
+		// and an outer class (named after the proto file or via java_outer_classname option).
+		var protoClasses []types.ClassName
+		for _, fileInfo := range protoPackage.Files {
+			// Add the outer class name (container for all types in the proto file)
+			outerClassName := protoOuterClassName(fileInfo)
+			if outerClassName != "" {
+				protoClasses = append(protoClasses, types.NewClassName(packageName, outerClassName))
+			}
+			for _, msg := range fileInfo.Messages {
+				protoClasses = append(protoClasses, types.NewClassName(packageName, msg))
+			}
+			for _, enum := range fileInfo.Enums {
+				protoClasses = append(protoClasses, types.NewClassName(packageName, enum))
+			}
+			for _, svc := range fileInfo.Services {
+				protoClasses = append(protoClasses, types.NewClassName(packageName, svc))
+			}
+		}
+		if len(protoClasses) > 0 {
+			rjl.SetPrivateAttr(classesKey, protoClasses)
+			ruleLabel := label.New("", args.Rel, jlName)
+			l.classExportCache[ruleLabel.String()] = classExportInfo{
+				classes:  protoClasses,
+				testonly: false,
+			}
+			classNames := make([]string, 0, len(protoClasses))
+			for _, c := range protoClasses {
+				classNames = append(classNames, c.BareOuterClassName())
+			}
+			log.Debug().
+				Str("rule", jlName).
+				Str("label", ruleLabel.String()).
+				Strs("classes", classNames).
+				Msg("registered proto classes for class-level resolution")
+		}
+
 		res.Gen = append(res.Gen, rjl)
 		res.Imports = append(res.Imports, types.ResolveInput{
 			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
 		})
 	}
+}
+
+// protoOuterClassName returns the outer class name for a proto file.
+// This is either explicitly set via java_outer_classname option, or derived from the file name.
+func protoOuterClassName(fileInfo proto.FileInfo) string {
+	// Check for explicit java_outer_classname option
+	for _, opt := range fileInfo.Options {
+		if opt.Key == "java_outer_classname" {
+			return opt.Value
+		}
+	}
+	// Default: derive from file name (e.g., "http.proto" -> "Http")
+	name := fileInfo.Name
+	if idx := strings.LastIndex(name, "/"); idx >= 0 {
+		name = name[idx+1:]
+	}
+	name = strings.TrimSuffix(name, ".proto")
+	if name == "" {
+		return ""
+	}
+	// Convert to PascalCase (capitalize first letter, handle underscores)
+	return snakeToPascalCase(name)
+}
+
+// snakeToPascalCase converts a snake_case string to PascalCase.
+func snakeToPascalCase(s string) string {
+	parts := strings.Split(s, "_")
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[:1]) + part[1:]
+		}
+	}
+	return strings.Join(parts, "")
 }
 
 // We exclude intra-target imports because otherwise we'd get self-dependencies come resolve time.
