@@ -7,7 +7,7 @@ buildifier(
 )
 
 # gazelle:java_maven_install_file contrib_rules_jvm_deps_install.json
-# gazelle:java_index_file contrib_rules_jvm_deps_index.json
+# gazelle:maven_index_file third_party/maven/contrib_rules_jvm_deps_index.json
 # gazelle:java_maven_repository_name contrib_rules_jvm_deps
 # gazelle:prefix github.com/bazel-contrib/rules_jvm
 

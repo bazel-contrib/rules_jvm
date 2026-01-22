@@ -110,12 +110,13 @@ type IndexFile struct {
 }
 
 func loadIndex(filename string) (*IndexFile, error) {
-	data, err := os.ReadFile(filename)
+	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	var index IndexFile
-	if err := json.Unmarshal(data, &index); err != nil {
+	if err := json.NewDecoder(f).Decode(&index); err != nil {
 		return nil, err
 	}
 	return &index, nil
