@@ -25,6 +25,7 @@ type Configurer struct {
 	annotationToAttribute annotationToAttribute
 	annotationToWrapper   annotationToWrapper
 	mavenInstallFile      string
+	mavenIndexFile        string
 }
 
 func NewConfigurer(lang *javaLang) *Configurer {
@@ -39,6 +40,7 @@ func (jc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Conf
 	fs.Var(&jc.annotationToAttribute, "java-annotation-to-attribute", "Mapping of annotations (on test classes) to attributes which should be set for that test rule. Examples: com.example.annotations.FlakyTest=flaky=True com.example.annotations.SlowTest=timeout=\"long\"")
 	fs.Var(&jc.annotationToWrapper, "java-annotation-to-wrapper", "Mapping of annotations (on test classes) to wrapper rules which should be used around the test rule. Example: com.example.annotations.RequiresNetwork=@some//wrapper:file.bzl=requires_network")
 	fs.StringVar(&jc.mavenInstallFile, "java-maven-install-file", "", "Path of the maven_install.json file. Defaults to \"maven_install.json\".")
+	fs.StringVar(&jc.mavenIndexFile, "maven-index-file", "", "Path of the maven_index.json file. Defaults to \"maven_index.json\".")
 }
 
 func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -54,6 +56,9 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	if jc.mavenInstallFile != "" {
 		cfgs[""].SetMavenInstallFile(jc.mavenInstallFile)
 	}
+	if jc.mavenIndexFile != "" {
+		cfgs[""].SetMavenIndexFile(jc.mavenIndexFile)
+	}
 	return nil
 }
 
@@ -62,6 +67,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaExcludeArtifact,
 		javaconfig.JavaExtensionDirective,
 		javaconfig.JavaMavenInstallFile,
+		javaconfig.MavenIndexFile,
 		javaconfig.JavaModuleGranularityDirective,
 		javaconfig.JavaTestFileSuffixes,
 		javaconfig.JavaTestMode,
@@ -161,6 +167,9 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			case javaconfig.JavaMavenInstallFile:
 				cfg.SetMavenInstallFile(d.Value)
+
+			case javaconfig.MavenIndexFile:
+				cfg.SetMavenIndexFile(d.Value)
 
 			case javaconfig.JavaModuleGranularityDirective:
 				if err := cfg.SetModuleGranularity(d.Value); err != nil {
@@ -269,8 +278,9 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 	if jc.lang.mavenResolver == nil {
 		resolver, err := maven.NewResolver(
-			cfg.MavenInstallFile(),
-			jc.lang.logger,
+			maven.WithInstallFile(cfg.MavenInstallFile()),
+			maven.WithIndexFile(cfg.MavenIndexFile()),
+			maven.WithLogger(jc.lang.logger),
 		)
 		if err != nil {
 			jc.lang.logger.Fatal().Err(err).Msg("error creating Maven resolver")
