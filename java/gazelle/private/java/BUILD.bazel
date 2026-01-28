@@ -7,6 +7,7 @@ go_library(
     srcs = [
         "java.go",
         "package.go",
+        "quick_scan.go",
     ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/java",
     # Allow visibility for plugins like Kotlin that don't live in this repo
@@ -21,7 +22,14 @@ go_library(
 go_test(
     name = "java_test",
     size = "small",
-    srcs = ["java_test.go"],
+    srcs = [
+        "java_test.go",
+        "quick_scan_test.go",
+    ],
     data = glob(["testdata/**"]),
     embed = [":java"],
+    deps = [
+        "//java/gazelle/private/types",
+        "@com_github_stretchr_testify//require",
+    ],
 )

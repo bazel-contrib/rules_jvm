@@ -453,6 +453,22 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}).Msg("generate return")
 	}
 
+	// Populate RelsToIndex for lazy indexing support.
+	// Collect all imported packages and compute directories to index.
+	relsToIndex := sorted_set.NewSortedSet([]string{})
+	allImportedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	allImportedPackages.AddAll(productionJavaImports)
+	allImportedPackages.AddAll(testJavaImports)
+
+	for _, pkg := range allImportedPackages.SortedSlice() {
+		paths := cfg.PathsForPackage(pkg.Name)
+		for _, p := range paths {
+			relsToIndex.Add(p)
+		}
+	}
+
+	res.RelsToIndex = relsToIndex.SortedSlice()
+
 	return res
 }
 

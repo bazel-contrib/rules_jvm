@@ -80,6 +80,9 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaStripResourcesPrefix,
 		javaconfig.JavaGenerateBinary,
 		javaconfig.JvmKotlinEnabled,
+		javaconfig.JavaSearch,
+		javaconfig.JavaMavenLayout,
+		javaconfig.JavaSearchExclude,
 	}
 }
 
@@ -264,6 +267,30 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
 						javaconfig.JvmKotlinEnabled, d.Value)
 				}
+
+			case javaconfig.JavaSearch:
+				if err := cfg.AddSearchPath(d.Value); err != nil {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: %v",
+						javaconfig.JavaSearch, d.Value, err)
+				}
+
+			case javaconfig.JavaMavenLayout:
+				discovered, err := cfg.DiscoverMavenLayout(d.Value)
+				if err != nil {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: %v",
+						javaconfig.JavaMavenLayout, d.Value, err)
+				}
+				if len(discovered) > 0 {
+					jc.lang.logger.Debug().Strs("paths", discovered).Msg("discovered maven layout source roots")
+				}
+
+			case javaconfig.JavaSearchExclude:
+				// Format: <directory>
+				if d.Value == "" {
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: expected a directory path",
+						javaconfig.JavaSearchExclude)
+				}
+				cfg.AddSearchExclude(d.Value)
 			}
 		}
 	}

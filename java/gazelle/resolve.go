@@ -3,6 +3,7 @@ package gazelle
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -75,6 +76,10 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		for _, pkg := range pkgs.([]types.ResolvableJavaPackage) {
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
+	} else {
+		// Lazy indexing fallback: GenerateRules wasn't called for this rule,
+		// so we need to infer packages by quick-scanning source files.
+		out = jr.inferPackagesFromSources(c, r, f)
 	}
 	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
 	// Class-level resolution uses a lazy, per-package index built only when needed
@@ -82,6 +87,62 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// This keeps the global index small and fast.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
+	return out
+}
+
+// inferPackagesFromSources scans source files to extract package declarations.
+// This is used during lazy indexing when GenerateRules hasn't been called.
+//
+// The function uses a two-phase approach for efficiency:
+// 1. First, try to infer the package from the file path using configured search paths
+// 2. If that succeeds, verify by quick-scanning the file for the actual package declaration
+// This avoids scanning files that don't match any configured source root.
+func (jr *Resolver) inferPackagesFromSources(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	srcs := r.AttrStrings("srcs")
+	if len(srcs) == 0 {
+		return nil
+	}
+
+	packageConfig := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
+	if packageConfig == nil {
+		return nil
+	}
+	isTestRule := packageConfig.IsTestRule(r.Kind())
+
+	seen := make(map[string]bool)
+	var out []resolve.ImportSpec
+
+	for _, src := range srcs {
+		if !strings.HasSuffix(src, ".java") && !strings.HasSuffix(src, ".kt") {
+			continue
+		}
+
+		// Build the path relative to workspace root (for matching against search paths)
+		relPath := filepath.ToSlash(filepath.Join(f.Pkg, src))
+
+		// Phase 1: Try to infer package from the path using configured search paths
+		inferredPkg := packageConfig.PackageFromPath(relPath)
+		if inferredPkg == "" {
+			// Path doesn't match any configured source root, skip this file
+			continue
+		}
+
+		// Phase 2: Verify by scanning the file for the actual package declaration
+		srcPath := filepath.Join(c.RepoRoot, f.Pkg, src)
+		actualPkg := java.QuickScanPackage(srcPath)
+		if actualPkg.Name == "" {
+			// Couldn't find package declaration, use the inferred one
+			actualPkg = types.NewPackageName(inferredPkg)
+		}
+
+		resolvable := types.NewResolvableJavaPackage(actualPkg, isTestRule, false)
+		key := resolvable.String()
+		if !seen[key] {
+			seen[key] = true
+			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: key})
+		}
+	}
+
 	return out
 }
 
