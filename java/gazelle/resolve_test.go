@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -540,5 +541,343 @@ java_library(
 		t.Errorf("SawmillRawHttpRequest should have exactly 1 provider, got %d", len(pci.prod["SawmillRawHttpRequest"]))
 	} else if pci.prod["SawmillRawHttpRequest"][0] != sawmillLabel {
 		t.Errorf("SawmillRawHttpRequest should be provided by sawmill_raw_http_request_java_library, got %s", pci.prod["SawmillRawHttpRequest"][0])
+	}
+}
+
+// fakeExternalPluginResolver simulates an external plugin (like rules_wire)
+// that returns Java ImportSpecs for its custom rule kinds.
+type fakeExternalPluginResolver struct {
+	// javaPackages maps rule names to the Java packages they provide
+	javaPackages map[string][]types.ResolvableJavaPackage
+}
+
+func (r *fakeExternalPluginResolver) Name() string {
+	return "java" // Returns "java" so ImportSpecs are indexed under the Java language
+}
+
+func (r *fakeExternalPluginResolver) Imports(c *config.Config, rule *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	pkgs, ok := r.javaPackages[rule.Name()]
+	if !ok {
+		return nil
+	}
+	var specs []resolve.ImportSpec
+	for _, pkg := range pkgs {
+		specs = append(specs, resolve.ImportSpec{Lang: "java", Imp: pkg.String()})
+	}
+	return specs
+}
+
+func (r *fakeExternalPluginResolver) Embeds(rule *rule.Rule, from label.Label) []label.Label {
+	return nil
+}
+
+func (r *fakeExternalPluginResolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, rule *rule.Rule, imports interface{}, from label.Label) {
+}
+
+func TestSharedClassCacheForExternalPlugins(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "splitpkg"
+	javaPackage := types.NewPackageName("com.example.split")
+
+	// Create a fake external plugin resolver for java_wire_library.
+	// In production, this would be the Wire plugin returning Java ImportSpecs.
+	fakeWireResolver := &fakeExternalPluginResolver{
+		javaPackages: map[string][]types.ResolvableJavaPackage{
+			"wire_proto": {*types.NewResolvableJavaPackage(javaPackage, false, false)},
+		},
+	}
+	mrslv["java_wire_library"] = fakeWireResolver
+
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+	// Create a java_library that provides the package (represents hand-written code)
+	javaLibContent := `
+java_library(
+    name = "java_part",
+    srcs = ["JavaPart.java"],
+)
+`
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+	javaFile, err := rule.LoadData(buildPath, pkg, []byte(javaLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	javaRule := javaFile.Rules[0]
+
+	// Set up the java_library with its package
+	javaRule.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{
+		*types.NewResolvableJavaPackage(javaPackage, false, false),
+	})
+
+	// Set up classExportCache for java_library (simulating generation)
+	javaLabel := label.New("", pkg, "java_part")
+	javaLangInstance.classExportCache[javaLabel.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "JavaPart")},
+		testonly: false,
+	}
+
+	// Create a java_wire_library rule (external plugin's rule kind)
+	wireLibContent := `
+java_wire_library(
+    name = "wire_proto",
+    proto = ":person_proto",
+)
+`
+	wireFile, err := rule.LoadData(buildPath, pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wireRule := wireFile.Rules[0]
+
+	// External plugin contributes class info via shared cache (not classExportCache).
+	// This is the key difference: internal rules use classExportCache,
+	// external plugins use SharedClassCache.
+	sharedCache := javaconfig.GetOrCreateSharedClassCache(c)
+	wireLabel := label.New("", pkg, "wire_proto")
+	sharedCache[wireLabel.String()] = javaconfig.SharedClassInfo{
+		Classes:  []string{"com.example.split.WireMessage"},
+		TestOnly: false,
+	}
+
+	// Add both rules to the index
+	ix.AddRule(c, javaRule, javaFile)
+	ix.AddRule(c, wireRule, wireFile)
+	ix.Finish()
+
+	resolver := NewResolver(javaLangInstance)
+
+	// Build the class index for this split package
+	pci := resolver.buildPackageClassIndex(c, javaPackage, ix)
+
+	// The java_library class should be indexed from classExportCache
+	if _, ok := pci.prod["JavaPart"]; !ok {
+		t.Error("JavaPart should be indexed from java_library's classExportCache")
+	}
+
+	// The java_wire_library class should be indexed from SharedClassCache
+	if _, ok := pci.prod["WireMessage"]; !ok {
+		t.Error("WireMessage should be indexed from SharedClassCache")
+	}
+
+	// Verify both classes map to their respective labels
+	if len(pci.prod["JavaPart"]) != 1 || pci.prod["JavaPart"][0].Name != "java_part" {
+		t.Errorf("JavaPart should map to java_part, got %v", pci.prod["JavaPart"])
+	}
+	if len(pci.prod["WireMessage"]) != 1 || pci.prod["WireMessage"][0].Name != "wire_proto" {
+		t.Errorf("WireMessage should map to wire_proto, got %v", pci.prod["WireMessage"])
+	}
+}
+
+func TestClassLevelResolutionInSplitPackage(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "splitpkg"
+	javaPackage := types.NewPackageName("com.example.split")
+
+	// Create two java_library rules in the same package - simulating a split package scenario
+	javaLib1Content := `
+java_library(
+    name = "java_part1",
+    srcs = ["JavaPart1.java"],
+)
+`
+	javaLib2Content := `
+java_library(
+    name = "java_part2",
+    srcs = ["JavaPart2.java"],
+)
+`
+
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+
+	javaFile1, err := rule.LoadData(buildPath, pkg, []byte(javaLib1Content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	javaFile2, err := rule.LoadData(buildPath, pkg, []byte(javaLib2Content))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	javaRule1 := javaFile1.Rules[0]
+	javaRule2 := javaFile2.Rules[0]
+
+	// Set up both rules with the same package (split package scenario)
+	javaRule1.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{
+		*types.NewResolvableJavaPackage(javaPackage, false, false),
+	})
+	javaRule2.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{
+		*types.NewResolvableJavaPackage(javaPackage, false, false),
+	})
+
+	// Set up classExportCache for both rules (simulating what happens during generation)
+	javaLabel1 := label.New("", pkg, "java_part1")
+	javaLangInstance.classExportCache[javaLabel1.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "ClassA")},
+		testonly: false,
+	}
+
+	javaLabel2 := label.New("", pkg, "java_part2")
+	javaLangInstance.classExportCache[javaLabel2.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "ClassB")},
+		testonly: false,
+	}
+
+	// Add rules to the index
+	ix.AddRule(c, javaRule1, javaFile1)
+	ix.AddRule(c, javaRule2, javaFile2)
+	ix.Finish()
+
+	// Verify both rules are indexed for the package (split package)
+	importSpec := resolve.ImportSpec{Lang: "java", Imp: javaPackage.Name}
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, "java")
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 providers for the package, got %d", len(matches))
+	}
+
+	resolver := NewResolver(javaLangInstance)
+
+	// Build the class index for this split package
+	pci := resolver.buildPackageClassIndex(c, javaPackage, ix)
+
+	// Both classes should be indexed
+	if _, ok := pci.prod["ClassA"]; !ok {
+		t.Error("ClassA should be indexed from java_part1")
+	}
+	if _, ok := pci.prod["ClassB"]; !ok {
+		t.Error("ClassB should be indexed from java_part2")
+	}
+
+	// Verify correct labels
+	if len(pci.prod["ClassA"]) != 1 || pci.prod["ClassA"][0] != javaLabel1 {
+		t.Errorf("ClassA should be provided by java_part1, got %v", pci.prod["ClassA"])
+	}
+	if len(pci.prod["ClassB"]) != 1 || pci.prod["ClassB"][0] != javaLabel2 {
+		t.Errorf("ClassB should be provided by java_part2, got %v", pci.prod["ClassB"])
+	}
+}
+
+func TestSharedClassCacheTestOnlyHandling(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "testpkg"
+	javaPackage := types.NewPackageName("com.example.test")
+
+	// Create a testonly java_library (simulates test utilities from external plugin)
+	testLibContent := `
+java_library(
+    name = "test_helper",
+    srcs = ["TestHelper.java"],
+    testonly = True,
+)
+`
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+	testFile, err := rule.LoadData(buildPath, pkg, []byte(testLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	testRule := testFile.Rules[0]
+
+	// Set up the testonly rule with its package (using testonly=true ImportSpec)
+	testRule.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{
+		*types.NewResolvableJavaPackage(javaPackage, true, false), // testonly=true
+	})
+
+	// External plugin contributes testonly class info via shared cache
+	sharedCache := javaconfig.GetOrCreateSharedClassCache(c)
+	testLabel := label.New("", pkg, "test_helper")
+	sharedCache[testLabel.String()] = javaconfig.SharedClassInfo{
+		Classes:  []string{"com.example.test.TestHelper"},
+		TestOnly: true,
+	}
+
+	// Create a prod java_library
+	prodLibContent := `
+java_library(
+    name = "prod_helper",
+    srcs = ["ProdHelper.java"],
+)
+`
+	prodFile, err := rule.LoadData(buildPath, pkg, []byte(prodLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prodRule := prodFile.Rules[0]
+
+	// Set up the prod rule with its package
+	prodRule.SetPrivateAttr(packagesKey, []types.ResolvableJavaPackage{
+		*types.NewResolvableJavaPackage(javaPackage, false, false),
+	})
+
+	// External plugin contributes prod class info via shared cache
+	prodLabel := label.New("", pkg, "prod_helper")
+	sharedCache[prodLabel.String()] = javaconfig.SharedClassInfo{
+		Classes:  []string{"com.example.test.ProdHelper"},
+		TestOnly: false,
+	}
+
+	// Add rules to the index
+	ix.AddRule(c, testRule, testFile)
+	ix.AddRule(c, prodRule, prodFile)
+	ix.Finish()
+
+	resolver := NewResolver(javaLangInstance)
+
+	// Build the class index for this package
+	pci := resolver.buildPackageClassIndex(c, javaPackage, ix)
+
+	// ProdHelper should be in prod index
+	if _, ok := pci.prod["ProdHelper"]; !ok {
+		t.Error("ProdHelper should be in prod index")
+	}
+
+	// TestHelper should be in test index (not prod)
+	if _, ok := pci.test["TestHelper"]; !ok {
+		t.Error("TestHelper should be in test index")
+	}
+	if _, ok := pci.prod["TestHelper"]; ok {
+		t.Error("TestHelper should NOT be in prod index")
 	}
 }
