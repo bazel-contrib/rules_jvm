@@ -70,23 +70,12 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// Cache config for use in Embeds, which doesn't receive config in its interface
 	jr.lastConfig = c
 
-	// Check for external plugin contributions via well-known private attributes
-	providedPkgs, hasPkgs := r.PrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr).([]string)
-	providedClasses, hasClasses := r.PrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr).([]string)
-
-	// Early return if this rule is not a provider (neither a recognized JVM library
-	// nor has external contribution attributes)
-	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" && !hasPkgs && !hasClasses {
+	// Early return if this rule is not a provider
+	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
 	}
 
 	lbl := label.New("", f.Pkg, r.Name())
-
-	// Determine testonly status for external contributions
-	isTestOnly := false
-	if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
-		isTestOnly = literalExpr.Token == "True"
-	}
 
 	var out []resolve.ImportSpec
 
@@ -96,63 +85,6 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
-
-	// Handle packages contributed by external plugins
-	for _, pkgName := range providedPkgs {
-		pkg := types.NewResolvableJavaPackage(types.NewPackageName(pkgName), isTestOnly, false)
-		out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
-	}
-
-	// Handle classes contributed by external plugins - add to classExportCache
-	// and infer package registrations if not explicitly provided
-	if hasClasses && len(providedClasses) > 0 {
-		var classes []types.ClassName
-		inferredPkgs := make(map[string]bool)
-
-		for _, fqcn := range providedClasses {
-			cn, err := types.ParseClassName(fqcn)
-			if err != nil {
-				log.Debug().Str("class", fqcn).Err(err).Msg("failed to parse contributed class name")
-				continue
-			}
-			classes = append(classes, *cn)
-
-			// Track package names for inference if no explicit packages provided
-			if !hasPkgs {
-				inferredPkgs[cn.PackageName().Name] = true
-			}
-		}
-
-		if len(classes) > 0 {
-			jr.lang.classExportCache[lbl.String()] = classExportInfo{
-				classes:  classes,
-				testonly: isTestOnly,
-			}
-			log.Debug().
-				Str("label", lbl.String()).
-				Int("classes", len(classes)).
-				Bool("testonly", isTestOnly).
-				Msg("registered external plugin classes in classExportCache")
-		}
-
-		// If no explicit packages were provided, infer them from the class names
-		// so that package-level resolution can find this rule
-		if !hasPkgs && len(inferredPkgs) > 0 {
-			for pkgName := range inferredPkgs {
-				pkg := types.NewResolvableJavaPackage(types.NewPackageName(pkgName), isTestOnly, false)
-				out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
-			}
-			log.Debug().
-				Str("label", lbl.String()).
-				Int("inferred_packages", len(inferredPkgs)).
-				Msg("inferred package registrations from contributed classes")
-		}
-	}
-
-	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
-	// Class-level resolution uses a lazy, per-package index built only when needed
-	// (when package-level resolution is ambiguous due to split packages).
-	// This keeps the global index small and fast.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
@@ -503,22 +435,46 @@ func (jr *Resolver) buildPackageClassIndex(c *config.Config, pkg types.PackageNa
 		test: make(map[string][]label.Label),
 	}
 
+	// Get the shared class cache for external plugin contributions
+	sharedCache := javaconfig.GetOrCreateSharedClassCache(c)
+
 	for _, m := range matches {
 		// Try lookup without repo prefix since that's how we store entries
 		cacheLabel := label.New("", m.Label.Pkg, m.Label.Name)
-		info, ok := jr.lang.classExportCache[cacheLabel.String()]
-		if !ok {
+		labelStr := cacheLabel.String()
+
+		// First check internal classExportCache (for java_library rules)
+		if info, ok := jr.lang.classExportCache[labelStr]; ok {
+			for _, cls := range info.classes {
+				if cls.PackageName() != pkg {
+					continue
+				}
+				name := cls.BareOuterClassName()
+				if info.testonly {
+					pci.test[name] = append(pci.test[name], m.Label)
+				} else {
+					pci.prod[name] = append(pci.prod[name], m.Label)
+				}
+			}
 			continue
 		}
-		for _, cls := range info.classes {
-			if cls.PackageName() != pkg {
-				continue
-			}
-			name := cls.BareOuterClassName()
-			if info.testonly {
-				pci.test[name] = append(pci.test[name], m.Label)
-			} else {
-				pci.prod[name] = append(pci.prod[name], m.Label)
+
+		// Then check shared cache (for external plugin rules like java_wire_library)
+		if sharedInfo, ok := sharedCache[labelStr]; ok {
+			for _, fqcn := range sharedInfo.Classes {
+				cn, err := types.ParseClassName(fqcn)
+				if err != nil {
+					continue
+				}
+				if cn.PackageName() != pkg {
+					continue
+				}
+				name := cn.BareOuterClassName()
+				if sharedInfo.TestOnly {
+					pci.test[name] = append(pci.test[name], m.Label)
+				} else {
+					pci.prod[name] = append(pci.prod[name], m.Label)
+				}
 			}
 		}
 	}
@@ -649,16 +605,7 @@ func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from 
 }
 
 func isJvmLibrary(c *config.Config, kind string) bool {
-	if isJavaLibrary(c, kind) || isKotlinLibrary(kind) {
-		return true
-	}
-	// Check for kinds registered by other plugins via the extension mechanism
-	if extKinds, ok := c.Exts[javaconfig.JavaExtensionLibraryKindsKey].(map[string]bool); ok {
-		if extKinds[kind] {
-			return true
-		}
-	}
-	return false
+	return isJavaLibrary(c, kind) || isKotlinLibrary(kind)
 }
 
 func isJavaLibrary(c *config.Config, kind string) bool {

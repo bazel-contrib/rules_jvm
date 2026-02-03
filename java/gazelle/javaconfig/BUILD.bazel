@@ -11,6 +11,7 @@ go_library(
     deps = [
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
+        "@bazel_gazelle//config",
         "@com_github_bazelbuild_buildtools//build",
     ],
 )

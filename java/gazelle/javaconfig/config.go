@@ -8,56 +8,61 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
+	"github.com/bazelbuild/bazel-gazelle/config"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
+// SharedClassInfo represents class export information for a single rule.
+// Used in the shared class cache for cross-plugin class-level resolution.
+type SharedClassInfo struct {
+	// Classes are the fully-qualified Java class names this rule provides.
+	Classes []string
+
+	// TestOnly indicates whether these classes are only available for test rules.
+	TestOnly bool
+}
+
+// SharedClassCache is a shared cache of class information keyed by rule label.
+// This is stored in config.Exts and shared across all Gazelle plugins, allowing
+// external plugins to contribute class information for split package resolution.
+// The key is the rule label string (e.g., "//pkg:rule_name").
+type SharedClassCache map[string]SharedClassInfo
+
+// JavaSharedClassCacheKey is the config.Exts key for the shared class cache.
+// External plugins should use GetOrCreateSharedClassCache to access it.
+const JavaSharedClassCacheKey = "java_shared_class_cache"
+
+// GetOrCreateSharedClassCache returns the shared class cache from config.Exts,
+// creating it if it doesn't exist. The cache is shared across all plugins and
+// persists across directory boundaries because it's a pointer to a map.
+//
+// External plugins should call this in their Configure method (at the root level)
+// and store the returned pointer for use in GenerateRules.
+//
+// Example usage in an external plugin:
+//
+//	func (l *myLang) Configure(c *config.Config, rel string, f *rule.File) {
+//	    cache := javaconfig.GetOrCreateSharedClassCache(c)
+//	    // Store cache pointer for later use
+//	}
+//
+//	func (l *myLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+//	    cache := javaconfig.GetOrCreateSharedClassCache(args.Config)
+//	    cache["//pkg:my_rule"] = javaconfig.SharedClassInfo{
+//	        Classes:  []string{"com.example.MyClass"},
+//	        TestOnly: false,
+//	    }
+//	}
+func GetOrCreateSharedClassCache(c *config.Config) SharedClassCache {
+	if cache, ok := c.Exts[JavaSharedClassCacheKey].(SharedClassCache); ok {
+		return cache
+	}
+	cache := make(SharedClassCache)
+	c.Exts[JavaSharedClassCacheKey] = cache
+	return cache
+}
+
 const (
-	// JavaExtensionLibraryKindsKey is a well-known config.Exts key that other Gazelle plugins
-	// can use to register additional rule kinds as JVM libraries. The value should be a
-	// map[string]bool where keys are rule kinds (e.g., "java_wire_library").
-	//
-	// Example usage in another plugin's Configure method:
-	//
-	//     kinds, _ := c.Exts[javaconfig.JavaExtensionLibraryKindsKey].(map[string]bool)
-	//     if kinds == nil {
-	//         kinds = make(map[string]bool)
-	//     }
-	//     kinds["my_custom_library"] = true
-	//     c.Exts[javaconfig.JavaExtensionLibraryKindsKey] = kinds
-	//
-	JavaExtensionLibraryKindsKey = "java_extension_library_kinds"
-
-	// JavaGazelleProvidedPackagesAttr is a well-known private attribute key that other
-	// Gazelle plugins can set on their rules to declare Java packages they provide.
-	// The value should be []string where each string is a Java package name
-	// (e.g., "com.example.proto").
-	//
-	// When set, the Java plugin will register these packages in Gazelle's RuleIndex,
-	// enabling package-level dependency resolution for the external rule.
-	//
-	// Example usage in another plugin's GenerateRules:
-	//
-	//     r.SetPrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr, []string{"com.example"})
-	//
-	JavaGazelleProvidedPackagesAttr = "_java_gazelle_provided_packages"
-
-	// JavaGazelleProvidedClassesAttr is a well-known private attribute key that other
-	// Gazelle plugins can set on their rules to declare fully-qualified Java class names
-	// they provide. The value should be []string where each string is a fully-qualified
-	// class name (e.g., "com.example.Person").
-	//
-	// When set, the Java plugin will add these classes to its class export cache,
-	// enabling class-level dependency resolution for split packages.
-	//
-	// Example usage in another plugin's GenerateRules:
-	//
-	//     r.SetPrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr, []string{
-	//         "com.example.Person",
-	//         "com.example.Address",
-	//     })
-	//
-	JavaGazelleProvidedClassesAttr = "_java_gazelle_provided_classes"
-
 	// JavaExcludeArtifact tells the resolver to disregard a given maven artifact.
 	// Can be repeated.
 	JavaExcludeArtifact = "java_exclude_artifact"
