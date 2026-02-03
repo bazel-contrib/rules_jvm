@@ -12,6 +12,21 @@ import (
 )
 
 const (
+	// JavaExtensionLibraryKindsKey is a well-known config.Exts key that other Gazelle plugins
+	// can use to register additional rule kinds as JVM libraries. The value should be a
+	// map[string]bool where keys are rule kinds (e.g., "java_wire_library").
+	//
+	// Example usage in another plugin's Configure method:
+	//
+	//     kinds, _ := c.Exts[javaconfig.JavaExtensionLibraryKindsKey].(map[string]bool)
+	//     if kinds == nil {
+	//         kinds = make(map[string]bool)
+	//     }
+	//     kinds["my_custom_library"] = true
+	//     c.Exts[javaconfig.JavaExtensionLibraryKindsKey] = kinds
+	//
+	JavaExtensionLibraryKindsKey = "java_extension_library_kinds"
+
 	// JavaExcludeArtifact tells the resolver to disregard a given maven artifact.
 	// Can be repeated.
 	JavaExcludeArtifact = "java_exclude_artifact"

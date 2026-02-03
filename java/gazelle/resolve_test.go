@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -540,5 +541,65 @@ java_library(
 		t.Errorf("SawmillRawHttpRequest should have exactly 1 provider, got %d", len(pci.prod["SawmillRawHttpRequest"]))
 	} else if pci.prod["SawmillRawHttpRequest"][0] != sawmillLabel {
 		t.Errorf("SawmillRawHttpRequest should be provided by sawmill_raw_http_request_java_library, got %s", pci.prod["SawmillRawHttpRequest"][0])
+	}
+}
+
+func TestIsJvmLibraryWithExtensionKinds(t *testing.T) {
+	c := &config.Config{
+		Exts: make(map[string]interface{}),
+	}
+
+	// Built-in kinds should be recognized
+	if !isJvmLibrary(c, "java_library") {
+		t.Error("java_library should be recognized as JVM library")
+	}
+	if !isJvmLibrary(c, "kt_jvm_library") {
+		t.Error("kt_jvm_library should be recognized as JVM library")
+	}
+	if !isJvmLibrary(c, "java_proto_library") {
+		t.Error("java_proto_library should be recognized as JVM library")
+	}
+	if !isJvmLibrary(c, "java_grpc_library") {
+		t.Error("java_grpc_library should be recognized as JVM library")
+	}
+
+	// Proto library helper functions should work correctly
+	if !isJavaProtoLibrary(c, "java_proto_library") {
+		t.Error("java_proto_library should be recognized as Java proto library")
+	}
+	if !isJavaProtoLibrary(c, "java_grpc_library") {
+		t.Error("java_grpc_library should be recognized as Java proto library")
+	}
+	if isJavaProtoLibrary(c, "java_library") {
+		t.Error("java_library should not be recognized as Java proto library")
+	}
+
+	// Unknown kinds should not be recognized by default
+	if isJvmLibrary(c, "custom_jvm_library") {
+		t.Error("custom_jvm_library should not be recognized without registration")
+	}
+
+	// Register a custom kind via the extension mechanism
+	extKinds := make(map[string]bool)
+	extKinds["custom_jvm_library"] = true
+	extKinds["java_wire_library"] = true
+	c.Exts[javaconfig.JavaExtensionLibraryKindsKey] = extKinds
+
+	// Now custom kinds should be recognized
+	if !isJvmLibrary(c, "custom_jvm_library") {
+		t.Error("custom_jvm_library should be recognized after registration")
+	}
+	if !isJvmLibrary(c, "java_wire_library") {
+		t.Error("java_wire_library should be recognized after registration")
+	}
+
+	// Unregistered kinds should still not be recognized
+	if isJvmLibrary(c, "some_other_library") {
+		t.Error("some_other_library should not be recognized")
+	}
+
+	// Built-in kinds should still work
+	if !isJvmLibrary(c, "java_library") {
+		t.Error("java_library should still be recognized")
 	}
 }
