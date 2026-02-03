@@ -27,6 +27,37 @@ const (
 	//
 	JavaExtensionLibraryKindsKey = "java_extension_library_kinds"
 
+	// JavaGazelleProvidedPackagesAttr is a well-known private attribute key that other
+	// Gazelle plugins can set on their rules to declare Java packages they provide.
+	// The value should be []string where each string is a Java package name
+	// (e.g., "com.example.proto").
+	//
+	// When set, the Java plugin will register these packages in Gazelle's RuleIndex,
+	// enabling package-level dependency resolution for the external rule.
+	//
+	// Example usage in another plugin's GenerateRules:
+	//
+	//     r.SetPrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr, []string{"com.example"})
+	//
+	JavaGazelleProvidedPackagesAttr = "_java_gazelle_provided_packages"
+
+	// JavaGazelleProvidedClassesAttr is a well-known private attribute key that other
+	// Gazelle plugins can set on their rules to declare fully-qualified Java class names
+	// they provide. The value should be []string where each string is a fully-qualified
+	// class name (e.g., "com.example.Person").
+	//
+	// When set, the Java plugin will add these classes to its class export cache,
+	// enabling class-level dependency resolution for split packages.
+	//
+	// Example usage in another plugin's GenerateRules:
+	//
+	//     r.SetPrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr, []string{
+	//         "com.example.Person",
+	//         "com.example.Address",
+	//     })
+	//
+	JavaGazelleProvidedClassesAttr = "_java_gazelle_provided_classes"
+
 	// JavaExcludeArtifact tells the resolver to disregard a given maven artifact.
 	// Can be repeated.
 	JavaExcludeArtifact = "java_exclude_artifact"

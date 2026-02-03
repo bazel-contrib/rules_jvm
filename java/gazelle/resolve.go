@@ -70,18 +70,85 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// Cache config for use in Embeds, which doesn't receive config in its interface
 	jr.lastConfig = c
 
-	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
+	// Check for external plugin contributions via well-known private attributes
+	providedPkgs, hasPkgs := r.PrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr).([]string)
+	providedClasses, hasClasses := r.PrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr).([]string)
+
+	// Early return if this rule is not a provider (neither a recognized JVM library
+	// nor has external contribution attributes)
+	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" && !hasPkgs && !hasClasses {
 		return nil
 	}
 
 	lbl := label.New("", f.Pkg, r.Name())
 
+	// Determine testonly status for external contributions
+	isTestOnly := false
+	if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
+		isTestOnly = literalExpr.Token == "True"
+	}
+
 	var out []resolve.ImportSpec
+
+	// Handle packages from internal Java/Kotlin rule generation
 	if pkgs := r.PrivateAttr(packagesKey); pkgs != nil {
 		for _, pkg := range pkgs.([]types.ResolvableJavaPackage) {
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
+
+	// Handle packages contributed by external plugins
+	for _, pkgName := range providedPkgs {
+		pkg := types.NewResolvableJavaPackage(types.NewPackageName(pkgName), isTestOnly, false)
+		out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
+	}
+
+	// Handle classes contributed by external plugins - add to classExportCache
+	// and infer package registrations if not explicitly provided
+	if hasClasses && len(providedClasses) > 0 {
+		var classes []types.ClassName
+		inferredPkgs := make(map[string]bool)
+
+		for _, fqcn := range providedClasses {
+			cn, err := types.ParseClassName(fqcn)
+			if err != nil {
+				log.Debug().Str("class", fqcn).Err(err).Msg("failed to parse contributed class name")
+				continue
+			}
+			classes = append(classes, *cn)
+
+			// Track package names for inference if no explicit packages provided
+			if !hasPkgs {
+				inferredPkgs[cn.PackageName().Name] = true
+			}
+		}
+
+		if len(classes) > 0 {
+			jr.lang.classExportCache[lbl.String()] = classExportInfo{
+				classes:  classes,
+				testonly: isTestOnly,
+			}
+			log.Debug().
+				Str("label", lbl.String()).
+				Int("classes", len(classes)).
+				Bool("testonly", isTestOnly).
+				Msg("registered external plugin classes in classExportCache")
+		}
+
+		// If no explicit packages were provided, infer them from the class names
+		// so that package-level resolution can find this rule
+		if !hasPkgs && len(inferredPkgs) > 0 {
+			for pkgName := range inferredPkgs {
+				pkg := types.NewResolvableJavaPackage(types.NewPackageName(pkgName), isTestOnly, false)
+				out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
+			}
+			log.Debug().
+				Str("label", lbl.String()).
+				Int("inferred_packages", len(inferredPkgs)).
+				Msg("inferred package registrations from contributed classes")
+		}
+	}
+
 	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
 	// Class-level resolution uses a lazy, per-package index built only when needed
 	// (when package-level resolution is ambiguous due to split packages).

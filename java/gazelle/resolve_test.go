@@ -603,3 +603,291 @@ func TestIsJvmLibraryWithExtensionKinds(t *testing.T) {
 		t.Error("java_library should still be recognized")
 	}
 }
+
+func TestExternalPluginContributedPackages(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	// Register java_wire_library as a JVM library kind
+	extKinds := make(map[string]bool)
+	extKinds["java_wire_library"] = true
+	c.Exts[javaconfig.JavaExtensionLibraryKindsKey] = extKinds
+
+	pkg := "protos"
+	wireLibContent := `java_wire_library(
+    name = "person_wire",
+    proto = ":person_proto",
+)
+`
+	wireFile, err := rule.LoadData("BUILD.bazel", pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatalf("failed to load BUILD file: %v", err)
+	}
+
+	wireRule := wireFile.Rules[0]
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr, []string{"com.example.proto"})
+
+	resolver := NewResolver(javaLangInstance)
+	imports := resolver.Imports(c, wireRule, wireFile)
+
+	// Should have registered the package
+	if len(imports) != 1 {
+		t.Fatalf("expected 1 import spec, got %d", len(imports))
+	}
+	if imports[0].Lang != "java" {
+		t.Errorf("expected lang 'java', got %s", imports[0].Lang)
+	}
+	if imports[0].Imp != "com.example.proto" {
+		t.Errorf("expected import 'com.example.proto', got %s", imports[0].Imp)
+	}
+}
+
+func TestExternalPluginContributedClasses(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "protos"
+	wireLibContent := `java_wire_library(
+    name = "person_wire",
+    proto = ":person_proto",
+)
+`
+	wireFile, err := rule.LoadData("BUILD.bazel", pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatalf("failed to load BUILD file: %v", err)
+	}
+
+	wireRule := wireFile.Rules[0]
+	// Only provide classes, not packages - should infer packages
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr, []string{
+		"com.example.proto.Person",
+		"com.example.proto.Address",
+	})
+
+	resolver := NewResolver(javaLangInstance)
+	imports := resolver.Imports(c, wireRule, wireFile)
+
+	// Should have inferred and registered the package from class names
+	if len(imports) != 1 {
+		t.Fatalf("expected 1 import spec (inferred package), got %d", len(imports))
+	}
+	if imports[0].Imp != "com.example.proto" {
+		t.Errorf("expected inferred package 'com.example.proto', got %s", imports[0].Imp)
+	}
+
+	// Should have populated classExportCache
+	lbl := label.New("", pkg, "person_wire")
+	info, ok := javaLangInstance.classExportCache[lbl.String()]
+	if !ok {
+		t.Fatal("classExportCache should contain the wire rule")
+	}
+	if len(info.classes) != 2 {
+		t.Errorf("expected 2 classes in cache, got %d", len(info.classes))
+	}
+
+	// Verify the classes were parsed correctly
+	classNames := make(map[string]bool)
+	for _, cls := range info.classes {
+		classNames[cls.BareOuterClassName()] = true
+	}
+	if !classNames["Person"] {
+		t.Error("Person class should be in cache")
+	}
+	if !classNames["Address"] {
+		t.Error("Address class should be in cache")
+	}
+}
+
+func TestExternalPluginClassesWithExplicitPackages(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "protos"
+	wireLibContent := `java_wire_library(
+    name = "person_wire",
+    proto = ":person_proto",
+)
+`
+	wireFile, err := rule.LoadData("BUILD.bazel", pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatalf("failed to load BUILD file: %v", err)
+	}
+
+	wireRule := wireFile.Rules[0]
+	// Provide both packages and classes
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr, []string{"com.example.proto"})
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr, []string{
+		"com.example.proto.Person",
+		"com.example.proto.Address",
+	})
+
+	resolver := NewResolver(javaLangInstance)
+	imports := resolver.Imports(c, wireRule, wireFile)
+
+	// Should have exactly 1 import (explicit package, not inferred)
+	if len(imports) != 1 {
+		t.Fatalf("expected 1 import spec, got %d", len(imports))
+	}
+
+	// Should still have populated classExportCache
+	lbl := label.New("", pkg, "person_wire")
+	info, ok := javaLangInstance.classExportCache[lbl.String()]
+	if !ok {
+		t.Fatal("classExportCache should contain the wire rule")
+	}
+	if len(info.classes) != 2 {
+		t.Errorf("expected 2 classes in cache, got %d", len(info.classes))
+	}
+}
+
+func TestExternalPluginClassesInSplitPackageResolution(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	// Register java_wire_library as a JVM library kind
+	extKinds := make(map[string]bool)
+	extKinds["java_wire_library"] = true
+	c.Exts[javaconfig.JavaExtensionLibraryKindsKey] = extKinds
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+
+	// Also register java_wire_library in the resolver map so the Java resolver handles it
+	// (In production, this happens because the kind is registered via JavaExtensionLibraryKindsKey)
+	for _, lang := range langs {
+		if _, ok := lang.(*javaLang); ok {
+			mrslv["java_wire_library"] = lang
+			break
+		}
+	}
+
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found")
+	}
+
+	pkg := "splitpkg"
+	javaPackage := types.NewPackageName("com.example.split")
+
+	// Create two rules in the same package - simulating a split package scenario
+	// One is a regular java_library, one is an external plugin rule (java_wire_library)
+
+	javaLibContent := `
+java_library(
+    name = "java_part",
+    srcs = ["JavaPart.java"],
+    _packages = ["com.example.split"],
+)
+`
+	wireLibContent := `
+java_wire_library(
+    name = "wire_part",
+    proto = ":messages_proto",
+)
+`
+
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+
+	javaFile, err := rule.LoadData(buildPath, pkg, []byte(javaLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wireFile, err := rule.LoadData(buildPath, pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	javaRule := javaFile.Rules[0]
+	wireRule := wireFile.Rules[0]
+
+	// Set up the java_library with its package (uses internal packagesKey)
+	setPackagesPrivateAttr(javaRule)
+
+	// Set up the wire rule with contributed packages and classes (simulating Wire plugin)
+	// This tests the new extension mechanism where external plugins set these attrs
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedPackagesAttr, []string{"com.example.split"})
+	wireRule.SetPrivateAttr(javaconfig.JavaGazelleProvidedClassesAttr, []string{
+		"com.example.split.WireMessage",
+	})
+
+	// Manually set up classExportCache for both rules (simulating what happens
+	// when Imports() is called during the real gazelle flow)
+	javaLabel := label.New("", pkg, "java_part")
+	javaLangInstance.classExportCache[javaLabel.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "JavaPart")},
+		testonly: false,
+	}
+
+	wireLabel := label.New("", pkg, "wire_part")
+	javaLangInstance.classExportCache[wireLabel.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "WireMessage")},
+		testonly: false,
+	}
+
+	// Add rules to the index - the resolver will call Imports() which reads the private attrs
+	ix.AddRule(c, javaRule, javaFile)
+	ix.AddRule(c, wireRule, wireFile)
+
+	ix.Finish()
+
+	// Verify both rules are indexed for the package
+	importSpec := resolve.ImportSpec{Lang: "java", Imp: javaPackage.Name}
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, "java")
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 providers for the package, got %d", len(matches))
+	}
+
+	resolver := NewResolver(javaLangInstance)
+
+	// Build the class index for this split package
+	pci := resolver.buildPackageClassIndex(c, javaPackage, ix)
+
+	// Both classes should be indexed
+	if _, ok := pci.prod["JavaPart"]; !ok {
+		t.Error("JavaPart class should be indexed from java_library")
+	}
+	if _, ok := pci.prod["WireMessage"]; !ok {
+		t.Error("WireMessage class should be indexed from java_wire_library")
+	}
+
+	// Verify correct labels
+	if len(pci.prod["WireMessage"]) != 1 || pci.prod["WireMessage"][0] != wireLabel {
+		t.Errorf("WireMessage should be provided by wire_part, got %v", pci.prod["WireMessage"])
+	}
+}
