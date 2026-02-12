@@ -4,10 +4,10 @@ module(
     repo_name = "contrib_rules_jvm",
 )
 
-PROTOBUF_VERSION = "21.7"
+PROTOBUF_VERSION = "31.1"
 
 # The java packages are published to maven under a different versioning scheme.
-PROTOBUF_JAVA_VERSION = "3.{}".format(PROTOBUF_VERSION)
+PROTOBUF_JAVA_VERSION = "4.{}".format(PROTOBUF_VERSION)
 
 bazel_dep(name = "apple_rules_lint", version = "0.4.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.1")
@@ -15,8 +15,8 @@ bazel_dep(name = "gazelle", version = "0.42.0", repo_name = "bazel_gazelle")
 bazel_dep(name = "protobuf", version = "29.1", repo_name = "com_google_protobuf")
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_go", version = "0.52.0")
-bazel_dep(name = "rules_java", version = "8.5.1")
-bazel_dep(name = "rules_jvm_external", version = "6.7")
+bazel_dep(name = "rules_java", version = "8.13.0")
+bazel_dep(name = "rules_jvm_external", version = "6.10")
 bazel_dep(name = "rules_proto", version = "7.0.2")
 bazel_dep(name = "bazel_lib", version = "3.0.0")
 
@@ -132,8 +132,9 @@ maven.install(
         "org.junit:junit-bom:5.11.3",
     ],
     fail_if_repin_required = True,
+    index_file = "//third_party/maven:contrib_rules_jvm_deps_index.json",
     lock_file = "//third_party/maven:contrib_rules_jvm_deps_install.json",
-    resolver = "maven",
+    resolver = "gradle",
     strict_visibility = True,
 )
 
