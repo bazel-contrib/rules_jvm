@@ -72,6 +72,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestFileSuffixes,
 		javaconfig.JavaTestMode,
 		javaconfig.JavaGenerateProto,
+		javaconfig.JavaGenerateProtoServices,
 		javaconfig.JavaGenerateResources,
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
@@ -193,6 +194,15 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					cfg.SetGenerateProto(false)
 				default:
 					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateProto, d.Value)
+				}
+			case javaconfig.JavaGenerateProtoServices:
+				switch d.Value {
+				case "true":
+					cfg.SetGenerateProtoServices(true)
+				case "false":
+					cfg.SetGenerateProtoServices(false)
+				default:
+					jc.lang.logger.Fatal().Msgf(binaryConfigError, javaconfig.JavaGenerateProtoServices, d.Value)
 				}
 			case javaconfig.JavaGenerateBinary:
 				switch d.Value {

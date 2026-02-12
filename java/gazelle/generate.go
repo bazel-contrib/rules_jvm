@@ -63,7 +63,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	if cfg.GenerateProto() {
-		generateProtoLibraries(&l, args, log, &res)
+		generateProtoLibraries(&l, args, log, &res, cfg)
 	}
 
 	var srcFilenamesRelativeToPackage []string
@@ -489,7 +489,7 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 	return runtimeDeps
 }
 
-func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog.Logger, res *language.GenerateResult) {
+func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog.Logger, res *language.GenerateResult, cfg *javaconfig.Config) {
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
@@ -518,7 +518,8 @@ func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog
 		res.Gen = append(res.Gen, rjpl)
 		res.Imports = append(res.Imports, types.ResolveInput{})
 
-		if protoPackage.HasServices {
+		generateServices := protoPackage.HasServices && cfg.GenerateProtoServices()
+		if generateServices {
 			r := rule.NewRule("java_grpc_library", jglName)
 			r.SetAttr("srcs", []string{":" + protoRuleName})
 			r.SetAttr("deps", []string{":" + jplName})
@@ -529,7 +530,7 @@ func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog
 		rjl := rule.NewRule("java_library", jlName)
 		rjl.SetAttr("visibility", []string{"//:__subpackages__"})
 		var exports []string
-		if protoPackage.HasServices {
+		if generateServices {
 			exports = append(exports, ":"+jglName)
 		}
 		rjl.SetAttr("exports", append(exports, ":"+jplName))
