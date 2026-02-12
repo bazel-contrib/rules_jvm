@@ -156,6 +156,53 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 			pkgClasses = append(pkgClasses, cls.BareOuterClassName())
 		}
 
+		// Check if any imported class has an explicit resolve directive.
+		// If so, we must use class-level resolution to respect those overrides,
+		// since package-level resolution (including resolve_regexp) would otherwise
+		// take precedence and ignore class-specific directives.
+		hasClassOverrides := false
+		if len(classesByPackage[imp]) > 0 {
+			for _, className := range classesByPackage[imp] {
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if _, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					hasClassOverrides = true
+					break
+				}
+			}
+		}
+
+		// If there are class-level overrides, skip package-level resolution and go
+		// directly to class-level resolution to ensure overrides are respected.
+		if hasClassOverrides {
+			jr.lang.logger.Debug().
+				Str("package", imp.Name).
+				Strs("classes", pkgClasses).
+				Stringer("from", from).
+				Msg("class-level resolve directive found, using class-level resolution")
+
+			for _, className := range classesByPackage[imp] {
+				// Check for explicit resolve directive for this specific class first
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if ol, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					labels.Add(simplifyLabel(c.RepoName, ol, from))
+					continue
+				}
+
+				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+				if err != nil {
+					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+					continue
+				}
+				if l == label.NoLabel {
+					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+				}
+				if l != label.NoLabel {
+					labels.Add(simplifyLabel(c.RepoName, l, from))
+				}
+			}
+			continue
+		}
+
 		// Try package-level resolution first (fast path)
 		dep, ambiguous := jr.resolveSinglePackageWithAmbiguity(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
 		if dep != label.NoLabel {
@@ -173,6 +220,14 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 
 			resolvedAny := false
 			for _, className := range classesByPackage[imp] {
+				// Check for explicit resolve directive for this specific class first
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if ol, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					labels.Add(simplifyLabel(c.RepoName, ol, from))
+					resolvedAny = true
+					continue
+				}
+
 				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
 				if err != nil {
 					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
