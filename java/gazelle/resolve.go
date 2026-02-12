@@ -33,6 +33,9 @@ type Resolver struct {
 	// classIndex is a lazy per-package index, built only for packages with ambiguous
 	// resolution (split packages). Maintains prod/test distinction.
 	classIndex map[types.PackageName]*packageClassIndex
+	// lastConfig caches the config from the most recent Imports call for use in Embeds,
+	// which doesn't receive config in the interface signature.
+	lastConfig *config.Config
 }
 
 // packageClassIndex maps class names to their providing labels for a single package.
@@ -64,7 +67,10 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJvmLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
+	// Cache config for use in Embeds, which doesn't receive config in its interface
+	jr.lastConfig = c
+
+	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
 	}
 
@@ -85,9 +91,9 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	return out
 }
 
-func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (jr *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
-	if isJavaProtoLibrary(r.Kind()) {
+	if jr.lastConfig != nil && isJavaProtoLibrary(jr.lastConfig, r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
 	}
 
@@ -118,7 +124,7 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	}
 
 	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside the java_export.
-	if packageConfig.ResolveToJavaExports() && isJavaLibrary(r.Kind()) {
+	if packageConfig.ResolveToJavaExports() && isJavaLibrary(c, r.Kind()) {
 		visibility := jr.lang.javaExportIndex.VisibilityForLabel(from)
 		if visibility != nil {
 			var asStrings []string
@@ -575,18 +581,29 @@ func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from 
 	return nonJavaExportResults
 }
 
-func isJvmLibrary(kind string) bool {
-	return isJavaLibrary(kind) || isKotlinLibrary(kind)
+func isJvmLibrary(c *config.Config, kind string) bool {
+	return isJavaLibrary(c, kind) || isKotlinLibrary(kind)
 }
 
-func isJavaLibrary(kind string) bool {
-	return kind == "java_library" || isJavaProtoLibrary(kind)
+func isJavaLibrary(c *config.Config, kind string) bool {
+	return kind == "java_library" || isJavaProtoLibrary(c, kind)
 }
 
 func isKotlinLibrary(kind string) bool {
 	return kind == "kt_jvm_library"
 }
 
-func isJavaProtoLibrary(kind string) bool {
-	return kind == "java_proto_library" || kind == "java_grpc_library"
+func isJavaProtoLibrary(c *config.Config, kind string) bool {
+	if kind == "java_proto_library" || kind == "java_grpc_library" {
+		return true
+	}
+	// Check if this kind is mapped FROM a proto library via map_kind
+	for _, mappedKind := range c.KindMap {
+		if mappedKind.KindName == kind {
+			if mappedKind.FromKind == "java_proto_library" || mappedKind.FromKind == "java_grpc_library" {
+				return true
+			}
+		}
+	}
+	return false
 }
