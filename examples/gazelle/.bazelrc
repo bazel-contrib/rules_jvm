@@ -1,4 +1,10 @@
 import %workspace%/../../.bazelrc.windows
 
-build --cxxopt=-std=c++17
-build --host_cxxopt=-std=c++17
+# Allow protoc to compile
+common --enable_platform_specific_config
+build:linux --cxxopt=-std=c++17
+build:linux --host_cxxopt=-std=c++17
+build:macos --cxxopt=-std=c++17
+build:macos --host_cxxopt=-std=c++17
+build:windows --cxxopt=/std:c++17
+build:windows --host_cxxopt=/std:c++17

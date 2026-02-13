@@ -40,8 +40,8 @@ maven.install(
         "com.mebigfatguy.sb-contrib:sb-contrib:7.6.4",
         "org.jmockit:jmockit:1.38",
     ],
-    known_contributing_modules = ["bazel_worker_java"],
     fetch_sources = True,
+    known_contributing_modules = ["bazel_worker_java"],
     lock_file = "//:maven_install.json",
 )
 use_repo(
