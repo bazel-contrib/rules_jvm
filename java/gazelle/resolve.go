@@ -33,8 +33,8 @@ type Resolver struct {
 	// classIndex is a lazy per-package index, built only for packages with ambiguous
 	// resolution (split packages). Maintains prod/test distinction.
 	classIndex map[types.PackageName]*packageClassIndex
-	// lastConfig caches the config from the most recent Imports call for use in Embeds,
-	// which doesn't receive config in the interface signature.
+	// configs provides a map from pkg to config. This allows us to use the config in
+	// Embeds.
 	configs map[string]*config.Config
 }
 
