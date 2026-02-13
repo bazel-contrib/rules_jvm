@@ -11,3 +11,9 @@ build --disk_cache=$HOME/.cache/bazel
 build --repository_cache=$HOME/.cache/bazel-repo
 # Allows tests to run bazelisk-in-bazel, since this is the cache folder used
 test --test_env=XDG_CACHE_HOME
+
+# Enable flaky retries on Windows only. We frequently see a test
+# failing because of ephemeral issues we've not been able to debug
+# properly. This is a workaround for more stable CI runs
+test --enable_platform_specific_config
+test:windows --flaky_test_attempts=2
