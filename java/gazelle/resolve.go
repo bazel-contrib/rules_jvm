@@ -594,16 +594,23 @@ func isKotlinLibrary(kind string) bool {
 }
 
 func isJavaProtoLibrary(c *config.Config, kind string) bool {
-	if kind == "java_proto_library" || kind == "java_grpc_library" {
-		return true
-	}
+	javaProtoLibrary := "java_proto_library"
+	javaGrpcLibrary := "java_grpc_library"
+
 	// Check if this kind is mapped FROM a proto library via map_kind
 	for _, mappedKind := range c.KindMap {
 		if mappedKind.KindName == kind {
-			if mappedKind.FromKind == "java_proto_library" || mappedKind.FromKind == "java_grpc_library" {
-				return true
+			if mappedKind.FromKind == javaProtoLibrary {
+				javaProtoLibrary = kind
+				break
+			}
+
+			if mappedKind.FromKind == javaGrpcLibrary {
+				javaGrpcLibrary = kind
+				break
 			}
 		}
 	}
-	return false
+
+	return kind == javaProtoLibrary || kind == javaGrpcLibrary
 }
