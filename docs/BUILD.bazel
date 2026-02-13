@@ -27,6 +27,7 @@ stardoc(
     ],
     deps = [
         "//java:defs",
+        "@bazel_skylib//rules:run_binary",
     ],
 )
 
