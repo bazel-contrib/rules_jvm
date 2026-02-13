@@ -7,7 +7,7 @@ pkg_files(
         "com/example/app.properties",
         "config.xml",
     ],
-    strip_prefix = "src/sample/resources",
+    strip_prefix = "",
 )
 
 java_library(
