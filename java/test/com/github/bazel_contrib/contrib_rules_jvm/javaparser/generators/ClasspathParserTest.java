@@ -1,6 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
@@ -388,6 +389,126 @@ public class ClasspathParserTest {
             "example.external.ProtectedReturn",
             "example.external.PublicReturn");
     assertEquals(expected, parser.getExportedTypes());
+  }
+
+  @Test
+  public void testSamePackageTypeReferences() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/FakeClockModule.java"));
+    parser.parseClasses(files);
+
+    // Clock and FakeClock should be tracked as same-package type references
+    // since they're not imported and not fully qualified
+    assertEquals(Set.of("Clock", "FakeClock"), parser.getSamePackageTypeReferences());
+
+    // They should NOT appear in usedTypes since they're not imported or fully qualified
+    assertEquals(Set.of(), parser.getUsedTypes());
+  }
+
+  @Test
+  public void testClassLiteralAsMethodArgument() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ClassLiteralExample.java"));
+    parser.parseClasses(files);
+
+    // Uninterruptible should be tracked as a same-package type reference
+    // because it's used as a class literal without being imported
+    assertEquals(Set.of("Uninterruptible"), parser.getSamePackageTypeReferences());
+  }
+
+  @Test
+  public void testPrivateInnerClassNotInSamePackageReferences() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/PrivateInnerClassExample.java"));
+    parser.parseClasses(files);
+
+    // InvokeWithExceptionHandling should NOT be in samePackageTypeReferences
+    // because it's a private inner class defined in the same file
+    assertEquals(Set.of(), parser.getSamePackageTypeReferences());
+  }
+
+  @Test
+  public void testMixedSamePackageRefsAndPrivateInnerClasses() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/MixedRefsAndPrivateInner.java"));
+    parser.parseClasses(files);
+
+    // Uninterruptible should be detected (external class literal)
+    // InvokeWithExceptionHandling should NOT be included (private inner class in same file)
+    assertEquals(Set.of("Uninterruptible"), parser.getSamePackageTypeReferences());
+  }
+
+  @Test
+  public void testImportedClassLiteralNotInSamePackageReferences() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ImportedClassLiteralExample.java"));
+    parser.parseClasses(files);
+
+    // BiFunction and Message should NOT be in samePackageTypeReferences
+    // because they are explicitly imported
+    assertEquals(Set.of(), parser.getSamePackageTypeReferences());
+
+    // They should be in usedTypes instead
+    assertEquals(
+        Set.of("java.util.function.BiFunction", "com.google.protobuf.Message"),
+        parser.getUsedTypes());
+  }
+
+  @Test
+  public void testStaticTypeImportNotInSamePackageReferences() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/StaticTypeImportExample.java"));
+    parser.parseClasses(files);
+
+    // ServiceDescriptor should NOT be in samePackageTypeReferences
+    // because it is imported via static import
+    assertEquals(Set.of(), parser.getSamePackageTypeReferences());
+
+    // The containing class should be in usedTypes (for the static import)
+    assertTrue(parser.getUsedTypes().contains("com.google.protobuf.Descriptors"));
+  }
+
+  @Test
+  public void testStaticMethodImportDoesNotAffectTypeResolution() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/StaticMethodImportExample.java"));
+    parser.parseClasses(files);
+
+    // SomeHelper should be in samePackageTypeReferences (not imported)
+    assertEquals(Set.of("SomeHelper"), parser.getSamePackageTypeReferences());
+
+    // Static method imports should still be tracked in usedTypes
+    assertTrue(parser.getUsedTypes().contains("org.junit.Assert"));
+    assertTrue(parser.getUsedTypes().contains("com.google.common.base.Preconditions"));
+  }
+
+  @Test
+  public void testMixedClassLiteralsImportedAndNot() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/MixedClassLiteralsExample.java"));
+    parser.parseClasses(files);
+
+    // Only Uninterruptible should be in samePackageTypeReferences
+    assertEquals(Set.of("Uninterruptible"), parser.getSamePackageTypeReferences());
+
+    // BiFunction should be in usedTypes
+    assertEquals(Set.of("java.util.function.BiFunction"), parser.getUsedTypes());
   }
 
   private <T> TreeSet<T> treeSet(T... values) {

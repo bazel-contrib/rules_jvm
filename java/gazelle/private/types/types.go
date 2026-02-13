@@ -43,6 +43,16 @@ func (c *ClassName) BareOuterClassName() string {
 	return c.bareOuterClassName
 }
 
+// BareInnermostClassName returns the simple name of the innermost class.
+// For `com.example.Outer.Inner.Deep`, this returns "Deep".
+// For `com.example.Simple`, this returns "Simple".
+func (c *ClassName) BareInnermostClassName() string {
+	if len(c.innerClassNames) > 0 {
+		return c.innerClassNames[len(c.innerClassNames)-1]
+	}
+	return c.bareOuterClassName
+}
+
 func (c *ClassName) FullyQualifiedOuterClassName() string {
 	var parts []string
 	if c.packageName.Name != "" {

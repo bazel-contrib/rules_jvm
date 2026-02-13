@@ -198,8 +198,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nil, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
-					jf := javaFile{pathRelativeToBazelWorkspaceRoot: filepath.Join(mRel, f), pkg: mJavaPkg.Name}
-					nonLocalJavaExportedClasses.Add(*jf.ClassName())
+				}
+				// Add all defined classes (including inner classes) for class-level resolution.
+				// Use DefinedClasses if available (Java files), otherwise fall back to
+				// deriving class names from filenames (Kotlin files).
+				if mJavaPkg.DefinedClasses != nil && mJavaPkg.DefinedClasses.Len() > 0 {
+					nonLocalJavaExportedClasses.AddAll(mJavaPkg.DefinedClasses)
+				} else {
+					for _, f := range mJavaPkg.Files.SortedSlice() {
+						jf := javaFile{pathRelativeToBazelWorkspaceRoot: filepath.Join(mRel, f), pkg: mJavaPkg.Name}
+						nonLocalJavaExportedClasses.Add(*jf.ClassName())
+					}
 				}
 				allMains.AddAll(mJavaPkg.Mains)
 			} else {
@@ -237,8 +246,20 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				accumulateJavaFile(cfg, testJavaFiles, testHelperJavaFiles, separateTestJavaFiles, file, javaPkg.PerClassMetadata, log)
 			} else {
 				productionJavaFiles.Add(path)
-				jf := javaFile{pathRelativeToBazelWorkspaceRoot: path, pkg: javaPkg.Name}
-				nonLocalJavaExportedClasses.Add(*jf.ClassName())
+			}
+		}
+		// Add all defined classes (including inner classes) for class-level resolution.
+		// Use DefinedClasses if available (Java files), otherwise fall back to
+		// deriving class names from filenames (Kotlin files).
+		if !javaPkg.TestPackage {
+			if javaPkg.DefinedClasses != nil && javaPkg.DefinedClasses.Len() > 0 {
+				nonLocalJavaExportedClasses.AddAll(javaPkg.DefinedClasses)
+			} else {
+				for _, f := range srcFilenamesRelativeToPackage {
+					path := filepath.Join(args.Rel, f)
+					jf := javaFile{pathRelativeToBazelWorkspaceRoot: path, pkg: javaPkg.Name}
+					nonLocalJavaExportedClasses.Add(*jf.ClassName())
+				}
 			}
 		}
 		for _, annotationClass := range javaPkg.AllAnnotations().SortedSlice() {
@@ -247,17 +268,30 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	allPackageNamesSlice := allPackageNames.SortedSlice()
+	// For imported classes, we can't just filter by package name because of split packages.
+	// A class might be in the same Java package as local classes but defined in a different
+	// Bazel package. The addNonLocalImportsAndExports function already correctly filtered out
+	// locally-defined classes, so we just need to filter out classes with empty package names.
+	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
+		return c.PackageName().Name != ""
+	})
+
+	// Build a set of packages that have non-local imported classes.
+	// This is needed for split-package scenarios where a class is in the same Java package
+	// but a different Bazel package.
+	packagesWithNonLocalClasses := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	for _, cls := range nonLocalProductionJavaImportedClasses.SortedSlice() {
+		packagesWithNonLocalClasses.Add(cls.PackageName())
+	}
+
 	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
+		// Keep packages that have non-local imported classes
+		if packagesWithNonLocalClasses.Contains(i) {
+			return true
+		}
+		// Filter out packages that match the local packages
 		for _, n := range allPackageNamesSlice {
 			if i.Name == n.Name {
-				return false
-			}
-		}
-		return true
-	})
-	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
-		for _, n := range allPackageNamesSlice {
-			if c.PackageName().Name == n.Name {
 				return false
 			}
 		}

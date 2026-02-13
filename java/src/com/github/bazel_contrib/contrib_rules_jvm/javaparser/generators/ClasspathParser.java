@@ -57,6 +57,138 @@ public class ClasspathParser {
   private static final List<String> OPTIONS =
       List.of("--release=" + Runtime.version().feature(), "-proc:none");
 
+  /**
+   * All public types in java.lang that are implicitly imported in every Java file. Generated from
+   * JDK documentation. We use a Set for O(1) lookup.
+   */
+  private static final Set<String> JAVA_LANG_TYPES =
+      Set.of(
+          // Interfaces
+          "Appendable",
+          "AutoCloseable",
+          "CharSequence",
+          "Cloneable",
+          "Comparable",
+          "Iterable",
+          "ProcessHandle",
+          "Readable",
+          "Runnable",
+          "StackWalker.StackFrame",
+          "System.Logger",
+          "Thread.UncaughtExceptionHandler",
+          // Classes
+          "Boolean",
+          "Byte",
+          "Character",
+          "Character.Subset",
+          "Character.UnicodeBlock",
+          "Class",
+          "ClassLoader",
+          "ClassValue",
+          "Compiler",
+          "Double",
+          "Enum",
+          "Enum.EnumDesc",
+          "Float",
+          "InheritableThreadLocal",
+          "Integer",
+          "Long",
+          "Math",
+          "Module",
+          "ModuleLayer",
+          "ModuleLayer.Controller",
+          "Number",
+          "Object",
+          "Package",
+          "Process",
+          "ProcessBuilder",
+          "ProcessBuilder.Redirect",
+          "Record",
+          "Runtime",
+          "Runtime.Version",
+          "RuntimePermission",
+          "SecurityManager",
+          "Short",
+          "StackTraceElement",
+          "StackWalker",
+          "StrictMath",
+          "String",
+          "StringBuffer",
+          "StringBuilder",
+          "System",
+          "System.LoggerFinder",
+          "Thread",
+          "ThreadGroup",
+          "ThreadLocal",
+          "Throwable",
+          "Void",
+          // Enums
+          "Character.UnicodeScript",
+          "ProcessBuilder.Redirect.Type",
+          "StackWalker.Option",
+          "System.Logger.Level",
+          "Thread.State",
+          // Exceptions
+          "ArithmeticException",
+          "ArrayIndexOutOfBoundsException",
+          "ArrayStoreException",
+          "ClassCastException",
+          "ClassNotFoundException",
+          "CloneNotSupportedException",
+          "EnumConstantNotPresentException",
+          "Exception",
+          "IllegalAccessException",
+          "IllegalArgumentException",
+          "IllegalCallerException",
+          "IllegalMonitorStateException",
+          "IllegalStateException",
+          "IllegalThreadStateException",
+          "IndexOutOfBoundsException",
+          "InstantiationException",
+          "InterruptedException",
+          "LayerInstantiationException",
+          "NegativeArraySizeException",
+          "NoSuchFieldException",
+          "NoSuchMethodException",
+          "NullPointerException",
+          "NumberFormatException",
+          "ReflectiveOperationException",
+          "RuntimeException",
+          "SecurityException",
+          "StringIndexOutOfBoundsException",
+          "TypeNotPresentException",
+          "UnsupportedOperationException",
+          // Errors
+          "AbstractMethodError",
+          "AssertionError",
+          "BootstrapMethodError",
+          "ClassCircularityError",
+          "ClassFormatError",
+          "Error",
+          "ExceptionInInitializerError",
+          "IllegalAccessError",
+          "IncompatibleClassChangeError",
+          "InstantiationError",
+          "InternalError",
+          "LinkageError",
+          "NoClassDefFoundError",
+          "NoSuchFieldError",
+          "NoSuchMethodError",
+          "OutOfMemoryError",
+          "StackOverflowError",
+          "ThreadDeath",
+          "UnknownError",
+          "UnsatisfiedLinkError",
+          "UnsupportedClassVersionError",
+          "VerifyError",
+          "VirtualMachineError",
+          // Annotations
+          "Deprecated",
+          "FunctionalInterface",
+          "Override",
+          "SafeVarargs",
+          "SuppressWarnings");
+
   public ClasspathParser() {
     // Doesn't need to do anything currently
   }
@@ -83,6 +215,10 @@ public class ClasspathParser {
 
   public ImmutableSet<String> getMainClasses() {
     return ImmutableSet.copyOf(data.mainClasses);
+  }
+
+  public ImmutableSet<String> getSamePackageTypeReferences() {
+    return ImmutableSet.copyOf(data.samePackageTypeReferences);
   }
 
   public void parseClasses(Path directory, List<String> files) throws IOException {
@@ -137,6 +273,18 @@ public class ClasspathParser {
     // Currently tracks classes, so that we can know what outer and inner classes we may be in.
     private final Deque<Tree> stack = new ArrayDeque<>();
 
+    // Type parameters currently in scope (from enclosing classes and methods).
+    // We track these to avoid confusing them with same-package class references.
+    private final Set<String> typeParametersInScope = new TreeSet<>();
+
+    // All simple class names defined in the current file (including private inner classes).
+    // Used to filter out same-package references that are actually local to this file.
+    private Set<String> classNamesInCurrentFile = new TreeSet<>();
+
+    // Same-package type references found in the current file. We collect these separately
+    // and filter them at the end of the file to handle forward references to inner classes.
+    private Set<String> currentFileSamePackageRefs = new TreeSet<>();
+
     @Nullable private Map<String, String> currentFileImports;
 
     void popOrThrow(Tree expected) {
@@ -152,8 +300,20 @@ public class ClasspathParser {
       compileUnit = t;
       fileName = Paths.get(compileUnit.getSourceFile().toUri()).getFileName().toString();
       currentFileImports = new HashMap<>();
+      classNamesInCurrentFile = new TreeSet<>();
+      currentFileSamePackageRefs = new TreeSet<>();
 
-      return super.visitCompilationUnit(t, v);
+      Void result = super.visitCompilationUnit(t, v);
+
+      // After processing the file, add same-package references that are NOT defined in
+      // this file. This filters out references to private inner classes within the same file.
+      for (String ref : currentFileSamePackageRefs) {
+        if (!classNamesInCurrentFile.contains(ref)) {
+          data.samePackageTypeReferences.add(ref);
+        }
+      }
+
+      return result;
     }
 
     @Override
@@ -181,6 +341,15 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedTypes.add(staticPackage);
+        // For static imports, also track the imported name so that if it's used as a type
+        // (e.g., "import static com.foo.Outer.InnerClass;" where InnerClass is a nested class),
+        // we won't incorrectly treat it as a same-package reference.
+        String importedName = name.substring(name.lastIndexOf('.') + 1);
+        // Only track if it looks like a class name (starts with uppercase) - this filters out
+        // static method/field imports like "import static org.junit.Assert.assertEquals"
+        if (looksLikeClassName(importedName)) {
+          currentFileImports.put(importedName, name);
+        }
       } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedPackagesWithoutSpecificTypes.add(wildcardPackage);
@@ -195,6 +364,34 @@ public class ClasspathParser {
     @Override
     public Void visitClass(ClassTree t, Void v) {
       stack.addLast(t);
+
+      // Track type parameters declared on this class (e.g., class Foo<T, E>)
+      Set<String> addedTypeParams = new TreeSet<>();
+      for (var typeParam : t.getTypeParameters()) {
+        String name = typeParam.getName().toString();
+        if (typeParametersInScope.add(name)) {
+          addedTypeParams.add(name);
+        }
+      }
+
+      // Track all class names in current file (including private) so we can filter
+      // same-package references that are actually local to this file.
+      String simpleName = t.getSimpleName().toString();
+      if (!simpleName.isEmpty()) {
+        classNamesInCurrentFile.add(simpleName);
+      }
+
+      // Track non-private classes (including inner classes) for same-package resolution.
+      // In Java, public, protected, and package-private classes can all be accessed
+      // by simple name from within the same package. This is important for split-package
+      // scenarios where classes in the same Java package are in different Bazel packages.
+      if (!t.getModifiers().getFlags().contains(PRIVATE)) {
+        String fullyQualifiedClass = currentFullyQualifiedClassName();
+        if (fullyQualifiedClass != null) {
+          data.definedClasses.add(fullyQualifiedClass);
+        }
+      }
+
       checkFullyQualifiedType(t.getExtendsClause());
       for (Tree implement : t.getImplementsClause()) {
         checkFullyQualifiedType(implement);
@@ -210,6 +407,9 @@ public class ClasspathParser {
         }
       }
       Void ret = super.visitClass(t, v);
+
+      // Remove type parameters when leaving this class scope
+      typeParametersInScope.removeAll(addedTypeParams);
       popOrThrow(t);
       return ret;
     }
@@ -217,6 +417,16 @@ public class ClasspathParser {
     @Override
     public Void visitMethod(com.sun.source.tree.MethodTree m, Void v) {
       stack.addLast(m);
+
+      // Track type parameters declared on this method (e.g., <T> T foo())
+      Set<String> addedTypeParams = new TreeSet<>();
+      for (var typeParam : m.getTypeParameters()) {
+        String name = typeParam.getName().toString();
+        if (typeParametersInScope.add(name)) {
+          addedTypeParams.add(name);
+        }
+      }
+
       boolean isVoidReturn = false;
 
       // Check the return type on the method.
@@ -269,6 +479,9 @@ public class ClasspathParser {
       }
 
       Void ret = super.visitMethod(m, v);
+
+      // Remove type parameters when leaving this method scope
+      typeParametersInScope.removeAll(addedTypeParams);
       popOrThrow(m);
       return ret;
     }
@@ -293,6 +506,31 @@ public class ClasspathParser {
       return super.visitMethodInvocation(node, v);
     }
 
+    @Override
+    public Void visitMemberSelect(MemberSelectTree node, Void v) {
+      // Handle class literals like "Foo.class" which appear as MemberSelectTree
+      // with identifier "class" and expression being the class name.
+      if ("class".equals(node.getIdentifier().toString())) {
+        ExpressionTree expr = node.getExpression();
+        if (expr.getKind() == Tree.Kind.IDENTIFIER) {
+          String className = expr.toString();
+          // First check if the type is explicitly imported - if so, add to usedTypes
+          if (currentFileImports.containsKey(className)) {
+            data.usedTypes.add(currentFileImports.get(className));
+          } else if (looksLikeClassName(className)
+              && !isJavaLangType(className)
+              && !typeParametersInScope.contains(className)) {
+            // This is a class literal like "Foo.class" - treat as same-package reference
+            currentFileSamePackageRefs.add(className);
+          }
+        } else if (expr.getKind() == Tree.Kind.MEMBER_SELECT) {
+          // Fully qualified like "com.example.Foo.class"
+          checkFullyQualifiedType(expr);
+        }
+      }
+      return super.visitMemberSelect(node, v);
+    }
+
     private boolean looksLikeClassName(String identifier) {
       if (identifier.isEmpty()) {
         return false;
@@ -301,15 +539,16 @@ public class ClasspathParser {
       if (!Character.isUpperCase(identifier.charAt(0))) {
         return false;
       }
-      // Single-char upper-case may well be a class-name.
-      if (identifier.length() == 1) {
-        return true;
-      }
       // SNAKE_CASE is for constants not classes.
-      if (identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
+      if (identifier.length() > 1
+          && identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
         return false;
       }
       return true;
+    }
+
+    private boolean isJavaLangType(String typeName) {
+      return JAVA_LANG_TYPES.contains(typeName);
     }
 
     @Override
@@ -358,8 +597,30 @@ public class ClasspathParser {
           data.usedTypes.add(importedType);
           types.add(importedType);
         } else if (components.size() > 1) {
+          // Check if the first component looks like a class name (starts with uppercase).
+          // If so, it might be a same-package class with an inner class reference like
+          // "RpcProtos.ResponseCode" where RpcProtos is a class in the same package.
+          String firstComponent = components.get(0);
+          if (looksLikeClassName(firstComponent)
+              && !isJavaLangType(firstComponent)
+              && !typeParametersInScope.contains(firstComponent)) {
+            // Track the outer class as a potential same-package reference.
+            // We'll filter out classes defined in this file at the end of the file.
+            currentFileSamePackageRefs.add(firstComponent);
+          }
           data.usedTypes.add(typeName);
           types.add(typeName);
+        } else if (components.size() == 1
+            && looksLikeClassName(typeName)
+            && !isJavaLangType(typeName)
+            && !typeParametersInScope.contains(typeName)) {
+          // Simple identifier in a type context that looks like a class name.
+          // This is likely a same-package type reference (Java doesn't require imports
+          // for classes in the same package). Track it separately so the resolver can
+          // combine it with the current package name.
+          // We exclude java.lang types (implicitly imported) and type parameters in scope.
+          // Classes defined in this file will be filtered at the end of visitCompilationUnit.
+          currentFileSamePackageRefs.add(typeName);
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
