@@ -1,0 +1,22 @@
+load("@rules_java//java:defs.bzl", "java_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//custom:defs.bzl", "custom_java_proto_library")
+
+# gazelle:map_kind java_proto_library custom_java_proto_library //custom:defs.bzl
+
+proto_library(
+    name = "example_hello_proto",
+    srcs = ["hello.proto"],
+    visibility = ["//visibility:public"],
+)
+
+custom_java_proto_library(
+    name = "example_hello_java_proto",
+    deps = [":example_hello_proto"],
+)
+
+java_library(
+    name = "example_hello_java_library",
+    visibility = ["//:__subpackages__"],
+    exports = [":example_hello_java_proto"],
+)
