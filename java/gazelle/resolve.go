@@ -35,7 +35,7 @@ type Resolver struct {
 	classIndex map[types.PackageName]*packageClassIndex
 	// lastConfig caches the config from the most recent Imports call for use in Embeds,
 	// which doesn't receive config in the interface signature.
-	lastConfig *config.Config
+	configs map[string]*config.Config
 }
 
 // packageClassIndex maps class names to their providing labels for a single package.
@@ -57,6 +57,7 @@ func NewResolver(lang *javaLang) *Resolver {
 		lang:          lang,
 		internalCache: internalCache,
 		classIndex:    make(map[types.PackageName]*packageClassIndex),
+		configs:       make(map[string]*config.Config),
 	}
 }
 
@@ -68,7 +69,7 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
 	// Cache config for use in Embeds, which doesn't receive config in its interface
-	jr.lastConfig = c
+	jr.configs[f.Pkg] = c
 
 	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
@@ -93,7 +94,7 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 
 func (jr *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
-	if jr.lastConfig != nil && isJavaProtoLibrary(jr.lastConfig, r.Kind()) {
+	if isJavaProtoLibrary(jr.configs[from.Pkg], r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
 	}
 
