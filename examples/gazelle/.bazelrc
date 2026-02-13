@@ -1,1 +1,4 @@
 import %workspace%/../../.bazelrc.windows
+
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17

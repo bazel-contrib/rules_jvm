@@ -4,7 +4,7 @@ module(
     repo_name = "contrib_rules_jvm",
 )
 
-PROTOBUF_VERSION = "31.1"
+PROTOBUF_VERSION = "33.4"
 
 # The java packages are published to maven under a different versioning scheme.
 PROTOBUF_JAVA_VERSION = "4.{}".format(PROTOBUF_VERSION)
