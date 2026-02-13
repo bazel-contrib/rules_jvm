@@ -130,6 +130,8 @@ The following directives specific to the Java extension are recognized:
 | Within a test directory determines the syle of test generation. Suite generates a single `java_test_suite` for the whole directory. File generates one `java_test` rule for each test file in the directory and a `java_library` for the utility classes. Can be either "suite" or "file", defaultes to "suite". |
 | java_generate_proto                               | True                                     |
 | Tells the code generator to generate `java_proto_library` (and `java_library`) rules when a `proto_library` rule is present. Defaults to True. |
+| java_generate_proto_services                      | True                                     |
+| Tells the code generator to generate `java_grpc_library` rules when a `proto_library` rule with services is present. Defaults to True. |
 | java_maven_repository_name                        | "maven"                                  |
 | Tells the code generator what the repository name that contains all maven dependencies is. Defaults to "maven" |
 | java_annotation_processor_plugin                  | none                                     |

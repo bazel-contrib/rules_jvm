@@ -1,0 +1,22 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:java_generate_proto_services false
+
+proto_library(
+    name = "example_hello_proto",
+    srcs = ["hello.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["@com_google_protobuf//:empty_proto"],
+)
+
+java_proto_library(
+    name = "example_hello_java_proto",
+    deps = [":example_hello_proto"],
+)
+
+java_library(
+    name = "example_hello_java_library",
+    visibility = ["//:__subpackages__"],
+    exports = [":example_hello_java_proto"],
+)
