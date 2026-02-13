@@ -1,0 +1,8 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "example",
+    srcs = ["Client.java"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//proto/src/main/proto/com/example:options_java_library"],
+)

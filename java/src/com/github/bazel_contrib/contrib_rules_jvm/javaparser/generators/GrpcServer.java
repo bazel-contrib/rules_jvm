@@ -185,6 +185,7 @@ public class GrpcServer {
       logger.debug("Got used types: {}", data.usedTypes);
       logger.debug(
           "Got used packages without specific types: {}", data.usedPackagesWithoutSpecificTypes);
+      logger.debug("Got same package type references: {}", data.samePackageTypeReferences);
 
       Builder packageBuilder =
           Package.newBuilder()
@@ -192,7 +193,9 @@ public class GrpcServer {
               .addAllImportedClasses(data.usedTypes)
               .addAllExportedClasses(data.exportedTypes)
               .addAllImportedPackagesWithoutSpecificClasses(data.usedPackagesWithoutSpecificTypes)
-              .addAllMains(data.mainClasses);
+              .addAllMains(data.mainClasses)
+              .addAllSamePackageTypeReferences(data.samePackageTypeReferences)
+              .addAllDefinedClasses(data.definedClasses);
       for (Map.Entry<String, PerClassData> classEntry : data.perClassData.entrySet()) {
         PerClassMetadata.Builder perClassMetadata =
             PerClassMetadata.newBuilder()

@@ -1,0 +1,1 @@
+workspace(name = "split_package_proto_test")
