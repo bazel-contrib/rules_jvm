@@ -310,10 +310,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			r := rule.NewRule("pkg_files", "resources")
 			r.SetAttr("srcs", allResourceFiles)
 
-			stripPrefix := cfg.StripResourcesPrefix()
-			if stripPrefix != "" {
-				r.SetAttr("strip_prefix", stripPrefix)
-			}
+			// Use empty strip_prefix to preserve directory structure.
+			// The default strip_prefix="." flattens all files, which breaks
+			// resources in subdirectories like META-INF/services/.
+			// Since the BUILD file is in the resources directory, the srcs are
+			// already relative to that directory, so no stripping is needed.
+			r.SetAttr("strip_prefix", "")
 
 			res.Gen = append(res.Gen, r)
 			res.Imports = append(res.Imports, types.ResolveInput{})
