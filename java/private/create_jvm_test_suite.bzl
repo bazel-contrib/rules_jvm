@@ -149,6 +149,11 @@ def create_jvm_test_suite(
         )
         tests.append(test_name)
 
+    if not tests:
+        # test_suite with tests=[] would create a suite containing ALL tests in current package
+        # which would be confusing
+        fail("No tests found for suite '{}'. Do test files match 'test_suffixes'?".format(name))
+
     native.test_suite(
         name = name,
         tests = tests,
