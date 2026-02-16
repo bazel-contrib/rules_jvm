@@ -41,6 +41,7 @@ maven.install(
         "org.jmockit:jmockit:1.38",
     ],
     fetch_sources = True,
+    known_contributing_modules = ["bazel_worker_java"],
     lock_file = "//:maven_install.json",
 )
 use_repo(
