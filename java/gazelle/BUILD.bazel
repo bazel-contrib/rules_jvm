@@ -26,6 +26,7 @@ go_library(
         "//java/gazelle/private/kotlin",
         "//java/gazelle/private/logconfig",
         "//java/gazelle/private/maven",
+        "//java/gazelle/private/proto",
         "//java/gazelle/private/sorted_multiset",
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",

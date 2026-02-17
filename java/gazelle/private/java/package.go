@@ -14,6 +14,11 @@ type Package struct {
 	ImportedPackagesWithoutSpecificClasses *sorted_set.SortedSet[types.PackageName]
 	Mains                                  *sorted_set.SortedSet[types.ClassName]
 
+	// DefinedClasses contains all public classes defined in this package, including inner classes.
+	// This is used for class-level resolution in split-package scenarios where inner classes
+	// can be referenced by simple name from the same Java package.
+	DefinedClasses *sorted_set.SortedSet[types.ClassName]
+
 	// Especially useful for module mode
 	Files       *sorted_set.SortedSet[string]
 	TestPackage bool

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package com.example;
+
+option java_package = "com.example";
+option java_outer_classname = "Options";
+
+// Response codes for API operations.
+enum ResponseCode {
+  RESPONSE_CODE_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  INVALID_REQUEST = 2;
+  INTERNAL_ERROR = 3;
+}
+
+// Configuration options.
+message Config {
+  string name = 1;
+  ResponseCode default_response = 2;
+}

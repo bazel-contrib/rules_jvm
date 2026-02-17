@@ -48,6 +48,18 @@ message Package {
 
   // The list of classes which dependers may need to have exported to them because they are part of the public interface of the request.
   repeated string exported_classes = 6;
+
+  // Simple type names (without package prefix) that are referenced in type contexts but not
+  // explicitly imported. These are likely same-package type references that Java doesn't require
+  // imports for. The Go side should combine these with the package name to form fully qualified
+  // class names.
+  repeated string same_package_type_references = 7;
+
+  // Fully qualified names of all public classes defined in this package, including inner classes.
+  // For example, for a file containing `public class Outer { public static class Inner {} }`,
+  // this would contain both "com.example.Outer" and "com.example.Outer.Inner".
+  // This is used for class-level resolution in split-package scenarios.
+  repeated string defined_classes = 8;
 }
 
 message PerClassMetadata {
