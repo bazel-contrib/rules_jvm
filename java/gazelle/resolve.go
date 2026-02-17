@@ -33,6 +33,9 @@ type Resolver struct {
 	// classIndex is a lazy per-package index, built only for packages with ambiguous
 	// resolution (split packages). Maintains prod/test distinction.
 	classIndex map[types.PackageName]*packageClassIndex
+	// configs provides a map from pkg to config. This allows us to use the config in
+	// Embeds.
+	configs map[string]*config.Config
 }
 
 // packageClassIndex maps class names to their providing labels for a single package.
@@ -54,6 +57,7 @@ func NewResolver(lang *javaLang) *Resolver {
 		lang:          lang,
 		internalCache: internalCache,
 		classIndex:    make(map[types.PackageName]*packageClassIndex),
+		configs:       make(map[string]*config.Config),
 	}
 }
 
@@ -64,7 +68,10 @@ func (*Resolver) Name() string {
 func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	log := jr.lang.logger.With().Str("step", "Imports").Str("rel", f.Pkg).Str("rule", r.Name()).Logger()
 
-	if !isJvmLibrary(r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
+	// Cache config for use in Embeds, which doesn't receive config in its interface
+	jr.configs[f.Pkg] = c
+
+	if !isJvmLibrary(c, r.Kind()) && r.Kind() != "java_test_suite" && r.Kind() != "java_export" {
 		return nil
 	}
 
@@ -85,9 +92,9 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	return out
 }
 
-func (*Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (jr *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
-	if isJavaProtoLibrary(r.Kind()) {
+	if isJavaProtoLibrary(jr.configs[from.Pkg], r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
 	}
 
@@ -118,7 +125,7 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	}
 
 	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside the java_export.
-	if packageConfig.ResolveToJavaExports() && isJavaLibrary(r.Kind()) {
+	if packageConfig.ResolveToJavaExports() && isJavaLibrary(c, r.Kind()) {
 		visibility := jr.lang.javaExportIndex.VisibilityForLabel(from)
 		if visibility != nil {
 			var asStrings []string
@@ -156,6 +163,53 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 			pkgClasses = append(pkgClasses, cls.BareOuterClassName())
 		}
 
+		// Check if any imported class has an explicit resolve directive.
+		// If so, we must use class-level resolution to respect those overrides,
+		// since package-level resolution (including resolve_regexp) would otherwise
+		// take precedence and ignore class-specific directives.
+		hasClassOverrides := false
+		if len(classesByPackage[imp]) > 0 {
+			for _, className := range classesByPackage[imp] {
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if _, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					hasClassOverrides = true
+					break
+				}
+			}
+		}
+
+		// If there are class-level overrides, skip package-level resolution and go
+		// directly to class-level resolution to ensure overrides are respected.
+		if hasClassOverrides {
+			jr.lang.logger.Debug().
+				Str("package", imp.Name).
+				Strs("classes", pkgClasses).
+				Stringer("from", from).
+				Msg("class-level resolve directive found, using class-level resolution")
+
+			for _, className := range classesByPackage[imp] {
+				// Check for explicit resolve directive for this specific class first
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if ol, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					labels.Add(simplifyLabel(c.RepoName, ol, from))
+					continue
+				}
+
+				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+				if err != nil {
+					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+					continue
+				}
+				if l == label.NoLabel {
+					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+				}
+				if l != label.NoLabel {
+					labels.Add(simplifyLabel(c.RepoName, l, from))
+				}
+			}
+			continue
+		}
+
 		// Try package-level resolution first (fast path)
 		dep, ambiguous := jr.resolveSinglePackageWithAmbiguity(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
 		if dep != label.NoLabel {
@@ -173,6 +227,14 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 
 			resolvedAny := false
 			for _, className := range classesByPackage[imp] {
+				// Check for explicit resolve directive for this specific class first
+				classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+				if ol, found := resolve.FindRuleWithOverride(c, classImportSpec, languageName); found {
+					labels.Add(simplifyLabel(c.RepoName, ol, from))
+					resolvedAny = true
+					continue
+				}
+
 				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
 				if err != nil {
 					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
@@ -575,18 +637,36 @@ func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from 
 	return nonJavaExportResults
 }
 
-func isJvmLibrary(kind string) bool {
-	return isJavaLibrary(kind) || isKotlinLibrary(kind)
+func isJvmLibrary(c *config.Config, kind string) bool {
+	return isJavaLibrary(c, kind) || isKotlinLibrary(kind)
 }
 
-func isJavaLibrary(kind string) bool {
-	return kind == "java_library" || isJavaProtoLibrary(kind)
+func isJavaLibrary(c *config.Config, kind string) bool {
+	return kind == "java_library" || isJavaProtoLibrary(c, kind)
 }
 
 func isKotlinLibrary(kind string) bool {
 	return kind == "kt_jvm_library"
 }
 
-func isJavaProtoLibrary(kind string) bool {
-	return kind == "java_proto_library" || kind == "java_grpc_library"
+func isJavaProtoLibrary(c *config.Config, kind string) bool {
+	javaProtoLibrary := "java_proto_library"
+	javaGrpcLibrary := "java_grpc_library"
+
+	// Check if this kind is mapped FROM a proto library via map_kind
+	for _, mappedKind := range c.KindMap {
+		if mappedKind.KindName == kind {
+			if mappedKind.FromKind == javaProtoLibrary {
+				javaProtoLibrary = kind
+				break
+			}
+
+			if mappedKind.FromKind == javaGrpcLibrary {
+				javaGrpcLibrary = kind
+				break
+			}
+		}
+	}
+
+	return kind == javaProtoLibrary || kind == javaGrpcLibrary
 }

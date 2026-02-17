@@ -51,6 +51,11 @@ const (
 	// Can be either "true" or "false". Defaults to "true".
 	JavaGenerateProto = "java_generate_proto"
 
+	// JavaGenerateProtoServices tells the code generator whether to generate `java_grpc_library`
+	// rules when a `proto_library` rule with services is present.
+	// Can be either "true" or "false". Defaults to "true".
+	JavaGenerateProtoServices = "java_generate_proto_services"
+
 	// JavaMavenRepositoryName tells the code generator what the repository name that contains all maven dependencies is.
 	// Defaults to "maven"
 	JavaMavenRepositoryName = "java_maven_repository_name"
@@ -109,6 +114,7 @@ func (c *Config) NewChild() *Config {
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateProtoServices:  c.generateProtoServices,
 		generateBinary:         c.generateBinary,
 		generateResources:      c.generateResources,
 		resolveToJavaExports:   c.resolveToJavaExports,
@@ -144,6 +150,7 @@ type Config struct {
 	extensionEnabled                                   bool
 	isModuleRoot                                       bool
 	generateProto                                      bool
+	generateProtoServices                              bool
 	generateBinary                                     bool
 	generateResources                                  bool
 	resolveToJavaExports                               *types.LateInit[bool]
@@ -174,6 +181,7 @@ func New(repoRoot string) *Config {
 		extensionEnabled:       true,
 		isModuleRoot:           false,
 		generateProto:          true,
+		generateProtoServices:  true,
 		generateBinary:         true,
 		generateResources:      true,
 		resolveToJavaExports:   types.NewLateInit[bool](true),
@@ -214,6 +222,14 @@ func (c *Config) GenerateProto() bool {
 
 func (c *Config) SetGenerateProto(generate bool) {
 	c.generateProto = generate
+}
+
+func (c *Config) GenerateProtoServices() bool {
+	return c.generateProtoServices
+}
+
+func (c *Config) SetGenerateProtoServices(generate bool) {
+	c.generateProtoServices = generate
 }
 
 func (c *Config) GenerateBinary() bool {

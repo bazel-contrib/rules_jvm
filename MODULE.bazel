@@ -131,8 +131,9 @@ maven.install(
         "org.junit:junit-bom:5.11.3",
     ],
     fail_if_repin_required = True,
+    index_file = "//third_party/maven:contrib_rules_jvm_deps_index.json",
     lock_file = "//third_party/maven:contrib_rules_jvm_deps_install.json",
-    resolver = "maven",
+    resolver = "gradle",
     strict_visibility = True,
 )
 
