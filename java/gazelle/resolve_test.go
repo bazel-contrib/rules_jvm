@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -432,6 +433,166 @@ func (r *TestMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map
 
 func (r *TestMavenResolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	return label.NoLabel, nil
+}
+
+func TestExternalPluginClassLevelResolution(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+
+	// Create a mock resolver for an external plugin rule kind. This simulates
+	// how an external plugin would register class-level import specs
+	// and implement CrossResolver to make them discoverable across languages.
+	wireResolver := &externalPluginResolver{
+		specs: []resolve.ImportSpec{
+			{Lang: "java", Imp: "com.example"},
+			{Lang: "java", Imp: "com.example.Person"},
+			{Lang: "java", Imp: "com.example.Address"},
+		},
+	}
+	mrslv["wire_library"] = wireResolver
+
+	// The wire resolver must be passed as an ext so the RuleIndex registers it
+	// as a CrossResolver. This is how gazelle discovers cross-language providers.
+	ix := resolve.NewRuleIndex(mrslv.Resolver, append(exts, wireResolver)...)
+
+	pkg := "src/main/java/com/example"
+	javaPackage := types.NewPackageName("com.example")
+
+	// Internal java_library providing some classes in the same package.
+	javaLibContent := `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "example_lib",
+    _packages = ["com.example"],
+)
+`
+	// External wire_library providing other classes in the same package.
+	// No classExportCache entry — only RuleIndex import specs.
+	wireLibContent := `wire_library(
+    name = "wire_lib",
+)
+`
+
+	buildPath := filepath.Join(filepath.FromSlash(pkg), "BUILD.bazel")
+
+	javaFile, err := rule.LoadData(buildPath, pkg, []byte(javaLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wireFile, err := rule.LoadData(buildPath, pkg, []byte(wireLibContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var javaLangInstance *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			javaLangInstance = jl
+			break
+		}
+	}
+	if javaLangInstance == nil {
+		t.Fatal("javaLang not found in langs")
+	}
+
+	// Register internal java_library with classExportCache (internal fast path).
+	javaRule := javaFile.Rules[0]
+	setPackagesPrivateAttr(javaRule)
+	javaLabel := label.New("", pkg, "example_lib")
+	javaLangInstance.classExportCache[javaLabel.String()] = classExportInfo{
+		classes: []types.ClassName{
+			types.NewClassName(javaPackage, "Example"),
+		},
+		testonly: false,
+	}
+	ix.AddRule(c, javaRule, javaFile)
+
+	// Register external wire_library (no classExportCache entry, only RuleIndex).
+	wireRule := wireFile.Rules[0]
+	ix.AddRule(c, wireRule, wireFile)
+
+	ix.Finish()
+
+	pc := c.Exts[languageName].(javaconfig.Configs)[""]
+
+	resolver := NewResolver(javaLangInstance)
+	from := label.New("", "src/main/java/consumer", "consumer_lib")
+
+	// Test 1: Resolve a class from the external plugin (Person).
+	// Should use the RuleIndex fallback since Person is not in classExportCache.
+	personClass := types.NewClassName(javaPackage, "Person")
+	got := resolver.resolveSingleClass(c, pc, personClass, ix, from, false)
+	wireLabel := label.New("", pkg, "wire_lib")
+	want := simplifyLabel(c.RepoName, wireLabel, from)
+	if got != want {
+		t.Errorf("resolveSingleClass(Person) = %s, want %s", got, want)
+	}
+
+	// Test 2: Resolve a class from the internal java_library (Example).
+	// Should use the classExportCache (internal fast path).
+	exampleClass := types.NewClassName(javaPackage, "Example")
+	got = resolver.resolveSingleClass(c, pc, exampleClass, ix, from, false)
+	wantExample := simplifyLabel(c.RepoName, javaLabel, from)
+	if got != wantExample {
+		t.Errorf("resolveSingleClass(Example) = %s, want %s", got, wantExample)
+	}
+
+	// Test 3: Resolve a class that nobody provides.
+	// Should return NoLabel since it's not in classExportCache or RuleIndex.
+	unknownClass := types.NewClassName(javaPackage, "Unknown")
+	got = resolver.resolveSingleClass(c, pc, unknownClass, ix, from, false)
+	if got != label.NoLabel {
+		t.Errorf("resolveSingleClass(Unknown) = %s, want NoLabel", got)
+	}
+
+	// Test 4: Resolve a class provided by BOTH internal and external plugins.
+	// Should detect the conflict and return NoLabel (multiple providers error).
+	// Add Address to classExportCache too, creating a conflict with the wire plugin.
+	javaLangInstance.classExportCache[javaLabel.String()] = classExportInfo{
+		classes: []types.ClassName{
+			types.NewClassName(javaPackage, "Example"),
+			types.NewClassName(javaPackage, "Address"),
+		},
+		testonly: false,
+	}
+	// Reset the class index so it gets rebuilt with the new classExportCache.
+	resolver.classIndex = make(map[types.PackageName]*packageClassIndex)
+	addressClass := types.NewClassName(javaPackage, "Address")
+	got = resolver.resolveSingleClass(c, pc, addressClass, ix, from, false)
+	if got != label.NoLabel {
+		t.Errorf("resolveSingleClass(Address) with conflict = %s, want NoLabel (multiple providers)", got)
+	}
+}
+
+// externalPluginResolver simulates an external plugin's resolve.Resolver and
+// resolve.CrossResolver. It returns pre-configured import specs from Imports(),
+// including class-level specs, exactly as an external plugin like rules_wire would do.
+// It implements CrossResolver so that rules indexed under "wire" language are
+// discoverable when queried by the "java" language.
+type externalPluginResolver struct {
+	specs []resolve.ImportSpec
+}
+
+func (r *externalPluginResolver) Name() string { return "wire" }
+
+func (r *externalPluginResolver) Imports(_ *config.Config, _ *rule.Rule, _ *rule.File) []resolve.ImportSpec {
+	return r.specs
+}
+
+func (r *externalPluginResolver) Embeds(_ *rule.Rule, _ label.Label) []label.Label { return nil }
+
+func (r *externalPluginResolver) Resolve(_ *config.Config, _ *resolve.RuleIndex, _ *repo.RemoteCache, _ *rule.Rule, _ interface{}, _ label.Label) {
+}
+
+// CrossResolve implements resolve.CrossResolver. When the Java plugin queries
+// for an import spec, this method finds matching wire rules in the index.
+func (r *externalPluginResolver) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp resolve.ImportSpec, lang string) []resolve.FindResult {
+	if lang != "java" {
+		return nil
+	}
+	return ix.FindRulesByImport(imp, "wire")
 }
 
 func TestProtoSplitPackageClassResolution(t *testing.T) {
