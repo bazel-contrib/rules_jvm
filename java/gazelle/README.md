@@ -194,14 +194,6 @@ If multiple providers are found for the same class after merging internal and
 external results, gazelle reports an error and the import is left unresolved.
 You can use `# gazelle:resolve` directives to break ties.
 
-### Example
-
-See [rules_wire's gazelle plugin][rules_wire_gazelle] for a complete working
-example of a plugin that integrates with the Java extension using this
-mechanism.
-
-[rules_wire]: https://github.com/nicholasgasior/rules_wire
-[rules_wire_gazelle]: https://github.com/nicholasgasior/rules_wire/tree/main/gazelle/wire
 [RuleIndex]: https://pkg.go.dev/github.com/bazelbuild/bazel-gazelle/resolve#RuleIndex
 [CrossResolver]: https://pkg.go.dev/github.com/bazelbuild/bazel-gazelle/resolve#CrossResolver
 
