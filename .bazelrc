@@ -34,5 +34,4 @@ import %workspace%/.bazelrc.windows
 try-import %workspace%/.bazelrc.user
 
 # Ask the Protobuf rules to use the pre-built protoc rather than rebuilding from scratch
-# Doesn't work in this case because of java-grpc rules. but work a try.
 common --@com_google_protobuf//bazel/toolchains:prefer_prebuilt_protoc
