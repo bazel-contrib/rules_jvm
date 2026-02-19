@@ -1,0 +1,1 @@
+# gazelle:java_test_suite_naming_convention {dirname}_tests
