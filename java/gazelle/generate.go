@@ -358,11 +358,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, annotationProcessorClasses, false, javaLibraryKind, &res, cfg, args.Config.RepoName)
+		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, annotationProcessorClasses, false, javaLibraryKind, &res, cfg)
 	}
 
 	if cfg.GenerateBinary() {
-		l.processJavaBinary(args.File, args.Rel, allMains, testHelperJavaFiles, &res)
+		l.processJavaBinary(args.File, args.Rel, allMains, testHelperJavaFiles, &res, cfg)
 	}
 
 	// We add special packages to point to testonly libraries which - this accumulates them,
@@ -383,7 +383,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
 			// Test helper libraries typically don't have resources
-			l.generateJavaLibrary(args.File, args.Rel, filepath.Base(args.Rel), srcs, "", "", packages, testJavaImports, testJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, annotationProcessorClasses, true, javaLibraryKind, &res, cfg, args.Config.RepoName)
+			l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), srcs, "", "", packages, testJavaImports, testJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, annotationProcessorClasses, true, javaLibraryKind, &res, cfg)
 		}
 	}
 
@@ -404,10 +404,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				packageNames.Add(tf.pkg)
 			}
 
-			suiteName := filepath.Base(args.Rel)
-			if isModule {
-				suiteName += "-tests"
-			}
+			suiteName := cfg.MapTestSuiteName(filepath.Base(args.Rel), isModule)
 
 			srcs := make([]string, 0, allTestRelatedSrcs.Len())
 			for _, src := range allTestRelatedSrcs.SortedSlice() {
@@ -696,7 +693,7 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], exports *sorted_set.SortedSet[types.PackageName], exportedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config, repoName string) {
+func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], exports *sorted_set.SortedSet[types.PackageName], exportedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config) {
 	r := rule.NewRule(javaLibraryRuleKind, name)
 
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
@@ -763,11 +760,11 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	res.Imports = append(res.Imports, resolveInput)
 
 	if cfg.ResolveToJavaExports() {
-		l.javaExportIndex.RecordRuleWithResolveInput(repoName, file, r, resolveInput)
+		l.javaExportIndex.RecordRuleWithResolveInput(file, r, resolveInput)
 	}
 }
 
-func (l javaLang) processJavaBinary(file *rule.File, rel string, allMains *sorted_set.SortedSet[types.ClassName], testHelperJavaFiles *sorted_set.SortedSet[javaFile], res *language.GenerateResult) {
+func (l javaLang) processJavaBinary(file *rule.File, rel string, allMains *sorted_set.SortedSet[types.ClassName], testHelperJavaFiles *sorted_set.SortedSet[javaFile], res *language.GenerateResult, cfg *javaconfig.Config) {
 	var testHelperJavaClasses *sorted_set.SortedSet[types.ClassName]
 	for _, m := range allMains.SortedSlice() {
 		// Lazily populate because java_binaries are pretty rare
@@ -778,7 +775,7 @@ func (l javaLang) processJavaBinary(file *rule.File, rel string, allMains *sorte
 			}
 		}
 		isTestOnly := false
-		libName := filepath.Base(rel)
+		libName := cfg.MapLibraryName(filepath.Base(rel))
 		if testHelperJavaClasses.Contains(m) {
 			isTestOnly = true
 			libName = testHelperLibname(libName)
