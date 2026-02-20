@@ -160,6 +160,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 			return res
 		}
+	} else if cfg.ParentModuleGranularity() == "module" {
+		// This directory has explicitly set package granularity within a module.
+		// Process it as a standalone package (don't aggregate into the parent module).
+		log.Debug().Msg("package granularity override within module, processing as standalone package")
 	}
 
 	allMains := sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
