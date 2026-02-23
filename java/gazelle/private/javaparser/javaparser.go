@@ -114,6 +114,15 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		}
 		importedClasses.Add(*className)
 	}
+	// Add same-package type references as fully qualified class names.
+	// These are simple type names (e.g., "Clock") that Java doesn't require imports for
+	// because they're in the same package as the referencing class.
+	for _, simpleTypeName := range resp.GetSamePackageTypeReferences() {
+		if packageName.Name != "" {
+			className := types.NewClassName(packageName, simpleTypeName)
+			importedClasses.Add(className)
+		}
+	}
 	exportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
 	for _, export := range resp.GetExportedClasses() {
 		className, err := types.ParseClassName(export)
@@ -130,6 +139,14 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 	for _, main := range resp.GetMains() {
 		mains.Add(types.NewClassName(packageName, main))
 	}
+	definedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for _, defined := range resp.GetDefinedClasses() {
+		className, err := types.ParseClassName(defined)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse defined class %q: %w", defined, err)
+		}
+		definedClasses.Add(*className)
+	}
 
 	return &java.Package{
 		Name:                                   packageName,
@@ -137,6 +154,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		ExportedClasses:                        exportedClasses,
 		ImportedPackagesWithoutSpecificClasses: importedPackages,
 		Mains:                                  mains,
+		DefinedClasses:                         definedClasses,
 		Files:                                  sorted_set.NewSortedSet(in.Files),
 		TestPackage:                            java.IsTestPackage(in.Rel),
 		PerClassMetadata:                       perClassMetadata,
