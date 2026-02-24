@@ -605,6 +605,29 @@ public class KtParser {
           String functionName = callExpr.getCalleeExpression().getText();
 
           checkExtensionFunctionCall(receiverType, functionName);
+
+          // Detect FQN constructor call: com.example.ClassName(args)
+          // Mirrors ClasspathParser.visitNewClass → checkFullyQualifiedType
+          if (isLikelyClassName(functionName) && receiverType.contains(".")) {
+            String fqClassName = receiverType + "." + functionName;
+            packageData.usedTypes.add(fqClassName);
+          }
+        }
+      }
+
+      // Detect FQN class reference: com.example.ClassName (as selector of a DQE)
+      // Mirrors ClasspathParser.visitMethodInvocation + looksLikeClassName
+      if (selectorExpression instanceof KtSimpleNameExpression) {
+        String selectorName = ((KtSimpleNameExpression) selectorExpression).getReferencedName();
+        if (isLikelyClassName(selectorName)) {
+          KtExpression receiverExpr = expression.getReceiverExpression();
+          if (receiverExpr != null) {
+            String receiverText = receiverExpr.getText();
+            if (receiverText.contains(".")) {
+              String fqClassName = receiverText + "." + selectorName;
+              packageData.usedTypes.add(fqClassName);
+            }
+          }
         }
       }
 

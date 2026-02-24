@@ -148,22 +148,25 @@ public class KtParserTest {
         data.perClassData.keySet());
   }
 
-  // @Test
-  // public void fullyQualifiedClassAndFunctionUse() throws IOException {
-  //   ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
-  //   assertEquals(
-  //     Set.of("com.example"),
-  //     data.usedPackagesWithoutSpecificTypes);
-  //   assertEquals(
-  //       Set.of(
-  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
-  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
-  //           "workspace.com.gazelle.java.javaparser.utils.Printer",
-  //           "workspace.com.gazelle.java.javaparser.factories.Factory",
-  //           "java.util.ArrayList",
-  //           "com.example.PrivateArg"),
-  //       data.usedTypes);
-  // }
+  @Test
+  public void detectsFqnClassReferences() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
+
+    // FQN constructor calls and class references detected via visitDotQualifiedExpression
+    assertTrue(
+        data.usedTypes.contains(
+            "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest"),
+        "Should detect FQN constructor call: " + data.usedTypes);
+    assertTrue(
+        data.usedTypes.contains("workspace.com.gazelle.java.javaparser.utils.Printer"),
+        "Should detect FQN class reference (static method call): " + data.usedTypes);
+    assertTrue(
+        data.usedTypes.contains("workspace.com.gazelle.java.javaparser.factories.Factory"),
+        "Should detect FQN class reference (factory call): " + data.usedTypes);
+    assertTrue(
+        data.usedTypes.contains("java.util.ArrayList"),
+        "Should detect FQN generic constructor call: " + data.usedTypes);
+  }
 
   @Test
   public void staticImportsTest() throws IOException {
