@@ -1,0 +1,12 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+# gazelle:java_test_suite_naming_convention {dirname}_tests
+
+java_test_suite(
+    name = "hello_tests",
+    srcs = ["HelloTest.java"],
+    deps = [
+        "//src/main/java/com/example/hello:lib_hello",
+        "@maven//:junit_junit",
+    ],
+)
