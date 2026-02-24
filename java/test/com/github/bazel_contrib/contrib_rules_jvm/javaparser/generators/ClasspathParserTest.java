@@ -390,6 +390,65 @@ public class ClasspathParserTest {
     assertEquals(expected, parser.getExportedTypes());
   }
 
+  @Test
+  public void testSamePackageBareClassReference() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/SamePackageReference.java"));
+    parser.parseClasses(files);
+    assertEquals(
+        Set.of(
+            "workspace.com.gazelle.java.javaparser.generators.AbstractIdentifier",
+            "workspace.com.gazelle.java.javaparser.generators.SomeHelper",
+            "workspace.com.gazelle.java.javaparser.generators.SomeInput",
+            "workspace.com.gazelle.java.javaparser.generators.SomeInterface"),
+        parser.getUsedTypes());
+  }
+
+  @Test
+  public void testSamePackageFiltersInnerClasses() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/SamePackageWithInnerClass.java"));
+    parser.parseClasses(files);
+    assertEquals(
+        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalHelper"),
+        parser.getUsedTypes());
+  }
+
+  @Test
+  public void testSamePackageFiltersTypeParameters() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/SamePackageWithGenerics.java"));
+    parser.parseClasses(files);
+    assertEquals(
+        Set.of("workspace.com.gazelle.java.javaparser.generators.SomeBound"),
+        parser.getUsedTypes());
+  }
+
+  @Test
+  public void testSamePackageAllTypePositions() throws IOException {
+    // Exercises many code paths where checkFullyQualifiedType is called:
+    // field type, method annotation, method type param bound, throws clause.
+    // Also verifies filtering of type parameters (R) and java.lang types (String).
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/SamePackageAllPositions.java"));
+    parser.parseClasses(files);
+    assertEquals(
+        Set.of(
+            "workspace.com.gazelle.java.javaparser.generators.SomeFieldType",
+            "workspace.com.gazelle.java.javaparser.generators.SomeMethodAnnotation",
+            "workspace.com.gazelle.java.javaparser.generators.SomeMethodBound",
+            "workspace.com.gazelle.java.javaparser.generators.SomeCheckedException"),
+        parser.getUsedTypes());
+  }
+
   private <T> TreeSet<T> treeSet(T... values) {
     return new TreeSet<>(Arrays.asList(values));
   }
