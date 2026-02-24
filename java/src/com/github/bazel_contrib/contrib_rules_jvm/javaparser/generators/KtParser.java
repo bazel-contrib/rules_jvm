@@ -618,8 +618,7 @@ public class KtParser {
       // Detect FQN class reference: com.example.ClassName (as selector of a DQE)
       // Mirrors ClasspathParser.visitMethodInvocation + looksLikeClassName
       if (selectorExpression instanceof KtSimpleNameExpression) {
-        String selectorName =
-            ((KtSimpleNameExpression) selectorExpression).getReferencedName();
+        String selectorName = ((KtSimpleNameExpression) selectorExpression).getReferencedName();
         if (isLikelyClassName(selectorName)) {
           KtExpression receiverExpr = expression.getReceiverExpression();
           if (receiverExpr != null) {
