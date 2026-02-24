@@ -50,6 +50,105 @@ import org.slf4j.LoggerFactory;
 public class ClasspathParser {
   private static final Logger logger = LoggerFactory.getLogger(ClasspathParser.class);
 
+  private static final Set<String> JAVA_LANG_TYPES =
+      Set.of(
+          // Primitive wrappers
+          "Boolean",
+          "Byte",
+          "Character",
+          "Double",
+          "Float",
+          "Integer",
+          "Long",
+          "Short",
+          "Void",
+          // Core types
+          "CharSequence",
+          "Class",
+          "ClassLoader",
+          "Comparable",
+          "Enum",
+          "Iterable",
+          "Math",
+          "Number",
+          "Object",
+          "Package",
+          "Process",
+          "ProcessBuilder",
+          "Record",
+          "Runtime",
+          "SecurityManager",
+          "StackTraceElement",
+          "StrictMath",
+          "String",
+          "StringBuffer",
+          "StringBuilder",
+          "System",
+          "Thread",
+          "ThreadGroup",
+          "ThreadLocal",
+          // Interfaces
+          "Appendable",
+          "AutoCloseable",
+          "Cloneable",
+          "Readable",
+          "Runnable",
+          // Throwable hierarchy (commonly referenced without import)
+          "Throwable",
+          "Error",
+          "Exception",
+          "RuntimeException",
+          "ArithmeticException",
+          "ArrayIndexOutOfBoundsException",
+          "ArrayStoreException",
+          "ClassCastException",
+          "ClassNotFoundException",
+          "CloneNotSupportedException",
+          "EnumConstantNotPresentException",
+          "IllegalAccessException",
+          "IllegalArgumentException",
+          "IllegalMonitorStateException",
+          "IllegalStateException",
+          "IllegalThreadStateException",
+          "IndexOutOfBoundsException",
+          "InstantiationException",
+          "InterruptedException",
+          "NegativeArraySizeException",
+          "NoSuchFieldException",
+          "NoSuchMethodException",
+          "NullPointerException",
+          "NumberFormatException",
+          "ReflectiveOperationException",
+          "SecurityException",
+          "StringIndexOutOfBoundsException",
+          "TypeNotPresentException",
+          "UnsupportedOperationException",
+          "AbstractMethodError",
+          "AssertionError",
+          "BootstrapMethodError",
+          "ClassCircularityError",
+          "ClassFormatError",
+          "ExceptionInInitializerError",
+          "IncompatibleClassChangeError",
+          "InternalError",
+          "LinkageError",
+          "NoClassDefFoundError",
+          "NoSuchFieldError",
+          "NoSuchMethodError",
+          "OutOfMemoryError",
+          "StackOverflowError",
+          "UnknownError",
+          "UnsatisfiedLinkError",
+          "UnsupportedClassVersionError",
+          "VerifyError",
+          "VirtualMachineError",
+          // Annotations
+          "Deprecated",
+          "FunctionalInterface",
+          "Override",
+          "SafeVarargs",
+          "SuppressWarnings");
+
   private final ParsedPackageData data = new ParsedPackageData();
 
   // get the system java compiler instance
@@ -138,6 +237,8 @@ public class ClasspathParser {
     private final Deque<Tree> stack = new ArrayDeque<>();
 
     @Nullable private Map<String, String> currentFileImports;
+    private Set<String> locallyDefinedClassNames;
+    private Set<String> typeParameterNames;
 
     void popOrThrow(Tree expected) {
       Tree popped = stack.removeLast();
@@ -152,8 +253,28 @@ public class ClasspathParser {
       compileUnit = t;
       fileName = Paths.get(compileUnit.getSourceFile().toUri()).getFileName().toString();
       currentFileImports = new HashMap<>();
+      locallyDefinedClassNames = new TreeSet<>();
+      typeParameterNames = new TreeSet<>();
+
+      // Pre-scan to collect all class names defined in this compilation unit.
+      // This prevents inner/nested class references from being treated as
+      // same-package cross-target dependencies.
+      collectLocalClassNames(t);
 
       return super.visitCompilationUnit(t, v);
+    }
+
+    private void collectLocalClassNames(CompilationUnitTree compilationUnit) {
+      new TreeScanner<Void, Void>() {
+        @Override
+        public Void visitClass(ClassTree t, Void v) {
+          String simpleName = t.getSimpleName().toString();
+          if (!simpleName.isEmpty()) {
+            locallyDefinedClassNames.add(simpleName);
+          }
+          return super.visitClass(t, v);
+        }
+      }.scan(compilationUnit, null);
     }
 
     @Override
@@ -195,6 +316,12 @@ public class ClasspathParser {
     @Override
     public Void visitClass(ClassTree t, Void v) {
       stack.addLast(t);
+      for (com.sun.source.tree.TypeParameterTree typeParam : t.getTypeParameters()) {
+        typeParameterNames.add(typeParam.getName().toString());
+        for (Tree bound : typeParam.getBounds()) {
+          checkFullyQualifiedType(bound);
+        }
+      }
       checkFullyQualifiedType(t.getExtendsClause());
       for (Tree implement : t.getImplementsClause()) {
         checkFullyQualifiedType(implement);
@@ -217,6 +344,12 @@ public class ClasspathParser {
     @Override
     public Void visitMethod(com.sun.source.tree.MethodTree m, Void v) {
       stack.addLast(m);
+      for (com.sun.source.tree.TypeParameterTree typeParam : m.getTypeParameters()) {
+        typeParameterNames.add(typeParam.getName().toString());
+        for (Tree bound : typeParam.getBounds()) {
+          checkFullyQualifiedType(bound);
+        }
+      }
       boolean isVoidReturn = false;
 
       // Check the return type on the method.
@@ -360,6 +493,18 @@ public class ClasspathParser {
         } else if (components.size() > 1) {
           data.usedTypes.add(typeName);
           types.add(typeName);
+        } else if (currentPackage != null
+            && !typeName.isEmpty()
+            && !locallyDefinedClassNames.contains(typeName)
+            && !JAVA_LANG_TYPES.contains(typeName)
+            && !typeParameterNames.contains(typeName)) {
+          // Bare class name, not imported, not locally defined — resolve against
+          // current package. This handles same-package references like
+          // "extends AbstractIdentifier" where the referenced class is in the
+          // same Java package but potentially a different Bazel package.
+          String qualifiedName = currentPackage + "." + typeName;
+          data.usedTypes.add(qualifiedName);
+          types.add(qualifiedName);
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
