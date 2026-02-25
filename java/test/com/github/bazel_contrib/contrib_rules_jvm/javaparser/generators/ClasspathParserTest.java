@@ -449,6 +449,28 @@ public class ClasspathParserTest {
         parser.getUsedTypes());
   }
 
+  @Test
+  public void testSamePackageStaticMethodCall() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/SamePackageStaticCall.java"));
+    parser.parseClasses(files);
+    assertEquals(
+        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalFactory"),
+        parser.getUsedTypes());
+  }
+
+  @Test
+  public void testImportedAcronymStaticMethodCall() throws IOException {
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ImportedAcronymStaticCall.java"));
+    parser.parseClasses(files);
+    assertEquals(Set.of("java.util.UUID"), parser.getUsedTypes());
+  }
+
   private <T> TreeSet<T> treeSet(T... values) {
     return new TreeSet<>(Arrays.asList(values));
   }
