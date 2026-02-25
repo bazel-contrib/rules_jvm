@@ -425,8 +425,8 @@ public class ClasspathParser {
       if (receiverTypeName == null) {
         return;
       }
-      // Imported identifiers are known types even when they are acronym-style names
-      // (for example UUID), which our heuristic would otherwise reject.
+      // Imported identifiers are known types even when they are acronym-style
+      // names (for example UUID), which our heuristic would otherwise reject.
       if (currentFileImports.containsKey(receiverTypeName)
           || looksLikeClassName(receiverTypeName)) {
         checkFullyQualifiedType(container);

@@ -572,8 +572,7 @@ public class ClasspathParserTest {
                 "/workspace/com/gazelle/java/javaparser/generators/SamePackageStaticCall.java"));
     ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
-        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalFactory"),
-        data.usedTypes);
+        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalFactory"), data.usedTypes);
   }
 
   @Test
