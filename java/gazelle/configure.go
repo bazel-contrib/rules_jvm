@@ -76,6 +76,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaGenerateResources,
 		javaconfig.JavaMavenRepositoryName,
 		javaconfig.JavaAnnotationProcessorPlugin,
+		javaconfig.JavaAnnotationProcessorExtraImports,
 		javaconfig.JavaResolveToJavaExports,
 		javaconfig.JavaSourcesetRoot,
 		javaconfig.JavaStripResourcesPrefix,
@@ -224,19 +225,25 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 			case javaconfig.JavaAnnotationProcessorPlugin:
 				// Format: # gazelle:java_annotation_processor_plugin com.example.AnnotationName com.example.AnnotationProcessorImpl
-				parts := strings.Split(d.Value, " ")
-				if len(parts) != 2 {
-					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: expected an annotation class-name followed by a processor class-name", javaconfig.JavaAnnotationProcessorPlugin, d.Value)
-				}
-				annotationClassName, err := types.ParseClassName(parts[0])
-				if err != nil {
-					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor annotation class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[0], err)
-				}
-				processorClassName, err := types.ParseClassName(parts[1])
-				if err != nil {
-					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse annotation processor class-name: %v", javaconfig.JavaAnnotationProcessorPlugin, parts[1], err)
-				}
+				annotationClassName, processorClassName := jc.parseTwoClassNamesDirective(
+					javaconfig.JavaAnnotationProcessorPlugin,
+					d.Value,
+					"expected an annotation class-name followed by a processor class-name",
+					"annotation processor annotation class-name",
+					"annotation processor class-name",
+				)
 				cfg.AddAnnotationProcessorPlugin(*annotationClassName, *processorClassName)
+
+			case javaconfig.JavaAnnotationProcessorExtraImports:
+				// Format: # gazelle:java_annotation_processor_extra_imports com.example.Annotation com.example.ExtraImport
+				annotationClassName, extraImportClassName := jc.parseTwoClassNamesDirective(
+					javaconfig.JavaAnnotationProcessorExtraImports,
+					d.Value,
+					"expected an annotation class-name followed by an extra import class-name",
+					"annotation class-name",
+					"extra import class-name",
+				)
+				cfg.AddAnnotationProcessorExtraImport(*annotationClassName, *extraImportClassName)
 
 			case javaconfig.JavaResolveToJavaExports:
 				if !cfg.CanSetResolveToJavaExports() {
@@ -297,6 +304,28 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 		}
 		jc.lang.mavenResolver = resolver
 	}
+}
+
+func (jc *Configurer) parseTwoClassNamesDirective(
+	directive string,
+	value string,
+	expectedFormat string,
+	firstClassLabel string,
+	secondClassLabel string,
+) (*types.ClassName, *types.ClassName) {
+	parts := strings.Fields(value)
+	if len(parts) != 2 {
+		jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: %s", directive, value, expectedFormat)
+	}
+	firstClassName, err := types.ParseClassName(parts[0])
+	if err != nil {
+		jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse %s: %v", directive, parts[0], firstClassLabel, err)
+	}
+	secondClassName, err := types.ParseClassName(parts[1])
+	if err != nil {
+		jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %q: couldn't parse %s: %v", directive, parts[1], secondClassLabel, err)
+	}
+	return firstClassName, secondClassName
 }
 
 type annotationToAttribute map[string]map[string]bzl.Expr
