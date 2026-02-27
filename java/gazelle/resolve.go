@@ -83,10 +83,16 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 			out = append(out, resolve.ImportSpec{Lang: languageName, Imp: pkg.String()})
 		}
 	}
-	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
-	// Class-level resolution uses a lazy, per-package index built only when needed
-	// (when package-level resolution is ambiguous due to split packages).
+	// NOTE: We intentionally do NOT register classes from this plugin in Gazelle's
+	// global RuleIndex. Class-level resolution for internally-generated rules uses
+	// a lazy, per-package index (classExportCache) built only when needed.
 	// This keeps the global index small and fast.
+	//
+	// However, external plugins MAY register class-level import specs like
+	// {Lang: "java", Imp: "com.example.ClassName"} in their Imports()
+	// method. They must also implement resolve.CrossResolver so that the RuleIndex
+	// returns their results when queried by the "java" language.
+	// resolveSingleClass has a RuleIndex fallback that picks these up.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
 	return out
@@ -543,6 +549,28 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 	if isTestRule {
 		if testCandidates, ok := pci.test[bareClassName]; ok {
 			candidates = append(candidates, testCandidates...)
+		}
+	}
+
+	// Also check the global RuleIndex for class-level import specs registered by
+	// external plugins. We always check this, not just when classExportCache
+	// yields 0 candidates, so that conflicts between internal and external
+	// providers are detected rather than silently ignored.
+	classImportSpec := resolve.ImportSpec{Lang: languageName, Imp: imp}
+	matches := ix.FindRulesByImportWithConfig(c, classImportSpec, languageName)
+	if pc.ResolveToJavaExports() {
+		matches = jr.tryResolvingToJavaExport(matches, from)
+	}
+	for _, m := range matches {
+		alreadyPresent := false
+		for _, c := range candidates {
+			if c == m.Label {
+				alreadyPresent = true
+				break
+			}
+		}
+		if !alreadyPresent {
+			candidates = append(candidates, m.Label)
 		}
 	}
 
