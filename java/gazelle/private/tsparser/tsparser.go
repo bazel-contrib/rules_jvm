@@ -23,8 +23,9 @@ import (
 )
 
 var (
-	tsJavaLang   = grammars.DetectLanguage("Test.java").Language()
-	tsJavaParser = gotreesitter.NewParser(tsJavaLang)
+	tsJavaLang = grammars.DetectLanguage("Test.java").Language()
+	// ParserPool is concurrency-safe and resets parser state between uses.
+	tsJavaParserPool = gotreesitter.NewParserPool(tsJavaLang)
 )
 
 // Runner implements Java parsing using gotreesitter (pure Go, no subprocess).
@@ -136,10 +137,11 @@ func (r *Runner) parseJavaFile(rel, filename string) (*javaFileInfo, error) {
 		return nil, err
 	}
 
-	tree, err := tsJavaParser.Parse(content)
+	tree, err := r.parseJavaContent(content)
 	if err != nil {
-		return nil, fmt.Errorf("parse: %w", err)
+		return nil, err
 	}
+	defer tree.Release()
 	root := tree.RootNode()
 
 	info := &javaFileInfo{
@@ -161,6 +163,53 @@ func (r *Runner) parseJavaFile(rel, filename string) (*javaFileInfo, error) {
 	}
 
 	return info, nil
+}
+
+func (r *Runner) parseJavaContent(content []byte) (*gotreesitter.Tree, error) {
+	tree, err := tsJavaParserPool.Parse(content)
+	if err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+	if tree == nil || tree.RootNode() == nil {
+		return nil, fmt.Errorf("parse: nil root")
+	}
+
+	// Fallback to the Java token-source path when the default parse tree has
+	// syntax errors. This guards metadata extraction against parser regressions
+	// in one parse mode while preserving the fast path for healthy trees.
+	if !tree.RootNode().HasError() {
+		return tree, nil
+	}
+
+	ts, err := grammars.NewJavaTokenSource(content, tsJavaLang)
+	if err != nil {
+		r.logger.Debug().Err(err).Msg("java token-source fallback unavailable")
+		return tree, nil
+	}
+
+	fallbackTree, err := tsJavaParserPool.ParseWithTokenSource(content, ts)
+	if err != nil {
+		if fallbackTree != nil {
+			fallbackTree.Release()
+		}
+		r.logger.Debug().Err(err).Msg("java token-source fallback parse failed")
+		return tree, nil
+	}
+	if fallbackTree == nil || fallbackTree.RootNode() == nil {
+		if fallbackTree != nil {
+			fallbackTree.Release()
+		}
+		r.logger.Debug().Msg("java token-source fallback returned nil root")
+		return tree, nil
+	}
+	if fallbackTree.RootNode().HasError() {
+		fallbackTree.Release()
+		return tree, nil
+	}
+
+	tree.Release()
+	r.logger.Debug().Msg("java parse recovered by token-source fallback")
+	return fallbackTree, nil
 }
 
 // ---------------------------------------------------------------------------

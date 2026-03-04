@@ -2,8 +2,10 @@ package tsparser
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/parser"
@@ -514,6 +516,58 @@ public class Fields {
 		if fieldAnns.SortedSlice()[0].FullyQualifiedClassName() != "javax.inject.Inject" {
 			t.Fatalf("field %q annotation = %q, want javax.inject.Inject", field, fieldAnns.SortedSlice()[0].FullyQualifiedClassName())
 		}
+	}
+}
+
+func TestParsePackageConcurrent(t *testing.T) {
+	dir := t.TempDir()
+	runner := NewRunner(zerolog.Nop(), dir)
+	writeJava(t, dir, "src", "App.java", `
+package com.example;
+
+public class App {
+    public static void main(String[] args) {
+        System.out.println("hello");
+    }
+}
+`)
+
+	const workers = 12
+	const roundsPerWorker = 20
+
+	errCh := make(chan error, workers*roundsPerWorker)
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < roundsPerWorker; j++ {
+				pkg, err := runner.ParsePackage(context.Background(), &parser.ParsePackageRequest{
+					Rel:   "src",
+					Files: []string{"App.java"},
+				})
+				if err != nil {
+					errCh <- fmt.Errorf("parse package: %w", err)
+					return
+				}
+				if pkg.Mains.Len() != 1 {
+					errCh <- fmt.Errorf("mains count = %d, want 1", pkg.Mains.Len())
+					return
+				}
+				main := pkg.Mains.SortedSlice()[0]
+				if main.FullyQualifiedClassName() != "com.example.App" {
+					errCh <- fmt.Errorf("main class = %q, want %q", main.FullyQualifiedClassName(), "com.example.App")
+					return
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		t.Fatal(err)
 	}
 }
 
