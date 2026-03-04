@@ -183,7 +183,7 @@ use_repo(
 )
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.23.6")
+go_sdk.download(version = "1.24.0")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
@@ -195,6 +195,7 @@ use_repo(
     "com_github_google_go_cmp",
     "com_github_google_uuid",
     "com_github_hashicorp_golang_lru",
+    "com_github_odvcencio_gotreesitter",
     "com_github_rs_zerolog",
     "com_github_sergi_go_diff",
     "com_github_stretchr_testify",

@@ -1,8 +1,6 @@
 module github.com/bazel-contrib/rules_jvm
 
-go 1.22.9
-
-toolchain go1.22.12
+go 1.24.0
 
 require (
 	github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829
@@ -13,6 +11,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru v1.0.2
+	github.com/odvcencio/gotreesitter v0.6.1-0.20260304051113-a36b0f45a6eb
 	github.com/rs/zerolog v1.33.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/stretchr/testify v1.7.0
@@ -35,5 +34,5 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
