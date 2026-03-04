@@ -7,9 +7,9 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java_export_index"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/logconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/parser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -25,9 +25,8 @@ type javaLang struct {
 	language.BaseLifecycleManager
 	resolve.Resolver
 
-	parser        *javaparser.Runner
+	parser        parser.Parser
 	logger        zerolog.Logger
-	javaLogLevel  string
 	mavenResolver maven.Resolver
 
 	// javaPackageCache is used for module granularity support
@@ -56,7 +55,7 @@ type classExportInfo struct {
 }
 
 func NewLanguage() language.Language {
-	goLevel, javaLevel := logconfig.LogLevel()
+	goLevel, _ := logconfig.LogLevel()
 
 	var logger zerolog.Logger
 	if os.Getenv("GAZELLE_JAVA_LOG_FORMAT") == "json" {
@@ -79,7 +78,6 @@ func NewLanguage() language.Language {
 
 	l := javaLang{
 		logger:           logger,
-		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
 		classExportCache: make(map[string]classExportInfo),
@@ -265,7 +263,7 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 
 func (l javaLang) DoneGeneratingRules() {
 	if l.parser != nil {
-		l.parser.ServerManager().Shutdown()
+		shutdownParser(l.parser)
 	}
 	l.javaExportIndex.FinalizeIndex()
 }
@@ -287,5 +285,13 @@ func (s shutdownServerOnFatalLogHook) Run(e *zerolog.Event, level zerolog.Level,
 	if level != zerolog.FatalLevel {
 		return
 	}
-	s.l.parser.ServerManager().Shutdown()
+	shutdownParser(s.l.parser)
+}
+
+func shutdownParser(p parser.Parser) {
+	shutdowner, ok := p.(interface{ Shutdown() })
+	if !ok {
+		return
+	}
+	shutdowner.Shutdown()
 }

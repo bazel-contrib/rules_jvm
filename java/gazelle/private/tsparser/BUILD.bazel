@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tsparser",
+    srcs = ["tsparser.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/tsparser",
+    visibility = ["//java/gazelle:__subpackages__"],
+    deps = [
+        "//java/gazelle/private/java",
+        "//java/gazelle/private/parser",
+        "//java/gazelle/private/sorted_multiset",
+        "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
+        "@com_github_odvcencio_gotreesitter//:gotreesitter",
+        "@com_github_odvcencio_gotreesitter//grammars",
+        "@com_github_rs_zerolog//:zerolog",
+    ],
+)
+
+go_test(
+    name = "tsparser_test",
+    srcs = ["tsparser_test.go"],
+    embed = [":tsparser"],
+    deps = [
+        "//java/gazelle/private/parser",
+        "//java/gazelle/private/types",
+        "@com_github_rs_zerolog//:zerolog",
+    ],
+)
+
