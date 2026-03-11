@@ -12,7 +12,7 @@ def get_package_name(prefixes = []):
     for prefix in prefixes:
         idx = pkg.find(prefix)
         if idx != -1:
-            return pkg[idx + 1:] + "."
+            return pkg[idx + len(prefix):] + "."
 
     return ""
 
@@ -28,7 +28,7 @@ def get_class_name(package, src, prefixes = []):
     for prefix in prefixes:
         idx = name.find(prefix)
         if idx != -1:
-            return name[idx + 1:]
+            return name[idx + len(prefix):]
 
     # Make sure that the package has a trailing period so it's
     # safe to add the class name. While `get_package_name` does
