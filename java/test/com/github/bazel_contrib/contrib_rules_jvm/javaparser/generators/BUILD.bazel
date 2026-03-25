@@ -6,6 +6,7 @@ java_test_suite(
     name = "generators",
     size = "small",
     srcs = [
+        "ClassNamesTest.java",
         "ClasspathParserTest.java",
         "JavaIdentifierTest.java",
         "KtParserTest.java",
