@@ -433,117 +433,33 @@ public class KtParser {
           expression.getText(),
           expression.getReferencedName());
 
-      // If we're inside an inline function, track class usage
-      if (currentInlineFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        // This includes both PascalCase class names and constructor calls
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentInlineFunctionDeps.add(fqName);
-            logger.debug("Inline function " + currentInlineFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentInlineFunctionDeps.add(referencedName);
-            logger.debug(
-                "Inline function " + currentInlineFunction + " uses class: " + referencedName);
-          } else {
-            // For unresolved class names, add them as potential dependencies
-            // This handles cases where imports might not be fully resolved
-            logger.debug(
-                "Inline function "
-                    + currentInlineFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
+      String referencedName = expression.getReferencedName();
+      if (isLikelyClassName(referencedName)) {
+        trackClassUsage(referencedName, currentInlineFunction, currentInlineFunctionDeps);
+        trackClassUsage(referencedName, currentExtensionFunction, currentExtensionFunctionDeps);
+        if (currentlyInPropertyDelegate) {
+          trackClassUsage(referencedName, "property delegate", currentPropertyDelegateDeps);
         }
-      }
-
-      // If we're inside an extension function, track class usage
-      if (currentExtensionFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentExtensionFunctionDeps.add(fqName);
-            logger.debug(
-                "Extension function " + currentExtensionFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentExtensionFunctionDeps.add(referencedName);
-            logger.debug(
-                "Extension function "
-                    + currentExtensionFunction
-                    + " uses class: "
-                    + referencedName);
-          } else {
-            logger.debug(
-                "Extension function "
-                    + currentExtensionFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
-        }
-      }
-
-      // If we're inside a property delegate, track class usage
-      if (currentlyInPropertyDelegate) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentPropertyDelegateDeps.add(fqName);
-            logger.debug("Property delegate uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentPropertyDelegateDeps.add(referencedName);
-            logger.debug("Property delegate uses class: " + referencedName);
-          } else {
-            logger.debug("Property delegate uses unresolved class: " + referencedName);
-          }
-        }
-      }
-
-      // If we're inside a componentN() function, track class usage
-      if (currentComponentFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentComponentFunctionDeps.add(fqName);
-            logger.debug(
-                "ComponentN function " + currentComponentFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentComponentFunctionDeps.add(referencedName);
-            logger.debug(
-                "ComponentN function "
-                    + currentComponentFunction
-                    + " uses class: "
-                    + referencedName);
-          } else {
-            logger.debug(
-                "ComponentN function "
-                    + currentComponentFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
-        }
+        trackClassUsage(referencedName, currentComponentFunction, currentComponentFunctionDeps);
       }
 
       super.visitSimpleNameExpression(expression);
+    }
+
+    private void trackClassUsage(String referencedName, String context, Set<String> deps) {
+      if (context == null || deps == null) {
+        return;
+      }
+      if (fqImportByNameOrAlias.containsKey(referencedName)) {
+        String fqName = fqImportByNameOrAlias.get(referencedName).toString();
+        deps.add(fqName);
+        logger.debug(context + " uses class: " + fqName);
+      } else if (referencedName.contains(".")) {
+        deps.add(referencedName);
+        logger.debug(context + " uses class: " + referencedName);
+      } else {
+        logger.debug(context + " uses unresolved class: " + referencedName);
+      }
     }
 
     @Override
