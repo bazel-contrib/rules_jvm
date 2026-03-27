@@ -1,5 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators.ClassNames.isLikelyClassName;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -407,22 +408,7 @@ public class ClasspathParser {
     }
 
     private boolean looksLikeClassName(String identifier) {
-      if (identifier.isEmpty()) {
-        return false;
-      }
-      // Classes start with UpperCase.
-      if (!Character.isUpperCase(identifier.charAt(0))) {
-        return false;
-      }
-      // Single-char upper-case may well be a class-name.
-      if (identifier.length() == 1) {
-        return true;
-      }
-      // SNAKE_CASE is for constants not classes.
-      if (identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
-        return false;
-      }
-      return true;
+      return isLikelyClassName(identifier);
     }
 
     @Override

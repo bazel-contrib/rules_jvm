@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators.ClassNames.isLikelyClassName;
+
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -753,33 +755,6 @@ public class KtParser {
 
     private FqName packageRelativeName(FqName name, KtFile file) {
       return FqNamesUtilKt.tail(name, file.getPackageFqName());
-    }
-
-    /** Returns true if this simple name is PascalCase. */
-    private boolean isLikelyClassName(String name) {
-      if (name.isEmpty() || !firstLetterIsUppercase(name)) {
-        return false;
-      }
-      // If the name is all uppercase, assume it's a constant. At worst, we'll still
-      // import the package, which seems a safer default than assuming it's a class
-      // that we then can't find.
-      for (int i = 1; i < name.length(); i++) {
-        char c = name.charAt(i);
-        if (Character.isLetter(c) && Character.isLowerCase(c)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    private boolean firstLetterIsUppercase(String value) {
-      for (int i = 0; i < value.length(); i++) {
-        char c = value.charAt(i);
-        if (Character.isLetter(c)) {
-          return Character.isUpperCase(c);
-        }
-      }
-      return false;
     }
 
     private Optional<KtNamedFunction> retrievePossibleMainFunction(KtObjectDeclaration object) {
