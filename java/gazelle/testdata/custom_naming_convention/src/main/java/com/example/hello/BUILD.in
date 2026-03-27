@@ -1,0 +1,1 @@
+# gazelle:java_library_naming_convention lib_{dirname}
