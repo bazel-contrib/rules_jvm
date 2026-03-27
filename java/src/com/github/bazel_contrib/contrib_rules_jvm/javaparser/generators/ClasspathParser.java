@@ -6,7 +6,6 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -149,8 +148,6 @@ public class ClasspathParser {
           "SafeVarargs",
           "SuppressWarnings");
 
-  private final ParsedPackageData data = new ParsedPackageData();
-
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
   private static final List<String> OPTIONS =
@@ -160,31 +157,7 @@ public class ClasspathParser {
     // Doesn't need to do anything currently
   }
 
-  public ParsedPackageData getParsedPackageData() {
-    return data;
-  }
-
-  public ImmutableSet<String> getUsedTypes() {
-    return ImmutableSet.copyOf(data.usedTypes);
-  }
-
-  public ImmutableSet<String> getUsedPackagesWithoutSpecificTypes() {
-    return ImmutableSet.copyOf(data.usedPackagesWithoutSpecificTypes);
-  }
-
-  public ImmutableSet<String> getExportedTypes() {
-    return ImmutableSet.copyOf(data.exportedTypes);
-  }
-
-  public ImmutableSet<String> getPackages() {
-    return ImmutableSet.copyOf(data.packages);
-  }
-
-  public ImmutableSet<String> getMainClasses() {
-    return ImmutableSet.copyOf(data.mainClasses);
-  }
-
-  public void parseClasses(Path directory, List<String> files) throws IOException {
+  public ParsedPackageData parseClasses(Path directory, List<String> files) throws IOException {
     StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
     List<? extends JavaFileObject> objectFiles =
         files.stream()
@@ -202,18 +175,19 @@ public class ClasspathParser {
       logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
       throw new IOException("No files to process");
     }
-    parseFileGatherDependencies(objectFiles);
+    return parseFileGatherDependencies(objectFiles);
   }
 
-  public void parseClasses(List<? extends JavaFileObject> files) throws IOException {
-    this.parseFileGatherDependencies(files);
+  public ParsedPackageData parseClasses(List<? extends JavaFileObject> files) throws IOException {
+    return parseFileGatherDependencies(files);
   }
 
-  private void parseFileGatherDependencies(Iterable<? extends JavaFileObject> compUnits)
-      throws IOException {
+  private ParsedPackageData parseFileGatherDependencies(
+      Iterable<? extends JavaFileObject> compUnits) throws IOException {
+    ParsedPackageData data = new ParsedPackageData();
     JavacTask task = (JavacTask) compiler.getTask(null, null, null, OPTIONS, null, compUnits);
     try {
-      ClassScanner scanner = new ClassScanner();
+      ClassScanner scanner = new ClassScanner(data);
       for (CompilationUnitTree compileUnitTree : task.parse()) {
         compileUnitTree.accept(scanner, null);
       }
@@ -223,12 +197,18 @@ public class ClasspathParser {
     } catch (Exception exception) {
       logger.error("JavaTools failed to parse {}, skipping file", compUnits, exception);
     }
+    return data;
   }
 
   class ClassScanner extends TreeScanner<Void, Void> {
+    private final ParsedPackageData data;
     private CompilationUnitTree compileUnit;
     private String fileName;
     @Nullable private String currentPackage;
+
+    ClassScanner(ParsedPackageData data) {
+      this.data = data;
+    }
 
     // Stack of possibly-nested contexts we may currently be in.
     // First element is the outer-most context (e.g. top-level class), last element is the
@@ -563,44 +543,44 @@ public class ClasspathParser {
       parts.add(nestedClassName);
       return Joiner.on('.').join(parts);
     }
-  }
 
-  private void noteAnnotatedClass(
-      String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedClass(
+        String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      data.perClassData
+          .get(annotatedFullyQualifiedClassName)
+          .annotations
+          .add(annotationFullyQualifiedClassName);
     }
-    data.perClassData
-        .get(annotatedFullyQualifiedClassName)
-        .annotations
-        .add(annotationFullyQualifiedClassName);
-  }
 
-  private void noteAnnotatedMethod(
-      String annotatedFullyQualifiedClassName,
-      String methodName,
-      String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedMethod(
+        String annotatedFullyQualifiedClassName,
+        String methodName,
+        String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+      if (!classData.perMethodAnnotations.containsKey(methodName)) {
+        classData.perMethodAnnotations.put(methodName, new TreeSet<>());
+      }
+      classData.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
     }
-    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
-    if (!classData.perMethodAnnotations.containsKey(methodName)) {
-      classData.perMethodAnnotations.put(methodName, new TreeSet<>());
-    }
-    classData.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
-  }
 
-  private void noteAnnotatedField(
-      String annotatedFullyQualifiedClassName,
-      String fieldName,
-      String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedField(
+        String annotatedFullyQualifiedClassName,
+        String fieldName,
+        String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+      if (!classData.perFieldAnnotations.containsKey(fieldName)) {
+        classData.perFieldAnnotations.put(fieldName, new TreeSet<>());
+      }
+      classData.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
     }
-    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
-    if (!classData.perFieldAnnotations.containsKey(fieldName)) {
-      classData.perFieldAnnotations.put(fieldName, new TreeSet<>());
-    }
-    classData.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
   }
 }

@@ -143,12 +143,10 @@ public class GrpcServer {
         }
       }
 
-      ClasspathParser parser = new ClasspathParser();
-
       if (!javaFiles.isEmpty()) {
         try {
-          parser.parseClasses(directory, javaFiles);
-          ParsedPackageData javaData = parser.getParsedPackageData();
+          ClasspathParser parser = new ClasspathParser();
+          ParsedPackageData javaData = parser.parseClasses(directory, javaFiles);
           data.merge(javaData);
         } catch (IOException exception) {
           // If we fail to process a directory, which can happen with the module level processing
