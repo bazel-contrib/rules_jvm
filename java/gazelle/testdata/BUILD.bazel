@@ -59,6 +59,7 @@ SKIPPED_ON_WINDOWS = [
     for file in glob(["**/WORKSPACE"])
 ]
 
+# Run an arbitrary subset of embedded tests to validate that it works
 [
     gazelle_generation_test(
         name = file[0:-len("/WORKSPACE")] + "e",  # Windows path limits means that we need to keep these names short. Regrettably, "_embedded" is too long of a suffix, and so is "_e"
@@ -72,9 +73,15 @@ SKIPPED_ON_WINDOWS = [
         tags = ["skip-windows"],
         test_data = glob(
             include = [
-                file[0:-len("/WORKSPACE")] + "/**",
+                file + "/**",
             ],
         ),
     )
-    for file in glob(["**/WORKSPACE"])
+    for file in [
+        "annotation_processor",
+        "java_export_targets",
+        "kt_split_package",
+        "maven_with_collision_and_resolve",
+        "proto",
+    ]
 ]
