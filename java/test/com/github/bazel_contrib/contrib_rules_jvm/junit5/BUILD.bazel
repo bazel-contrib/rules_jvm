@@ -21,12 +21,30 @@ VINTAGE_NESTED_TEST = [
     "NestedClassesVintageTest.java",
 ]
 
+LEGACY_REPORT_GENERATOR_TEST = [
+    "LegacyReportGeneratorTest.java",
+]
+
+OPEN_REPORT_GENERATOR_TEST = [
+    "OpenReportGeneratorTest.java",
+]
+
+CUSTOM_REPORT_GENERATOR_TEST = [
+    "CustomReportGeneratorTest.java",
+]
+
+CUSTOM_REPORT_GENERATOR = [
+    "CustomReportGenerator.java",
+]
+
 java_test_suite(
     name = "small-tests",
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST,
+        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST +
+        LEGACY_REPORT_GENERATOR_TEST + OPEN_REPORT_GENERATOR_TEST +
+        CUSTOM_REPORT_GENERATOR_TEST + CUSTOM_REPORT_GENERATOR,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -106,5 +124,53 @@ java_junit5_test(
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "legacy-report-generator-test",
+    size = "small",
+    srcs = LEGACY_REPORT_GENERATOR_TEST,
+    report_generator = "legacy",
+    report_generator_deps = [
+        artifact("org.junit.platform:junit-platform-reporting", "contrib_rules_jvm_tests"),
+    ],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.LegacyReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "open-report-generator-test",
+    size = "small",
+    srcs = OPEN_REPORT_GENERATOR_TEST,
+    report_generator = "open",
+    report_generator_deps = [
+        artifact("org.junit.platform:junit-platform-reporting", "contrib_rules_jvm_tests"),
+    ],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.OpenReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_library(
+    name = "custom-report-generator",
+    srcs = CUSTOM_REPORT_GENERATOR,
+    deps = [
+        artifact("org.junit.platform:junit-platform-launcher", "contrib_rules_jvm_tests"),
+    ],
+)
+
+java_junit5_test(
+    name = "custom-report-generator-test",
+    size = "small",
+    srcs = CUSTOM_REPORT_GENERATOR_TEST,
+    report_generator = "com.github.bazel_contrib.contrib_rules_jvm.junit5.CustomReportGenerator",
+    report_generator_deps = [":custom-report-generator"],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.CustomReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
 )

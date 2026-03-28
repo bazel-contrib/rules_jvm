@@ -25,6 +25,8 @@ def _define_junit5_test(name, **kwargs):
         name = name,
         include_engines = kwargs.pop("include_engines", None),
         exclude_engines = kwargs.pop("exclude_engines", None),
+        report_generator = kwargs.pop("report_generator", None),
+        report_generator_deps = kwargs.pop("report_generator_deps", []),
         **kwargs
     )
     return name
