@@ -24,6 +24,7 @@ jobs:
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
       registry_fork: bazel-contrib/bazel-central-registry
       attest: false
+      draft: false
     permissions:
       contents: write
     secrets:
