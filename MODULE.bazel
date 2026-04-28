@@ -13,6 +13,7 @@ bazel_dep(name = "apple_rules_lint", version = "0.4.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.1")
 bazel_dep(name = "gazelle", version = "0.42.0", repo_name = "bazel_gazelle")
 bazel_dep(name = "protobuf", version = PROTOBUF_VERSION, repo_name = "com_google_protobuf")
+bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_go", version = "0.52.0")
 bazel_dep(name = "rules_java", version = "8.15.2")
@@ -47,7 +48,18 @@ use_repo(
 
 # There is a `grpc_java` bazel_dep we could use, but that pollutes the main
 # `maven` namespace and patches `protobuf` too. Instead, we pull the http
-# archive and patch it so we can use it in the one target we care about
+# archive and patch it so we can use it in the one target we care about.
+#
+# IMPORTANT: `@grpc-java` is declared via `use_repo_rule` and is therefore
+# scoped to this module. Downstream consumers of `contrib_rules_jvm` cannot
+# reference it and are not affected by the patches below. Because of that,
+# the patches in `third_party/grpc-java.patch` are deliberately *not*
+# upstream-safe — they rewrite `_protoc` and `grpc_java_plugin` to point at
+# our prebuilt binaries and rewire maven artifacts to our internal repo.
+# Do not try to generalise these patches or expose `@grpc-java` to other
+# modules; keep this fork strictly internal.
+GRPC_JAVA_VERSION = "1.79.0"
+
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
@@ -57,8 +69,102 @@ http_archive(
     patches = [
         "//third_party:grpc-java.patch",
     ],
-    strip_prefix = "grpc-java-1.79.0",
-    url = "https://github.com/grpc/grpc-java/archive/refs/tags/v1.79.0.tar.gz",
+    strip_prefix = "grpc-java-{}".format(GRPC_JAVA_VERSION),
+    url = "https://github.com/grpc/grpc-java/archive/refs/tags/v{}.tar.gz".format(GRPC_JAVA_VERSION),
+)
+
+# Precompiled protoc-gen-grpc-java plugin binaries from Maven Central.
+# These replace the cc_binary build of the plugin from C++ source,
+# eliminating the need for a C++ toolchain.
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+_PROTOC_GEN_GRPC_JAVA_URL = "https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/{v}/protoc-gen-grpc-java-{v}-{{platform}}.exe".format(v = GRPC_JAVA_VERSION)
+
+http_file(
+    name = "protoc_gen_grpc_java_linux_x86_64",
+    executable = True,
+    sha256 = "3d16b70b18854988b29c41e20d06ca3358c47008edb9e6986b926c5bca790816",
+    url = _PROTOC_GEN_GRPC_JAVA_URL.format(platform = "linux-x86_64"),
+)
+
+http_file(
+    name = "protoc_gen_grpc_java_linux_aarch_64",
+    executable = True,
+    sha256 = "445b924ba4d3f55abd651f71017d592552be706b3918af0d7837b70468137473",
+    url = _PROTOC_GEN_GRPC_JAVA_URL.format(platform = "linux-aarch_64"),
+)
+
+http_file(
+    name = "protoc_gen_grpc_java_osx_x86_64",
+    executable = True,
+    sha256 = "7b0dcbe2cbc02ebaf03e571eb295f43c0ba3d919b5d9e8fe34015846c9887289",
+    url = _PROTOC_GEN_GRPC_JAVA_URL.format(platform = "osx-x86_64"),
+)
+
+http_file(
+    name = "protoc_gen_grpc_java_osx_aarch_64",
+    executable = True,
+    sha256 = "7b0dcbe2cbc02ebaf03e571eb295f43c0ba3d919b5d9e8fe34015846c9887289",
+    url = _PROTOC_GEN_GRPC_JAVA_URL.format(platform = "osx-aarch_64"),
+)
+
+http_file(
+    name = "protoc_gen_grpc_java_windows_x86_64",
+    executable = True,
+    sha256 = "37a04cc3a35680bf17ba08e89d694d292f028e6f7ba24ef4b5bd8a1c43fa2e52",
+    url = _PROTOC_GEN_GRPC_JAVA_URL.format(platform = "windows-x86_64"),
+)
+
+# Precompiled protoc binaries from the protobuf release.
+# The java_grpc_library rule hard-codes a reference to protoc, so we provide
+# prebuilt binaries to avoid compiling protoc from C++ source.
+_PROTOC_URL = "https://github.com/protocolbuffers/protobuf/releases/download/v{v}/protoc-{v}-{{platform}}.zip".format(v = PROTOBUF_VERSION)
+
+_PREBUILT_PROTOC_BUILD_FILE = """\
+load("@bazel_skylib//rules:native_binary.bzl", "native_binary")
+package(default_visibility = ["//visibility:public"])
+native_binary(name = "protoc", src = "bin/protoc", out = "protoc_bin")
+"""
+
+_PREBUILT_PROTOC_WIN_BUILD_FILE = """\
+load("@bazel_skylib//rules:native_binary.bzl", "native_binary")
+package(default_visibility = ["//visibility:public"])
+native_binary(name = "protoc", src = "bin/protoc.exe", out = "protoc_bin.exe")
+"""
+
+http_archive(
+    name = "prebuilt_protoc_linux_x86_64",
+    build_file_content = _PREBUILT_PROTOC_BUILD_FILE,
+    sha256 = "c0040ea9aef08fdeb2c74ca609b18d5fdbfc44ea0042fcfbfb38860d35f7dd66",
+    url = _PROTOC_URL.format(platform = "linux-x86_64"),
+)
+
+http_archive(
+    name = "prebuilt_protoc_linux_aarch_64",
+    build_file_content = _PREBUILT_PROTOC_BUILD_FILE,
+    sha256 = "15aa988f4a6090636525ec236a8e4b3aab41eef402751bd5bb2df6afd9b7b5a5",
+    url = _PROTOC_URL.format(platform = "linux-aarch_64"),
+)
+
+http_archive(
+    name = "prebuilt_protoc_osx_x86_64",
+    build_file_content = _PREBUILT_PROTOC_BUILD_FILE,
+    sha256 = "a49bec10d039e902d3b43e49938c42526f90011467609864fa6386ac4014da58",
+    url = _PROTOC_URL.format(platform = "osx-x86_64"),
+)
+
+http_archive(
+    name = "prebuilt_protoc_osx_aarch_64",
+    build_file_content = _PREBUILT_PROTOC_BUILD_FILE,
+    sha256 = "726297dcfed58592fd35620a5a6246ae020c39e88f3fd4cb1827df7bcf3dfcf1",
+    url = _PROTOC_URL.format(platform = "osx-aarch_64"),
+)
+
+http_archive(
+    name = "prebuilt_protoc_win64",
+    build_file_content = _PREBUILT_PROTOC_WIN_BUILD_FILE,
+    sha256 = "0b31be019b9fe45a388e93bf1f16d70afdf9ce5caf958ea47892fbc868b5a1b3",
+    url = _PROTOC_URL.format(platform = "win64"),
 )
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
