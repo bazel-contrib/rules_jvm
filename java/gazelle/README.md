@@ -130,6 +130,8 @@ The following directives specific to the Java extension are recognized:
 | Tells the code generator to generate `java_grpc_library` rules when a `proto_library` rule with services is present. Defaults to True. |
 | java_generate_resources                           | True                                     |
 | Tells the code generator to generate `pkg_files` rules for the resources directories. Can be either "true" or "false". Defaults to "true". |
+| java_library_naming_convention                    | "{dirname}"                              |
+| Controls the naming of `java_library` and `kt_jvm_library` targets. The value is a template string where `{dirname}` is replaced with the leaf directory name. For example, `lib_{dirname}` would generate a target named `lib_hello` in a directory called `hello`. Defaults to `{dirname}` (the directory name). |
 | java_maven_install_file                           | "maven_install.json"                     |
 | Controls where the maven_install.json file is located, and named.                            |
 | java_maven_repository_name                        | "maven"                                  |
@@ -144,6 +146,8 @@ The following directives specific to the Java extension are recognized:
 | Strip resources prefix overrides the path-stripping behavior for resources. This is a direct way to specify the resource_strip_prefix for all resources in a directory. Example: `# gazelle:java_strip_resources_prefix my/data/config` |
 | java_test_file_suffixes                           | none                                     |
 | Indicates within a test directory which files are test classes vs utility classes, based on their basename. It should be set up to match the value used for `java_test_suite`'s `test_suffixes` attribute. Accepted values are a comma-delimited list of strings.            |
+| java_test_suite_naming_convention                 | "{dirname}"                              |
+| Controls the naming of `java_test_suite` targets. The value is a template string where `{dirname}` is replaced with the leaf directory name. For example, `{dirname}_tests` would generate a target named `hello_tests` in a directory called `hello`. When set, the template is the complete name (no automatic `-tests` suffix in module mode). Defaults to `{dirname}` (or `{dirname}-tests` in module mode). |
 | java_test_mode                                    | "suite"                                  |
 | Within a test directory determines the syle of test generation. Suite generates a single `java_test_suite` for the whole directory. File generates one `java_test` rule for each test file in the directory and a `java_library` for the utility classes. Can be either "suite" or "file", defaultes to "suite". |
 | jvm_kotlin_enabled                                | True                                     |

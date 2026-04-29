@@ -1,0 +1,9 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+# gazelle:java_library_naming_convention lib_{dirname}
+
+java_library(
+    name = "lib_hello",
+    srcs = ["Hello.java"],
+    visibility = ["//:__subpackages__"],
+)
