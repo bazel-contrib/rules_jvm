@@ -7,6 +7,7 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/parser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/servermanager"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_multiset"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
@@ -43,12 +44,13 @@ func (r *Runner) ServerManager() *servermanager.ServerManager {
 	return r.serverManager
 }
 
-type ParsePackageRequest struct {
-	Rel   string
-	Files []string
+func (r *Runner) Shutdown() {
+	if r.serverManager != nil {
+		r.serverManager.Shutdown()
+	}
 }
 
-func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*java.Package, error) {
+func (r Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageRequest) (*java.Package, error) {
 	defer func(t time.Time) {
 		r.logger.Debug().
 			Str("duration", time.Since(t).String()).
