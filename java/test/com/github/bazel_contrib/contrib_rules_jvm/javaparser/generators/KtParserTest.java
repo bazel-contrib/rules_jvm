@@ -148,22 +148,103 @@ public class KtParserTest {
         data.perClassData.keySet());
   }
 
-  // @Test
-  // public void fullyQualifiedClassAndFunctionUse() throws IOException {
-  //   ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
-  //   assertEquals(
-  //     Set.of("com.example"),
-  //     data.usedPackagesWithoutSpecificTypes);
-  //   assertEquals(
-  //       Set.of(
-  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
-  //           "workspace.com.gazelle.java.javaparser.generators.DeleteBookResponse",
-  //           "workspace.com.gazelle.java.javaparser.utils.Printer",
-  //           "workspace.com.gazelle.java.javaparser.factories.Factory",
-  //           "java.util.ArrayList",
-  //           "com.example.PrivateArg"),
-  //       data.usedTypes);
-  // }
+  @Test
+  public void testFqnExpressionsDetected() throws IOException {
+    // Gap: visitDotQualifiedExpression doesn't reconstruct FQN class references.
+    // FQN constructor calls (com.example.Foo()) and FQN static calls
+    // (com.example.Foo.method()) bypass imports entirely and are invisible.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
+
+    // FQN constructor call: workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest()
+    assertTrue(
+        data.usedTypes.contains(
+            "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest"),
+        "Should detect FQN constructor call. Found: " + data.usedTypes);
+
+    // FQN class reference: workspace.com.gazelle.java.javaparser.utils.Printer.print()
+    assertTrue(
+        data.usedTypes.contains("workspace.com.gazelle.java.javaparser.utils.Printer"),
+        "Should detect FQN class in static method call. Found: " + data.usedTypes);
+
+    // FQN class reference: workspace.com.gazelle.java.javaparser.factories.Factory.create()
+    assertTrue(
+        data.usedTypes.contains("workspace.com.gazelle.java.javaparser.factories.Factory"),
+        "Should detect FQN class in static method call. Found: " + data.usedTypes);
+
+    // FQN constructor call: java.util.ArrayList<String>()
+    assertTrue(
+        data.usedTypes.contains("java.util.ArrayList"),
+        "Should detect FQN constructor call for ArrayList. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testFqnTypePositionsDetected() throws IOException {
+    // Gap: tryGetFullyQualifiedName calls KtUserType.getReferencedName() which returns
+    // only the last segment (e.g. "InputData"), never the full "com.example.types.InputData".
+    // The qualifier chain is never walked, so FQN types in all type positions are invisible.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnTypePositions.kt"));
+
+    // FQN function parameter type
+    assertTrue(
+        data.usedTypes.contains("com.example.types.InputData"),
+        "Should detect FQN parameter type. Found: " + data.usedTypes);
+
+    // FQN function return type
+    assertTrue(
+        data.usedTypes.contains("com.example.types.OutputData"),
+        "Should detect FQN return type. Found: " + data.usedTypes);
+
+    // FQN property type
+    assertTrue(
+        data.usedTypes.contains("com.example.config.AppConfig"),
+        "Should detect FQN property type. Found: " + data.usedTypes);
+
+    // FQN in is-check
+    assertTrue(
+        data.usedTypes.contains("com.example.types.Marker"),
+        "Should detect FQN in is-check. Found: " + data.usedTypes);
+
+    // FQN in as-cast
+    assertTrue(
+        data.usedTypes.contains("com.example.types.Castable"),
+        "Should detect FQN in as-cast. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testFqnAnnotationsDetected() throws IOException {
+    // Gap: FQN annotations (@com.example.MyAnnotation) bypass import handling entirely.
+    // In Kotlin PSI, annotation types are KtUserType nodes with qualifier chains,
+    // but no annotation-specific handling routes them through FQN detection.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnAnnotations.kt"));
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.ClassAnnotation"),
+        "Should detect FQN class annotation. Found: " + data.usedTypes);
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.FieldAnnotation"),
+        "Should detect FQN field annotation. Found: " + data.usedTypes);
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.MethodAnnotation"),
+        "Should detect FQN method annotation. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testBareClassMethodReceiver() throws IOException {
+    // Gap: KtParser relies entirely on imports for usedTypes. A same-package class
+    // used as a bare method receiver (SamePackageHelper.create()) has no import,
+    // and visitSimpleNameExpression never adds unresolved class names to usedTypes.
+    // This matters for split packages where the class is in a different Bazel target.
+    // ClasspathParser handles this via checkFullyQualifiedType's same-package fallback.
+    ParsedPackageData data =
+        parser.parseClasses(getPathsWithNames("BareClassMethodReceiver.kt"));
+
+    assertTrue(
+        data.usedTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.SamePackageHelper"),
+        "Should detect same-package bare class method receiver. Found: " + data.usedTypes);
+  }
 
   @Test
   public void staticImportsTest() throws IOException {

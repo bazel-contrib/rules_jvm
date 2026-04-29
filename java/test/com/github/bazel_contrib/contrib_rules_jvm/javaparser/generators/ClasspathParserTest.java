@@ -430,7 +430,7 @@ public class ClasspathParserTest {
   @Test
   public void testSamePackageAllTypePositions() throws IOException {
     // Exercises many code paths where checkFullyQualifiedType is called:
-    // field type, method annotation, method type param bound, throws clause.
+    // class annotation, field type, method annotation, method type param bound, throws clause.
     // Also verifies filtering of type parameters (R) and java.lang types (String).
     List<? extends JavaFileObject> files =
         List.of(
@@ -439,11 +439,80 @@ public class ClasspathParserTest {
     ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
         Set.of(
+            "workspace.com.gazelle.java.javaparser.generators.SomeClassAnnotation",
             "workspace.com.gazelle.java.javaparser.generators.SomeFieldType",
             "workspace.com.gazelle.java.javaparser.generators.SomeMethodAnnotation",
             "workspace.com.gazelle.java.javaparser.generators.SomeMethodBound",
             "workspace.com.gazelle.java.javaparser.generators.SomeCheckedException"),
         data.usedTypes);
+  }
+
+  @Test
+  public void testFqnAnnotationOnFieldAndClass() throws IOException {
+    // Gap: visitClass and visitVariable have annotation loops that call
+    // noteAnnotatedClass/noteAnnotatedField but never call handleAnnotations,
+    // so FQN annotations (e.g. @com.example.ClassAnnotation) don't get passed
+    // through checkFullyQualifiedType and are invisible to dependency resolution.
+    // visitMethod does call handleAnnotations, so method-level FQN annotations work.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/FqnAnnotationOnFieldAndClass.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of("com.example.ClassAnnotation", "com.example.FieldAnnotation"), data.usedTypes);
+  }
+
+  @Test
+  public void testClassLiteral() throws IOException {
+    // Gap: there is no visitMemberSelect override, so Foo.class patterns go
+    // undetected. The expression part (Foo) should be treated as a type reference.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/ClassLiteral.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of(
+            "com.example.Registry",
+            "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
+        data.usedTypes);
+  }
+
+  @Test
+  public void testBareClassMethodReceiver() throws IOException {
+    // Gap: visitMethodInvocation only handles MemberSelectTree receivers
+    // (a.B.method()), not IdentifierTree receivers (B.method()). A same-package
+    // class used as a bare method receiver is missed because there's no import
+    // to catch it and the method-invocation path never reaches checkFullyQualifiedType.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/BareClassMethodReceiver.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of("workspace.com.gazelle.java.javaparser.generators.SamePackageHelper"),
+        data.usedTypes);
+  }
+
+  @Test
+  public void testStaticImportNestedClass() throws IOException {
+    // Gap: static imports register only the parent class in usedTypes but don't
+    // put the nested class name into currentFileImports. So a bare reference to
+    // Inner as a type resolves via same-package fallback instead of the import.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/StaticImportNestedClass.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    // Should contain the nested class FQN from the static import, not a
+    // same-package fallback like workspace.com.gazelle...Inner
+    assertEquals(
+        Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
   }
 
   private <T> TreeSet<T> treeSet(T... values) {

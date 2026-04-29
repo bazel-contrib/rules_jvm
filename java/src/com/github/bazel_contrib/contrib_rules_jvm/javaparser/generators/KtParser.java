@@ -418,6 +418,18 @@ public class KtParser {
     public void visitTypeReference(KtTypeReference reference) {
       logger.debug("Type reference: " + reference.getText());
 
+      // FQN type references in any type position (parameters, return types, properties,
+      // supertypes, is/as casts, annotations) — reconstruct the qualifier chain and
+      // record the full type name. Simple unqualified names are already covered by
+      // the import handler.
+      KtTypeElement rootType = getRootType(reference);
+      if (rootType instanceof KtUserType) {
+        KtUserType userType = (KtUserType) rootType;
+        if (userType.getQualifier() != null) {
+          packageData.usedTypes.add(reconstructQualifiedName(userType));
+        }
+      }
+
       super.visitTypeReference(reference);
     }
 
@@ -515,14 +527,37 @@ public class KtParser {
       logger.debug("AST: Dot qualified expression: " + expression.getText());
 
       KtExpression selectorExpression = expression.getSelectorExpression();
+      KtExpression receiverExpression = expression.getReceiverExpression();
       if (selectorExpression instanceof KtCallExpression) {
         KtCallExpression callExpr = (KtCallExpression) selectorExpression;
-        KtExpression receiverExpression = expression.getReceiverExpression();
         if (receiverExpression != null && callExpr.getCalleeExpression() != null) {
           String receiverType = getSimpleExpressionType(receiverExpression);
           String functionName = callExpr.getCalleeExpression().getText();
 
           checkExtensionFunctionCall(receiverType, functionName);
+
+          // FQN constructor / static call: com.example.ClassName(args) or
+          // com.example.ClassName.fn() — when the call's name is a class-like
+          // identifier and the receiver chain has dots, record the full qualified type.
+          if (isLikelyClassName(functionName) && receiverExpression.getText().contains(".")) {
+            packageData.usedTypes.add(receiverExpression.getText() + "." + functionName);
+          }
+        }
+
+        // Same-package bare class method receiver: SamePackageHelper.create() —
+        // a single class-like identifier as the receiver, with no import. This
+        // matters for split packages where the class lives in a different Bazel target.
+        recordSamePackageReceiverIfBareClass(receiverExpression, expression);
+      } else if (selectorExpression instanceof KtSimpleNameExpression) {
+        // FQN class reference as the selector of a DQE chain:
+        // com.example.ClassName.staticMember or com.example.ClassName.staticMethod()
+        // is parsed as outer-DQE(receiver=com.example.ClassName, selector=staticMethod()),
+        // and the inner DQE here has receiver=com.example, selector=ClassName.
+        String selectorName = ((KtSimpleNameExpression) selectorExpression).getReferencedName();
+        if (isLikelyClassName(selectorName)
+            && receiverExpression != null
+            && receiverExpression.getText().contains(".")) {
+          packageData.usedTypes.add(receiverExpression.getText() + "." + selectorName);
         }
       }
 
@@ -818,19 +853,50 @@ public class KtParser {
     private Optional<String> tryGetFullyQualifiedName(KtTypeElement typeElement) {
       if (typeElement instanceof KtUserType) {
         KtUserType userType = (KtUserType) typeElement;
-        String identifier = userType.getReferencedName();
-        if (identifier.contains(".")) {
-          return Optional.of(identifier);
-        } else {
-          if (fqImportByNameOrAlias.containsKey(identifier)) {
-            return Optional.of(fqImportByNameOrAlias.get(identifier).toString());
-          } else {
-            return Optional.empty();
-          }
+        // FQN type with a qualifier chain (e.g. com.example.Foo): walk the chain.
+        if (userType.getQualifier() != null) {
+          return Optional.of(reconstructQualifiedName(userType));
         }
-      } else {
+        String identifier = userType.getReferencedName();
+        if (fqImportByNameOrAlias.containsKey(identifier)) {
+          return Optional.of(fqImportByNameOrAlias.get(identifier).toString());
+        }
         return Optional.empty();
       }
+      return Optional.empty();
+    }
+
+    private void recordSamePackageReceiverIfBareClass(
+        KtExpression receiverExpression, KtElement contextElement) {
+      if (!(receiverExpression instanceof KtSimpleNameExpression)) {
+        return;
+      }
+      String name = ((KtSimpleNameExpression) receiverExpression).getReferencedName();
+      if (!isLikelyClassName(name)) {
+        return;
+      }
+      // If the name is imported, the import handler already recorded it.
+      if (fqImportByNameOrAlias.containsKey(name)) {
+        return;
+      }
+      FqName filePackage = contextElement.getContainingKtFile().getPackageFqName();
+      if (filePackage.isRoot()) {
+        return;
+      }
+      packageData.usedTypes.add(filePackage.child(Name.identifier(name)).asString());
+    }
+
+    private String reconstructQualifiedName(KtUserType userType) {
+      java.util.Deque<String> parts = new java.util.ArrayDeque<>();
+      KtUserType current = userType;
+      while (current != null) {
+        String name = current.getReferencedName();
+        if (name != null) {
+          parts.addFirst(name);
+        }
+        current = current.getQualifier();
+      }
+      return String.join(".", parts);
     }
 
     private FqName javaClassNameForKtFile(KtFile file) {

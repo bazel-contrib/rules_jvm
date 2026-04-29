@@ -283,6 +283,15 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedTypes.add(staticPackage);
+        // Static imports of nested classes (e.g., `import static Outer.Inner`) make the
+        // inner class available as a bare type. Register it in currentFileImports so
+        // that later type references resolve to the import rather than falling through
+        // to the same-package catch-all in checkFullyQualifiedType.
+        String lastComponent = name.substring(name.lastIndexOf('.') + 1);
+        if (isLikelyClassName(lastComponent)) {
+          currentFileImports.put(lastComponent, name);
+          data.usedTypes.add(name);
+        }
       } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedPackagesWithoutSpecificTypes.add(wildcardPackage);
@@ -307,6 +316,7 @@ public class ClasspathParser {
       for (Tree implement : t.getImplementsClause()) {
         checkFullyQualifiedType(implement);
       }
+      handleAnnotations(t.getModifiers().getAnnotations());
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
@@ -397,18 +407,45 @@ public class ClasspathParser {
     public Void visitMethodInvocation(MethodInvocationTree node, Void v) {
       if (node.getMethodSelect() instanceof MemberSelectTree) {
         ExpressionTree container = ((MemberSelectTree) node.getMethodSelect()).getExpression();
-        if (container instanceof MemberSelectTree) {
-          MemberSelectTree containerMST = (MemberSelectTree) container;
-          if (looksLikeClassName(containerMST.getIdentifier().toString())) {
-            checkFullyQualifiedType(container);
-          }
-        }
+        maybeRecordMethodReceiverType(container);
       }
       return super.visitMethodInvocation(node, v);
     }
 
+    private void maybeRecordMethodReceiverType(ExpressionTree container) {
+      String receiverTypeName = methodReceiverTypeName(container);
+      if (receiverTypeName == null) {
+        return;
+      }
+      // Imported identifiers are known types even when they are acronym-style names
+      // (for example UUID), which our heuristic would otherwise reject.
+      if (currentFileImports.containsKey(receiverTypeName) || looksLikeClassName(receiverTypeName)) {
+        checkFullyQualifiedType(container);
+      }
+    }
+
+    @Nullable
+    private String methodReceiverTypeName(ExpressionTree container) {
+      if (container instanceof MemberSelectTree) {
+        return ((MemberSelectTree) container).getIdentifier().toString();
+      }
+      if (container.getKind() == Tree.Kind.IDENTIFIER) {
+        return container.toString();
+      }
+      return null;
+    }
+
     private boolean looksLikeClassName(String identifier) {
       return isLikelyClassName(identifier);
+    }
+
+    @Override
+    public Void visitMemberSelect(MemberSelectTree node, Void v) {
+      // Foo.class — the expression part is a type reference.
+      if (node.getIdentifier().toString().equals("class")) {
+        checkFullyQualifiedType(node.getExpression());
+      }
+      return super.visitMemberSelect(node, v);
     }
 
     @Override
@@ -422,6 +459,8 @@ public class ClasspathParser {
       if (node.getType() != null) {
         checkFullyQualifiedType(node.getType());
       }
+
+      handleAnnotations(node.getModifiers().getAnnotations());
 
       // Local variables inside methods shouldn't be treated as fields.
       if (isDirectlyInClass()) {
