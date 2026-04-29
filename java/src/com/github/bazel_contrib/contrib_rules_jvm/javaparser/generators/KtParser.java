@@ -103,11 +103,42 @@ public class KtParser {
     return conf;
   }
 
+  // Auto-imported names from kotlin.*, kotlin.collections.*, kotlin.io.* etc. These should
+  // not trigger the same-package fallback in the resolver. Only the bare simple names that
+  // can appear in source without an explicit import are listed.
+  private static final Set<String> KOTLIN_WELL_KNOWN_TYPES =
+      Set.of(
+          // Type system
+          "Any", "Nothing", "Unit",
+          // Primitive wrappers
+          "Boolean", "Byte", "Char", "Double", "Float", "Int", "Long", "Short",
+          // Strings / text
+          "CharSequence", "String",
+          // Numbers / arrays
+          "Number", "Array",
+          "BooleanArray", "ByteArray", "CharArray", "DoubleArray", "FloatArray",
+          "IntArray", "LongArray", "ShortArray",
+          // Throwables
+          "Throwable", "Exception", "Error", "RuntimeException",
+          "IllegalArgumentException", "IllegalStateException", "NullPointerException",
+          "UnsupportedOperationException", "IndexOutOfBoundsException", "ClassCastException",
+          // Common types
+          "Comparable", "Cloneable", "Enum", "Lazy", "Pair", "Triple",
+          // kotlin.collections
+          "Collection", "MutableCollection",
+          "Iterable", "MutableIterable",
+          "Iterator", "MutableIterator",
+          "List", "MutableList",
+          "ListIterator", "MutableListIterator",
+          "Map", "MutableMap",
+          "Set", "MutableSet",
+          "Sequence");
+
   public static class KtFileVisitor extends KtTreeVisitorVoid {
     final ParsedPackageData packageData = new ParsedPackageData();
 
     private Stack<Visibility> visibilityStack = new Stack<>();
-    private HashMap<String, FqName> fqImportByNameOrAlias = new HashMap<>();
+    private HashMap<String, String> fqImportByNameOrAlias = new HashMap<>();
 
     // Track inline functions and their dependencies
     private String currentInlineFunction = null;
@@ -178,7 +209,7 @@ public class KtParser {
           localName = className.shortName().toString();
         }
         packageData.usedTypes.add(className.toString());
-        fqImportByNameOrAlias.put(localName, className);
+        fqImportByNameOrAlias.put(localName, className.toString());
       } else {
         if (importDirective.isAllUnder()) {
           // If it's a wildcard import with no obvious class name, assume it's a package.
@@ -418,15 +449,29 @@ public class KtParser {
     public void visitTypeReference(KtTypeReference reference) {
       logger.debug("Type reference: " + reference.getText());
 
-      // FQN type references in any type position (parameters, return types, properties,
-      // supertypes, is/as casts, annotations) — reconstruct the qualifier chain and
-      // record the full type name. Simple unqualified names are already covered by
-      // the import handler.
+      // Type references in any position (parameters, return types, properties, supertypes,
+      // is/as casts, annotations) flow through the shared resolver:
+      //   - FQN names like com.example.Foo are reconstructed from the qualifier chain and
+      //     pass through as-is.
+      //   - Bare imported names resolve via the import map.
+      //   - Bare class-like names not in imports fall back to the file's package
+      //     (split-package case), unless they are well-known kotlin.* types.
+      // Generic type arguments are KtTypeReference children and are visited via super.
       KtTypeElement rootType = getRootType(reference);
       if (rootType instanceof KtUserType) {
         KtUserType userType = (KtUserType) rootType;
-        if (userType.getQualifier() != null) {
-          packageData.usedTypes.add(reconstructQualifiedName(userType));
+        String name =
+            userType.getQualifier() != null
+                ? reconstructQualifiedName(userType)
+                : userType.getReferencedName();
+        // Gate by isLikelyClassName for bare names so type parameters and other identifiers
+        // don't trigger the same-package fallback. FQN names always have dots and pass through.
+        if (name != null && (name.contains(".") || isLikelyClassName(name))) {
+          FqName filePackage = reference.getContainingKtFile().getPackageFqName();
+          String currentPackage = filePackage.isRoot() ? null : filePackage.asString();
+          TypeNameResolver.resolve(
+                  name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
+              .ifPresent(packageData.usedTypes::add);
         }
       }
 
@@ -465,7 +510,7 @@ public class KtParser {
         return;
       }
       if (fqImportByNameOrAlias.containsKey(referencedName)) {
-        String fqName = fqImportByNameOrAlias.get(referencedName).toString();
+        String fqName = fqImportByNameOrAlias.get(referencedName);
         deps.add(fqName);
         logger.debug(context + " uses class: " + fqName);
       } else if (referencedName.contains(".")) {
@@ -669,7 +714,7 @@ public class KtParser {
     private String resolveTypeToFqName(String typeName) {
       // Try to resolve using imports
       if (fqImportByNameOrAlias.containsKey(typeName)) {
-        return fqImportByNameOrAlias.get(typeName).toString();
+        return fqImportByNameOrAlias.get(typeName);
       }
 
       // If it's already fully qualified, return as-is
@@ -762,7 +807,7 @@ public class KtParser {
         String name = simpleExpr.getReferencedName();
 
         if (fqImportByNameOrAlias.containsKey(name)) {
-          return fqImportByNameOrAlias.get(name).toString();
+          return fqImportByNameOrAlias.get(name);
         }
 
         switch (name) {
@@ -859,7 +904,7 @@ public class KtParser {
         }
         String identifier = userType.getReferencedName();
         if (fqImportByNameOrAlias.containsKey(identifier)) {
-          return Optional.of(fqImportByNameOrAlias.get(identifier).toString());
+          return Optional.of(fqImportByNameOrAlias.get(identifier));
         }
         return Optional.empty();
       }
@@ -872,18 +917,16 @@ public class KtParser {
         return;
       }
       String name = ((KtSimpleNameExpression) receiverExpression).getReferencedName();
+      // The DQE visitor fires for non-class receivers too (someObject.method()), so the
+      // class-name heuristic is the gate that decides whether to consult the resolver.
       if (!isLikelyClassName(name)) {
         return;
       }
-      // If the name is imported, the import handler already recorded it.
-      if (fqImportByNameOrAlias.containsKey(name)) {
-        return;
-      }
       FqName filePackage = contextElement.getContainingKtFile().getPackageFqName();
-      if (filePackage.isRoot()) {
-        return;
-      }
-      packageData.usedTypes.add(filePackage.child(Name.identifier(name)).asString());
+      String currentPackage = filePackage.isRoot() ? null : filePackage.asString();
+      TypeNameResolver.resolve(
+              name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
+          .ifPresent(packageData.usedTypes::add);
     }
 
     private String reconstructQualifiedName(KtUserType userType) {
@@ -916,7 +959,7 @@ public class KtParser {
 
       // Try to resolve to fully qualified name if it's in imports
       if (fqImportByNameOrAlias.containsKey(typeText)) {
-        return fqImportByNameOrAlias.get(typeText).toString();
+        return fqImportByNameOrAlias.get(typeText);
       }
 
       // For built-in types like String, Int, etc., add java.lang prefix if needed
@@ -1027,7 +1070,7 @@ public class KtParser {
 
           // Try to resolve from imports
           if (fqImportByNameOrAlias.containsKey(calleeName)) {
-            return fqImportByNameOrAlias.get(calleeName).toString();
+            return fqImportByNameOrAlias.get(calleeName);
           }
 
           // Return the simple name as a fallback

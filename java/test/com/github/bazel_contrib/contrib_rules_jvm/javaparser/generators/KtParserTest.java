@@ -231,6 +231,27 @@ public class KtParserTest {
   }
 
   @Test
+  public void testSamePackageInAllTypePositions() throws IOException {
+    // Mirrors ClasspathParserTest.testSamePackageAllTypePositions: same-package
+    // class names used as supertype, field type, parameter type, return type,
+    // is-check, and as-cast should all flow through the resolver and end up in
+    // usedTypes with the file's package prefixed. Built-in names like Boolean
+    // and Any must not be added (kotlin.* skip list).
+    ParsedPackageData data =
+        parser.parseClasses(getPathsWithNames("SamePackageAllPositions.kt"));
+
+    assertEquals(
+        Set.of(
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeSuperType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeFieldType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeParamType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeReturnType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeMarker",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeCastTarget"),
+        data.usedTypes);
+  }
+
+  @Test
   public void testBareClassMethodReceiver() throws IOException {
     // Gap: KtParser relies entirely on imports for usedTypes. A same-package class
     // used as a bare method receiver (SamePackageHelper.create()) has no import,

@@ -6,7 +6,6 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -481,6 +481,13 @@ public class ClasspathParser {
       return super.visitVariable(node, unused);
     }
 
+    private Set<String> excludedSamePackageNames() {
+      Set<String> excluded = new TreeSet<>(JAVA_LANG_TYPES);
+      excluded.addAll(locallyDefinedClassNames);
+      excluded.addAll(typeParameterNames);
+      return excluded;
+    }
+
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
       if (identifier == null) {
@@ -489,27 +496,12 @@ public class ClasspathParser {
       Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
-        String typeName = identifier.toString();
-        List<String> components = Splitter.on(".").splitToList(typeName);
-        if (currentFileImports.containsKey(components.get(0))) {
-          String importedType = currentFileImports.get(components.get(0));
-          data.usedTypes.add(importedType);
-          types.add(importedType);
-        } else if (components.size() > 1) {
-          data.usedTypes.add(typeName);
-          types.add(typeName);
-        } else if (currentPackage != null
-            && !typeName.isEmpty()
-            && !locallyDefinedClassNames.contains(typeName)
-            && !JAVA_LANG_TYPES.contains(typeName)
-            && !typeParameterNames.contains(typeName)) {
-          // Bare class name, not imported, not locally defined — resolve against
-          // current package. This handles same-package references like
-          // "extends AbstractIdentifier" where the referenced class is in the
-          // same Java package but potentially a different Bazel package.
-          String qualifiedName = currentPackage + "." + typeName;
-          data.usedTypes.add(qualifiedName);
-          types.add(qualifiedName);
+        Optional<String> resolved =
+            TypeNameResolver.resolve(
+                identifier.toString(), currentFileImports, currentPackage, excludedSamePackageNames());
+        if (resolved.isPresent()) {
+          data.usedTypes.add(resolved.get());
+          types.add(resolved.get());
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
