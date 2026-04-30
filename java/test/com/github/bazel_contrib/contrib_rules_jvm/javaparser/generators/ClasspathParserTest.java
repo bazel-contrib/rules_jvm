@@ -449,11 +449,11 @@ public class ClasspathParserTest {
 
   @Test
   public void testFqnAnnotationOnFieldAndClass() throws IOException {
-    // Gap: visitClass and visitVariable have annotation loops that call
+    // `visitClass` and `visitVariable` have annotation loops that call
     // noteAnnotatedClass/noteAnnotatedField but never call handleAnnotations,
     // so FQN annotations (e.g. @com.example.ClassAnnotation) don't get passed
     // through checkFullyQualifiedType and are invisible to dependency resolution.
-    // visitMethod does call handleAnnotations, so method-level FQN annotations work.
+    // `visitMethod` does call `handleAnnotations`, so method-level FQN annotations work.
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get(
@@ -466,27 +466,25 @@ public class ClasspathParserTest {
 
   @Test
   public void testClassLiteral() throws IOException {
-    // Gap: there is no visitMemberSelect override, so Foo.class patterns go
-    // undetected. The expression part (Foo) should be treated as a type reference.
+    // There is no `visitMemberSelect` override, so `Foo.class` patterns go
+    // undetected. The expression part (`Foo`) should be treated as a type reference.
     List<? extends JavaFileObject> files =
         List.of(
-            testFiles.get(
-                "/workspace/com/gazelle/java/javaparser/generators/ClassLiteral.java"));
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/ClassLiteral.java"));
     ParsedPackageData data = parser.parseClasses(files);
 
     assertEquals(
         Set.of(
-            "com.example.Registry",
-            "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
+            "com.example.Registry", "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
         data.usedTypes);
   }
 
   @Test
   public void testBareClassMethodReceiver() throws IOException {
-    // Gap: visitMethodInvocation only handles MemberSelectTree receivers
-    // (a.B.method()), not IdentifierTree receivers (B.method()). A same-package
+    // `visitMethodInvocation` only handles MemberSelectTree receivers
+    // (`a.B.method()`), not IdentifierTree receivers (`B.method()`). A same-package
     // class used as a bare method receiver is missed because there's no import
-    // to catch it and the method-invocation path never reaches checkFullyQualifiedType.
+    // to catch it and the method-invocation path never reaches `checkFullyQualifiedType`.
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get(
@@ -500,9 +498,9 @@ public class ClasspathParserTest {
 
   @Test
   public void testStaticImportNestedClass() throws IOException {
-    // Gap: static imports register only the parent class in usedTypes but don't
-    // put the nested class name into currentFileImports. So a bare reference to
-    // Inner as a type resolves via same-package fallback instead of the import.
+    // Static imports register only the parent class in `usedTypes` but don't
+    // put the nested class name into `currentFileImports`. So a bare reference to
+    // `Inner` as a type resolves via same-package fallback instead of the import.
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get(
@@ -511,8 +509,7 @@ public class ClasspathParserTest {
 
     // Should contain the nested class FQN from the static import, not a
     // same-package fallback like workspace.com.gazelle...Inner
-    assertEquals(
-        Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
+    assertEquals(Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
   }
 
   private <T> TreeSet<T> treeSet(T... values) {

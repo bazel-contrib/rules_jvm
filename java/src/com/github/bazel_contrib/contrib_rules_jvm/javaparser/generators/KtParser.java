@@ -109,29 +109,65 @@ public class KtParser {
   private static final Set<String> KOTLIN_WELL_KNOWN_TYPES =
       Set.of(
           // Type system
-          "Any", "Nothing", "Unit",
+          "Any",
+          "Nothing",
+          "Unit",
           // Primitive wrappers
-          "Boolean", "Byte", "Char", "Double", "Float", "Int", "Long", "Short",
+          "Boolean",
+          "Byte",
+          "Char",
+          "Double",
+          "Float",
+          "Int",
+          "Long",
+          "Short",
           // Strings / text
-          "CharSequence", "String",
+          "CharSequence",
+          "String",
           // Numbers / arrays
-          "Number", "Array",
-          "BooleanArray", "ByteArray", "CharArray", "DoubleArray", "FloatArray",
-          "IntArray", "LongArray", "ShortArray",
+          "Number",
+          "Array",
+          "BooleanArray",
+          "ByteArray",
+          "CharArray",
+          "DoubleArray",
+          "FloatArray",
+          "IntArray",
+          "LongArray",
+          "ShortArray",
           // Throwables
-          "Throwable", "Exception", "Error", "RuntimeException",
-          "IllegalArgumentException", "IllegalStateException", "NullPointerException",
-          "UnsupportedOperationException", "IndexOutOfBoundsException", "ClassCastException",
+          "Throwable",
+          "Exception",
+          "Error",
+          "RuntimeException",
+          "IllegalArgumentException",
+          "IllegalStateException",
+          "NullPointerException",
+          "UnsupportedOperationException",
+          "IndexOutOfBoundsException",
+          "ClassCastException",
           // Common types
-          "Comparable", "Cloneable", "Enum", "Lazy", "Pair", "Triple",
+          "Comparable",
+          "Cloneable",
+          "Enum",
+          "Lazy",
+          "Pair",
+          "Triple",
           // kotlin.collections
-          "Collection", "MutableCollection",
-          "Iterable", "MutableIterable",
-          "Iterator", "MutableIterator",
-          "List", "MutableList",
-          "ListIterator", "MutableListIterator",
-          "Map", "MutableMap",
-          "Set", "MutableSet",
+          "Collection",
+          "MutableCollection",
+          "Iterable",
+          "MutableIterable",
+          "Iterator",
+          "MutableIterator",
+          "List",
+          "MutableList",
+          "ListIterator",
+          "MutableListIterator",
+          "Map",
+          "MutableMap",
+          "Set",
+          "MutableSet",
           "Sequence");
 
   public static class KtFileVisitor extends KtTreeVisitorVoid {
@@ -924,8 +960,7 @@ public class KtParser {
       }
       FqName filePackage = contextElement.getContainingKtFile().getPackageFqName();
       String currentPackage = filePackage.isRoot() ? null : filePackage.asString();
-      TypeNameResolver.resolve(
-              name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
+      TypeNameResolver.resolve(name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
           .ifPresent(packageData.usedTypes::add);
     }
 

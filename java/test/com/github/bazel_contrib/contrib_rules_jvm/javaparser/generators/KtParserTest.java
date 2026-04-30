@@ -150,9 +150,9 @@ public class KtParserTest {
 
   @Test
   public void testFqnExpressionsDetected() throws IOException {
-    // Gap: visitDotQualifiedExpression doesn't reconstruct FQN class references.
-    // FQN constructor calls (com.example.Foo()) and FQN static calls
-    // (com.example.Foo.method()) bypass imports entirely and are invisible.
+    // `visitDotQualifiedExpression` doesn't reconstruct FQN class references.
+    // FQN constructor calls (`com.example.Foo()`) and FQN static calls
+    // (`com.example.Foo.method()`) bypass imports entirely and are invisible.
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
 
     // FQN constructor call: workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest()
@@ -179,9 +179,9 @@ public class KtParserTest {
 
   @Test
   public void testFqnTypePositionsDetected() throws IOException {
-    // Gap: tryGetFullyQualifiedName calls KtUserType.getReferencedName() which returns
+    // `tryGetFullyQualifiedName` calls `KtUserType.getReferencedName()` which returns
     // only the last segment (e.g. "InputData"), never the full "com.example.types.InputData".
-    // The qualifier chain is never walked, so FQN types in all type positions are invisible.
+    // The qualifier chain was never walked, so FQN types in all type positions are invisible.
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnTypePositions.kt"));
 
     // FQN function parameter type
@@ -212,7 +212,7 @@ public class KtParserTest {
 
   @Test
   public void testFqnAnnotationsDetected() throws IOException {
-    // Gap: FQN annotations (@com.example.MyAnnotation) bypass import handling entirely.
+    // FQN annotations (`@com.example.MyAnnotation`) bypassed import handling entirely.
     // In Kotlin PSI, annotation types are KtUserType nodes with qualifier chains,
     // but no annotation-specific handling routes them through FQN detection.
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnAnnotations.kt"));
@@ -237,8 +237,7 @@ public class KtParserTest {
     // is-check, and as-cast should all flow through the resolver and end up in
     // usedTypes with the file's package prefixed. Built-in names like Boolean
     // and Any must not be added (kotlin.* skip list).
-    ParsedPackageData data =
-        parser.parseClasses(getPathsWithNames("SamePackageAllPositions.kt"));
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("SamePackageAllPositions.kt"));
 
     assertEquals(
         Set.of(
@@ -253,13 +252,12 @@ public class KtParserTest {
 
   @Test
   public void testBareClassMethodReceiver() throws IOException {
-    // Gap: KtParser relies entirely on imports for usedTypes. A same-package class
-    // used as a bare method receiver (SamePackageHelper.create()) has no import,
-    // and visitSimpleNameExpression never adds unresolved class names to usedTypes.
+    // `KtParser` relied entirely on imports for `usedTypes`. A same-package class
+    // used as a bare method receiver (`SamePackageHelper.create()`) has no import,
+    // and `visitSimpleNameExpression` never adds unresolved class names to `usedTypes`.
     // This matters for split packages where the class is in a different Bazel target.
-    // ClasspathParser handles this via checkFullyQualifiedType's same-package fallback.
-    ParsedPackageData data =
-        parser.parseClasses(getPathsWithNames("BareClassMethodReceiver.kt"));
+    // `ClasspathParser` handles this via `checkFullyQualifiedType`'s same-package fallback.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("BareClassMethodReceiver.kt"));
 
     assertTrue(
         data.usedTypes.contains(

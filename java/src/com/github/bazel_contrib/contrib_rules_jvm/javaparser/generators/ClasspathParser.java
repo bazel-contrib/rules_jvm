@@ -419,7 +419,8 @@ public class ClasspathParser {
       }
       // Imported identifiers are known types even when they are acronym-style names
       // (for example UUID), which our heuristic would otherwise reject.
-      if (currentFileImports.containsKey(receiverTypeName) || looksLikeClassName(receiverTypeName)) {
+      if (currentFileImports.containsKey(receiverTypeName)
+          || looksLikeClassName(receiverTypeName)) {
         checkFullyQualifiedType(container);
       }
     }
@@ -498,7 +499,10 @@ public class ClasspathParser {
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
         Optional<String> resolved =
             TypeNameResolver.resolve(
-                identifier.toString(), currentFileImports, currentPackage, excludedSamePackageNames());
+                identifier.toString(),
+                currentFileImports,
+                currentPackage,
+                excludedSamePackageNames());
         if (resolved.isPresent()) {
           data.usedTypes.add(resolved.get());
           types.add(resolved.get());

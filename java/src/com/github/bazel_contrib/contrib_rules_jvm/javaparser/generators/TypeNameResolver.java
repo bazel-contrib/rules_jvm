@@ -1,15 +1,14 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import javax.annotation.Nullable;
 
 /**
  * Resolves a (possibly dotted) simple-name string to its fully-qualified form, using imports,
- * already-qualified shape, or a same-package fallback. AST-agnostic so the policy is identical for
- * Java and Kotlin sources — visitors are responsible for extracting the name string and deciding
- * when to call.
+ * already-qualified shape, or a same-package fallback. The policy is identical for Java and Kotlin
+ * sources so visitors are responsible for extracting the name string and deciding when to call.
  */
 final class TypeNameResolver {
 

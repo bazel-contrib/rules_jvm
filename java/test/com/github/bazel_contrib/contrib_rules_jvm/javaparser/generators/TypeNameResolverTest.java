@@ -50,8 +50,7 @@ class TypeNameResolverTest {
 
   @Test
   void nullCurrentPackageDisablesFallback() {
-    assertEquals(
-        Optional.empty(), TypeNameResolver.resolve("Helper", Map.of(), null, Set.of()));
+    assertEquals(Optional.empty(), TypeNameResolver.resolve("Helper", Map.of(), null, Set.of()));
   }
 
   @Test
@@ -70,7 +69,6 @@ class TypeNameResolverTest {
     // gate the same-package fallback, not import resolution.
     assertEquals(
         Optional.of("java.util.UUID"),
-        TypeNameResolver.resolve(
-            "UUID", Map.of("UUID", "java.util.UUID"), "pkg", Set.of("UUID")));
+        TypeNameResolver.resolve("UUID", Map.of("UUID", "java.util.UUID"), "pkg", Set.of("UUID")));
   }
 }
