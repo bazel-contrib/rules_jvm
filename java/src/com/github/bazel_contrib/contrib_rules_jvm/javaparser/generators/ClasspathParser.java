@@ -6,7 +6,6 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -283,6 +283,15 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedTypes.add(staticPackage);
+        // Static imports of nested classes (e.g., `import static Outer.Inner`) make the
+        // inner class available as a bare type. Register it in currentFileImports so
+        // that later type references resolve to the import rather than falling through
+        // to the same-package catch-all in checkFullyQualifiedType.
+        String lastComponent = name.substring(name.lastIndexOf('.') + 1);
+        if (isLikelyClassName(lastComponent)) {
+          currentFileImports.put(lastComponent, name);
+          data.usedTypes.add(name);
+        }
       } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedPackagesWithoutSpecificTypes.add(wildcardPackage);
@@ -307,6 +316,7 @@ public class ClasspathParser {
       for (Tree implement : t.getImplementsClause()) {
         checkFullyQualifiedType(implement);
       }
+      handleAnnotations(t.getModifiers().getAnnotations());
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
@@ -397,18 +407,46 @@ public class ClasspathParser {
     public Void visitMethodInvocation(MethodInvocationTree node, Void v) {
       if (node.getMethodSelect() instanceof MemberSelectTree) {
         ExpressionTree container = ((MemberSelectTree) node.getMethodSelect()).getExpression();
-        if (container instanceof MemberSelectTree) {
-          MemberSelectTree containerMST = (MemberSelectTree) container;
-          if (looksLikeClassName(containerMST.getIdentifier().toString())) {
-            checkFullyQualifiedType(container);
-          }
-        }
+        maybeRecordMethodReceiverType(container);
       }
       return super.visitMethodInvocation(node, v);
     }
 
+    private void maybeRecordMethodReceiverType(ExpressionTree container) {
+      String receiverTypeName = methodReceiverTypeName(container);
+      if (receiverTypeName == null) {
+        return;
+      }
+      // Imported identifiers are known types even when they are acronym-style names
+      // (for example UUID), which our heuristic would otherwise reject.
+      if (currentFileImports.containsKey(receiverTypeName)
+          || looksLikeClassName(receiverTypeName)) {
+        checkFullyQualifiedType(container);
+      }
+    }
+
+    @Nullable
+    private String methodReceiverTypeName(ExpressionTree container) {
+      if (container instanceof MemberSelectTree) {
+        return ((MemberSelectTree) container).getIdentifier().toString();
+      }
+      if (container.getKind() == Tree.Kind.IDENTIFIER) {
+        return container.toString();
+      }
+      return null;
+    }
+
     private boolean looksLikeClassName(String identifier) {
       return isLikelyClassName(identifier);
+    }
+
+    @Override
+    public Void visitMemberSelect(MemberSelectTree node, Void v) {
+      // Foo.class — the expression part is a type reference.
+      if (node.getIdentifier().toString().equals("class")) {
+        checkFullyQualifiedType(node.getExpression());
+      }
+      return super.visitMemberSelect(node, v);
     }
 
     @Override
@@ -422,6 +460,8 @@ public class ClasspathParser {
       if (node.getType() != null) {
         checkFullyQualifiedType(node.getType());
       }
+
+      handleAnnotations(node.getModifiers().getAnnotations());
 
       // Local variables inside methods shouldn't be treated as fields.
       if (isDirectlyInClass()) {
@@ -442,6 +482,13 @@ public class ClasspathParser {
       return super.visitVariable(node, unused);
     }
 
+    private Set<String> excludedSamePackageNames() {
+      Set<String> excluded = new TreeSet<>(JAVA_LANG_TYPES);
+      excluded.addAll(locallyDefinedClassNames);
+      excluded.addAll(typeParameterNames);
+      return excluded;
+    }
+
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
       if (identifier == null) {
@@ -450,27 +497,15 @@ public class ClasspathParser {
       Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
-        String typeName = identifier.toString();
-        List<String> components = Splitter.on(".").splitToList(typeName);
-        if (currentFileImports.containsKey(components.get(0))) {
-          String importedType = currentFileImports.get(components.get(0));
-          data.usedTypes.add(importedType);
-          types.add(importedType);
-        } else if (components.size() > 1) {
-          data.usedTypes.add(typeName);
-          types.add(typeName);
-        } else if (currentPackage != null
-            && !typeName.isEmpty()
-            && !locallyDefinedClassNames.contains(typeName)
-            && !JAVA_LANG_TYPES.contains(typeName)
-            && !typeParameterNames.contains(typeName)) {
-          // Bare class name, not imported, not locally defined — resolve against
-          // current package. This handles same-package references like
-          // "extends AbstractIdentifier" where the referenced class is in the
-          // same Java package but potentially a different Bazel package.
-          String qualifiedName = currentPackage + "." + typeName;
-          data.usedTypes.add(qualifiedName);
-          types.add(qualifiedName);
+        Optional<String> resolved =
+            TypeNameResolver.resolve(
+                identifier.toString(),
+                currentFileImports,
+                currentPackage,
+                excludedSamePackageNames());
+        if (resolved.isPresent()) {
+          data.usedTypes.add(resolved.get());
+          types.add(resolved.get());
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();

@@ -13,6 +13,7 @@ java_library(
         "ParsedPackageData.java",
         "PerClassData.java",
         "TimeoutHandler.java",
+        "TypeNameResolver.java",
     ],
     visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
     runtime_deps = [
