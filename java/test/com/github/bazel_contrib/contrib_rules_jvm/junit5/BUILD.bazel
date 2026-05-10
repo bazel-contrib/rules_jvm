@@ -30,6 +30,7 @@ java_test_suite(
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
+    resources = glob(["resources/*"]),
     runner = "junit5",
     test_suffixes_excludes = ["BaseTest.java"],
     deps = [
