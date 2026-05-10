@@ -48,8 +48,14 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
   // and when writing results we want to flush any pending tests as interrupted,
   // rather than ignoring them because they're incomplete.
   private final AtomicBoolean wasInterrupted = new AtomicBoolean();
+  private final OutputCapture outputCapture;
 
   public BazelJUnitOutputListener(Path xmlOut) {
+    this(xmlOut, null);
+  }
+
+  public BazelJUnitOutputListener(Path xmlOut, OutputCapture outputCapture) {
+    this.outputCapture = outputCapture;
     try {
       Files.createDirectories(xmlOut.getParent());
       // Use LazyFileWriter to defer file creation until the first write operation.
@@ -259,7 +265,40 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
 
   public void closeForInterrupt() {
     wasInterrupted.set(true);
+    injectFallbackOutput();
     close();
+  }
+
+  /**
+   * Inject captured stdout/stderr as fallback for tests that don't have JUnit Platform capture.
+   * This happens when tests are interrupted (e.g., timeout) before they complete normally.
+   */
+  private void injectFallbackOutput() {
+    if (outputCapture == null) {
+      return;
+    }
+
+    String fallbackStdout = outputCapture.hasStdout() ? outputCapture.getStdout() : null;
+    String fallbackStderr = outputCapture.hasStderr() ? outputCapture.getStderr() : null;
+
+    if (fallbackStdout == null && fallbackStderr == null) {
+      return;
+    }
+
+    synchronized (resultsLock) {
+      for (TestData testData : results.values()) {
+        // Only inject into tests that are incomplete (no duration means they didn't finish)
+        // and don't already have stdout/stderr from JUnit Platform
+        if (testData.getDuration() == null) {
+          if (fallbackStdout != null && testData.getStdOut() == null) {
+            testData.setFallbackStdOut(fallbackStdout);
+          }
+          if (fallbackStderr != null && testData.getStdErr() == null) {
+            testData.setFallbackStdErr(fallbackStderr);
+          }
+        }
+      }
+    }
   }
 
   public void close() {
