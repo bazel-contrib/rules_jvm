@@ -183,7 +183,7 @@ func (jei *JavaExportIndex) FinalizeIndex() {
 		conflictingExports := []string{conflict.wantedToExportFrom.String(), conflict.alreadyExportedFrom.String()}
 		sort.Strings(conflictingExports)
 
-		jei.logger.Error().
+		jei.logger.Warn().
 			Str("dependency", conflict.dep.String()).
 			Strs("java_exports", conflictingExports).
 			Msg("Two `java_export` targets want to export the same dependency. This can lead to incorrect results, please disambiguate, e.g. by having export depend on other export explicitly.")
