@@ -54,10 +54,10 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 			Msg("parse package done")
 	}(time.Now())
 
-	importedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
-	exportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
-	importedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
-	mains := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	importedClassNames := make(map[string]struct{})
+	exportedClassNames := make(map[string]struct{})
+	importedPackageNames := make(map[string]struct{})
+	mainClassNames := make(map[string]struct{})
 	perClassMetadata := make(map[string]java.PerClassMetadata)
 
 	var packageName types.PackageName
@@ -77,28 +77,19 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 		}
 
 		for _, imp := range info.importedClasses {
-			cn, err := types.ParseClassName(imp)
-			if err != nil {
-				r.logger.Warn().Str("import", imp).Err(err).Msg("skipping unparseable import")
-				continue
-			}
-			importedClasses.Add(*cn)
+			importedClassNames[imp] = struct{}{}
 		}
 		for _, pkg := range info.importedPackages {
-			importedPackages.Add(types.NewPackageName(pkg))
+			importedPackageNames[pkg] = struct{}{}
 		}
 
 		for _, cls := range info.exportedClasses {
-			cn, err := types.ParseClassName(cls)
-			if err != nil {
-				r.logger.Warn().Str("class", cls).Err(err).Msg("skipping unparseable exported class")
-				continue
-			}
-			exportedClasses.Add(*cn)
+			exportedClassNames[cls] = struct{}{}
 		}
 
 		for _, cls := range info.mainClasses {
-			mains.Add(types.NewClassName(packageName, cls))
+			mainClassName := types.NewClassName(packageName, cls)
+			mainClassNames[mainClassName.FullyQualifiedClassName()] = struct{}{}
 		}
 
 		for className, meta := range info.perClassMetadata {
@@ -112,6 +103,41 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 		}
 		sort.Strings(names)
 		return nil, fmt.Errorf("InvalidArgument: Expected exactly one java package, but saw %d: %s", len(names), strings.Join(names, ", "))
+	}
+
+	importedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for imp := range importedClassNames {
+		cn, err := types.ParseClassName(imp)
+		if err != nil {
+			r.logger.Warn().Str("import", imp).Err(err).Msg("skipping unparseable import")
+			continue
+		}
+		importedClasses.Add(*cn)
+	}
+
+	exportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for cls := range exportedClassNames {
+		cn, err := types.ParseClassName(cls)
+		if err != nil {
+			r.logger.Warn().Str("class", cls).Err(err).Msg("skipping unparseable exported class")
+			continue
+		}
+		exportedClasses.Add(*cn)
+	}
+
+	importedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+	for pkg := range importedPackageNames {
+		importedPackages.Add(types.NewPackageName(pkg))
+	}
+
+	mains := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for cls := range mainClassNames {
+		cn, err := types.ParseClassName(cls)
+		if err != nil {
+			r.logger.Warn().Str("class", cls).Err(err).Msg("skipping unparseable main class")
+			continue
+		}
+		mains.Add(*cn)
 	}
 
 	return &java.Package{
@@ -169,7 +195,7 @@ func (r *Runner) parseJavaFile(rel, filename string) (*javaFileInfo, error) {
 		}
 	}
 
-	localClassNames := collectLocalClassNames(root, content)
+	localClassNames := collectLocalClassNames(tree, content)
 	for i := 0; i < root.NamedChildCount(); i++ {
 		child := root.NamedChild(i)
 		switch child.Type(tsJavaLang) {
@@ -302,22 +328,33 @@ func addToImportMap(importMap map[string]string, fqn string) {
 	}
 }
 
-func collectLocalClassNames(root *gotreesitter.Node, content []byte) map[string]struct{} {
+func collectLocalClassNames(tree *gotreesitter.Tree, content []byte) map[string]struct{} {
 	names := map[string]struct{}{}
-	var walk func(*gotreesitter.Node)
-	walk = func(node *gotreesitter.Node) {
+	cursor := gotreesitter.NewTreeCursorFromTree(tree)
+	for {
+		node := cursor.CurrentNode()
+		if node == nil {
+			return names
+		}
 		switch node.Type(tsJavaLang) {
 		case "class_declaration", "interface_declaration", "enum_declaration":
 			if nameNode := node.ChildByFieldName("name", tsJavaLang); nameNode != nil {
 				names[nameNode.Text(content)] = struct{}{}
 			}
 		}
-		for i := 0; i < node.NamedChildCount(); i++ {
-			walk(node.NamedChild(i))
+
+		if cursor.GotoFirstNamedChild() {
+			continue
+		}
+		for {
+			if cursor.GotoNextNamedSibling() {
+				break
+			}
+			if !cursor.GotoParent() {
+				return names
+			}
 		}
 	}
-	walk(root)
-	return names
 }
 
 func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo, importMap map[string]string, parents []string, localClassNames map[string]struct{}, inheritedTypeParams map[string]struct{}) {

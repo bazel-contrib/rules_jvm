@@ -410,6 +410,34 @@ public class B {}
 	}
 }
 
+func TestFieldInitializerTypeReferences(t *testing.T) {
+	runner, dir := newTestRunner(t)
+	writeJava(t, dir, "src", "UsesFieldInitializers.java", `
+package com.example;
+
+public class UsesFieldInitializers {
+	Object byConstructor = new Helper();
+	Class<?> byClassLiteral = Helper.class;
+	Runnable byMethodReference = Helper::run;
+	int[] generatedTable = {1, 2, 3};
+}
+`)
+
+	pkg, err := runner.ParsePackage(context.Background(), &parser.ParsePackageRequest{
+		Rel:   "src",
+		Files: []string{"UsesFieldInitializers.java"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := fqns(pkg.ImportedClasses.SortedSlice())
+	want := []string{"com.example.Helper"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("imported classes = %v, want %v", got, want)
+	}
+}
+
 func TestMultiplePackagesError(t *testing.T) {
 	runner, dir := newTestRunner(t)
 	writeJava(t, dir, "src", "A.java", `
