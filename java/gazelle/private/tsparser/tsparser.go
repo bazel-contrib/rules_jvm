@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 	perClassMetadata := make(map[string]java.PerClassMetadata)
 
 	var packageName types.PackageName
+	packageNames := map[string]struct{}{}
 
 	for _, filename := range in.Files {
 		info, err := r.parseJavaFile(in.Rel, filename)
@@ -67,6 +69,9 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 			return nil, fmt.Errorf("parsing %s: %w", filename, err)
 		}
 
+		if info.packageName != "" {
+			packageNames[info.packageName] = struct{}{}
+		}
 		if packageName.Name == "" && info.packageName != "" {
 			packageName = types.NewPackageName(info.packageName)
 		}
@@ -84,13 +89,9 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 		}
 
 		for _, cls := range info.exportedClasses {
-			fqn := cls
-			if packageName.Name != "" {
-				fqn = packageName.Name + "." + cls
-			}
-			cn, err := types.ParseClassName(fqn)
+			cn, err := types.ParseClassName(cls)
 			if err != nil {
-				r.logger.Warn().Str("class", fqn).Err(err).Msg("skipping unparseable exported class")
+				r.logger.Warn().Str("class", cls).Err(err).Msg("skipping unparseable exported class")
 				continue
 			}
 			exportedClasses.Add(*cn)
@@ -103,6 +104,14 @@ func (r *Runner) ParsePackage(ctx context.Context, in *parser.ParsePackageReques
 		for className, meta := range info.perClassMetadata {
 			perClassMetadata[className] = meta
 		}
+	}
+	if len(packageNames) > 1 {
+		names := make([]string, 0, len(packageNames))
+		for name := range packageNames {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return nil, fmt.Errorf("InvalidArgument: Expected exactly one java package, but saw %d: %s", len(names), strings.Join(names, ", "))
 	}
 
 	return &java.Package{
@@ -125,7 +134,7 @@ type javaFileInfo struct {
 	packageName      string
 	importedClasses  []string // FQN of imported classes
 	importedPackages []string // package names from wildcard imports
-	exportedClasses  []string // bare names of public top-level types
+	exportedClasses  []string // FQN of public API dependency types
 	mainClasses      []string // bare names of classes containing main()
 	perClassMetadata map[string]java.PerClassMetadata
 }
@@ -157,8 +166,15 @@ func (r *Runner) parseJavaFile(rel, filename string) (*javaFileInfo, error) {
 			info.packageName = extractPackageName(child, content)
 		case "import_declaration":
 			extractImport(child, content, info, importMap)
+		}
+	}
+
+	localClassNames := collectLocalClassNames(root, content)
+	for i := 0; i < root.NamedChildCount(); i++ {
+		child := root.NamedChild(i)
+		switch child.Type(tsJavaLang) {
 		case "class_declaration", "interface_declaration", "enum_declaration":
-			extractTypeDecl(child, content, info, importMap)
+			extractTypeDecl(child, content, info, importMap, nil, localClassNames, nil)
 		}
 	}
 
@@ -286,15 +302,36 @@ func addToImportMap(importMap map[string]string, fqn string) {
 	}
 }
 
-func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo, importMap map[string]string) {
+func collectLocalClassNames(root *gotreesitter.Node, content []byte) map[string]struct{} {
+	names := map[string]struct{}{}
+	var walk func(*gotreesitter.Node)
+	walk = func(node *gotreesitter.Node) {
+		switch node.Type(tsJavaLang) {
+		case "class_declaration", "interface_declaration", "enum_declaration":
+			if nameNode := node.ChildByFieldName("name", tsJavaLang); nameNode != nil {
+				names[nameNode.Text(content)] = struct{}{}
+			}
+		}
+		for i := 0; i < node.NamedChildCount(); i++ {
+			walk(node.NamedChild(i))
+		}
+	}
+	walk(root)
+	return names
+}
+
+func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo, importMap map[string]string, parents []string, localClassNames map[string]struct{}, inheritedTypeParams map[string]struct{}) {
 	nameNode := node.ChildByFieldName("name", tsJavaLang)
 	if nameNode == nil {
 		return
 	}
 	className := nameNode.Text(content)
+	nestedNames := append(append([]string{}, parents...), className)
+	classFQN := qualifyNestedClassName(info.packageName, nestedNames)
 
-	if hasModifier(node, content, "public") {
-		info.exportedClasses = append(info.exportedClasses, className)
+	typeParams := extendTypeParameters(inheritedTypeParams, node, content)
+	for _, ref := range directTypeRefs(node, content, importMap, info.packageName, localClassNames, typeParams, true) {
+		info.importedClasses = append(info.importedClasses, ref)
 	}
 
 	// Class-level annotations.
@@ -316,8 +353,27 @@ func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo
 			memberType := member.Type(tsJavaLang)
 
 			switch memberType {
+			case "class_declaration", "interface_declaration", "enum_declaration":
+				extractTypeDecl(member, content, info, importMap, nestedNames, localClassNames, typeParams)
+
 			case "method_declaration":
 				methodName := findIdentifier(member, content)
+				methodTypeParams := extendTypeParameters(typeParams, member, content)
+				for _, ref := range directTypeRefs(member, content, importMap, info.packageName, localClassNames, methodTypeParams, true) {
+					info.importedClasses = append(info.importedClasses, ref)
+				}
+				if body := methodBodyNode(member); body != nil {
+					for _, ref := range usedTypeRefs(body, content, importMap, info.packageName, localClassNames, methodTypeParams) {
+						info.importedClasses = append(info.importedClasses, ref)
+					}
+				}
+				if !hasModifier(member, content, "private") {
+					if returnType := methodReturnTypeNode(member); returnType != nil && returnType.Type(tsJavaLang) != "void_type" {
+						for _, ref := range typeRefsFromTypeNode(returnType, content, importMap, info.packageName, localClassNames, methodTypeParams, false) {
+							info.exportedClasses = append(info.exportedClasses, ref)
+						}
+					}
+				}
 
 				if node.Type(tsJavaLang) == "class_declaration" && methodName == "main" && isMainMethod(member, content) {
 					info.mainClasses = append(info.mainClasses, className)
@@ -330,6 +386,9 @@ func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo
 				}
 
 			case "field_declaration":
+				for _, ref := range directTypeRefs(member, content, importMap, info.packageName, localClassNames, typeParams, true) {
+					info.importedClasses = append(info.importedClasses, ref)
+				}
 				fieldNames := extractFieldNames(member, content)
 				annotations := extractAnnotationNames(member, content, importMap, info.packageName)
 				for _, fieldName := range fieldNames {
@@ -339,17 +398,233 @@ func extractTypeDecl(node *gotreesitter.Node, content []byte, info *javaFileInfo
 						}
 					}
 				}
+			default:
+				for _, ref := range usedTypeRefs(member, content, importMap, info.packageName, localClassNames, typeParams) {
+					info.importedClasses = append(info.importedClasses, ref)
+				}
 			}
 		}
 	}
 
 	if classAnnSet.Len() > 0 || len(methodAnns.Keys()) > 0 || len(fieldAnns.Keys()) > 0 {
-		info.perClassMetadata[className] = java.PerClassMetadata{
+		info.perClassMetadata[classFQN] = java.PerClassMetadata{
 			AnnotationClassNames:       classAnnSet,
 			MethodAnnotationClassNames: methodAnns,
 			FieldAnnotationClassNames:  fieldAnns,
 		}
 	}
+}
+
+func qualifyNestedClassName(packageName string, names []string) string {
+	parts := make([]string, 0, len(names)+1)
+	if packageName != "" {
+		parts = append(parts, packageName)
+	}
+	parts = append(parts, names...)
+	return strings.Join(parts, ".")
+}
+
+func cloneStringSet(in map[string]struct{}) map[string]struct{} {
+	if len(in) == 0 {
+		return map[string]struct{}{}
+	}
+	out := map[string]struct{}{}
+	for k := range in {
+		out[k] = struct{}{}
+	}
+	return out
+}
+
+func extendTypeParameters(in map[string]struct{}, node *gotreesitter.Node, content []byte) map[string]struct{} {
+	var out map[string]struct{}
+	for i := 0; i < node.NamedChildCount(); i++ {
+		child := node.NamedChild(i)
+		if child.Type(tsJavaLang) != "type_parameters" {
+			continue
+		}
+		for j := 0; j < child.NamedChildCount(); j++ {
+			typeParam := child.NamedChild(j)
+			if typeParam.Type(tsJavaLang) != "type_parameter" {
+				continue
+			}
+			name := typeParameterName(typeParam, content)
+			if name != "" {
+				if out == nil {
+					out = cloneStringSet(in)
+				}
+				out[name] = struct{}{}
+			}
+		}
+	}
+	if out != nil {
+		return out
+	}
+	return in
+}
+
+func typeParameterName(node *gotreesitter.Node, content []byte) string {
+	if name := node.ChildByFieldName("name", tsJavaLang); name != nil {
+		return name.Text(content)
+	}
+	for i := 0; i < node.NamedChildCount(); i++ {
+		child := node.NamedChild(i)
+		if child.Type(tsJavaLang) == "type_identifier" {
+			return child.Text(content)
+		}
+	}
+	return ""
+}
+
+func methodReturnTypeNode(node *gotreesitter.Node) *gotreesitter.Node {
+	if typ := node.ChildByFieldName("type", tsJavaLang); typ != nil {
+		if isTypeNode(typ) || typ.Type(tsJavaLang) == "void_type" {
+			return typ
+		}
+	}
+	for i := 0; i < node.NamedChildCount(); i++ {
+		child := node.NamedChild(i)
+		if isTypeNode(child) {
+			return child
+		}
+	}
+	return nil
+}
+
+func methodBodyNode(node *gotreesitter.Node) *gotreesitter.Node {
+	if body := node.ChildByFieldName("body", tsJavaLang); body != nil {
+		return body
+	}
+	for i := 0; i < node.NamedChildCount(); i++ {
+		child := node.NamedChild(i)
+		switch child.Type(tsJavaLang) {
+		case "block", "constructor_body":
+			return child
+		}
+	}
+	return nil
+}
+
+func directTypeRefs(node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}, includeParameterizedBase bool) []string {
+	refs := make([]string, 0, 4)
+	for i := 0; i < node.NamedChildCount(); i++ {
+		child := node.NamedChild(i)
+		switch child.Type(tsJavaLang) {
+		case "class_body", "interface_body", "enum_body", "constructor_body", "block":
+			continue
+		}
+		appendTypeRefsFromAnyNode(&refs, child, content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+	}
+	return refs
+}
+
+func usedTypeRefs(node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}) []string {
+	refs := make([]string, 0, 4)
+	appendTypeRefsFromAnyNode(&refs, node, content, importMap, packageName, localClassNames, typeParams, true)
+	return refs
+}
+
+func typeRefsFromAnyNode(node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}, includeParameterizedBase bool) []string {
+	refs := make([]string, 0, 4)
+	appendTypeRefsFromAnyNode(&refs, node, content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+	return refs
+}
+
+func appendTypeRefsFromAnyNode(refs *[]string, node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}, includeParameterizedBase bool) {
+	if isTypeNode(node) {
+		appendTypeRefsFromTypeNode(refs, node, content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+		return
+	}
+	if node.Type(tsJavaLang) == "type_parameter" {
+		name := typeParameterName(node, content)
+		for i := 0; i < node.NamedChildCount(); i++ {
+			child := node.NamedChild(i)
+			if child.Text(content) == name {
+				continue
+			}
+			appendTypeRefsFromAnyNode(refs, child, content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+		}
+		return
+	}
+	for i := 0; i < node.NamedChildCount(); i++ {
+		appendTypeRefsFromAnyNode(refs, node.NamedChild(i), content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+	}
+}
+
+func typeRefsFromTypeNode(node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}, includeParameterizedBase bool) []string {
+	refs := make([]string, 0, 2)
+	appendTypeRefsFromTypeNode(&refs, node, content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+	return refs
+}
+
+func appendTypeRefsFromTypeNode(refs *[]string, node *gotreesitter.Node, content []byte, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}, includeParameterizedBase bool) {
+	switch node.Type(tsJavaLang) {
+	case "type_identifier", "scoped_type_identifier":
+		if ref := resolveTypeName(node.Text(content), importMap, packageName, localClassNames, typeParams); ref != "" {
+			*refs = append(*refs, ref)
+		}
+	case "generic_type":
+		base := node.ChildByFieldName("type", tsJavaLang)
+		if includeParameterizedBase && base != nil {
+			appendTypeRefsFromTypeNode(refs, base, content, importMap, packageName, localClassNames, typeParams, true)
+		}
+		for i := 0; i < node.NamedChildCount(); i++ {
+			child := node.NamedChild(i)
+			if sameNode(child, base) {
+				continue
+			}
+			appendTypeRefsFromAnyNode(refs, child, content, importMap, packageName, localClassNames, typeParams, true)
+		}
+	case "array_type":
+		for i := 0; i < node.NamedChildCount(); i++ {
+			appendTypeRefsFromAnyNode(refs, node.NamedChild(i), content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+		}
+	default:
+		for i := 0; i < node.NamedChildCount(); i++ {
+			appendTypeRefsFromAnyNode(refs, node.NamedChild(i), content, importMap, packageName, localClassNames, typeParams, includeParameterizedBase)
+		}
+	}
+}
+
+func sameNode(a, b *gotreesitter.Node) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Symbol() == b.Symbol() && a.StartByte() == b.StartByte() && a.EndByte() == b.EndByte()
+}
+
+func isTypeNode(node *gotreesitter.Node) bool {
+	switch node.Type(tsJavaLang) {
+	case "type_identifier", "scoped_type_identifier", "generic_type", "array_type", "wildcard":
+		return true
+	}
+	return false
+}
+
+func resolveTypeName(typeName string, importMap map[string]string, packageName string, localClassNames, typeParams map[string]struct{}) string {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		return ""
+	}
+	parts := strings.Split(typeName, ".")
+	if fqn, ok := importMap[parts[0]]; ok {
+		return fqn
+	}
+	if len(parts) > 1 {
+		return typeName
+	}
+	if _, ok := localClassNames[typeName]; ok {
+		return ""
+	}
+	if _, ok := typeParams[typeName]; ok {
+		return ""
+	}
+	if isJavaLangType(typeName) {
+		return ""
+	}
+	if packageName == "" {
+		return ""
+	}
+	return packageName + "." + typeName
 }
 
 func hasModifier(node *gotreesitter.Node, content []byte, modifier string) bool {
@@ -359,6 +634,11 @@ func hasModifier(node *gotreesitter.Node, content []byte, modifier string) bool 
 			for j := 0; j < child.ChildCount(); j++ {
 				token := child.Child(j)
 				if !token.IsNamed() && token.Text(content) == modifier {
+					return true
+				}
+			}
+			for _, token := range strings.Fields(child.Text(content)) {
+				if token == modifier {
 					return true
 				}
 			}
@@ -403,12 +683,6 @@ func resolveAnnotationName(node *gotreesitter.Node, content []byte, importMap ma
 			if fqn, ok := importMap[simple]; ok {
 				return fqn
 			}
-			if isJavaLangType(simple) {
-				return "java.lang." + simple
-			}
-			if packageName != "" {
-				return packageName + "." + simple
-			}
 			return simple
 		case "scoped_identifier":
 			return child.Text(content)
@@ -417,13 +691,103 @@ func resolveAnnotationName(node *gotreesitter.Node, content []byte, importMap ma
 	return ""
 }
 
-// isJavaLangType returns true for annotation types in java.lang (auto-imported).
 func isJavaLangType(name string) bool {
-	switch name {
-	case "Override", "Deprecated", "SuppressWarnings", "SafeVarargs", "FunctionalInterface":
-		return true
-	}
-	return false
+	_, ok := javaLangTypes[name]
+	return ok
+}
+
+var javaLangTypes = map[string]struct{}{
+	"Boolean":                         {},
+	"Byte":                            {},
+	"Character":                       {},
+	"Double":                          {},
+	"Float":                           {},
+	"Integer":                         {},
+	"Long":                            {},
+	"Short":                           {},
+	"Void":                            {},
+	"CharSequence":                    {},
+	"Class":                           {},
+	"ClassLoader":                     {},
+	"Comparable":                      {},
+	"Enum":                            {},
+	"Iterable":                        {},
+	"Math":                            {},
+	"Number":                          {},
+	"Object":                          {},
+	"Package":                         {},
+	"Process":                         {},
+	"ProcessBuilder":                  {},
+	"Record":                          {},
+	"Runtime":                         {},
+	"SecurityManager":                 {},
+	"StackTraceElement":               {},
+	"StrictMath":                      {},
+	"String":                          {},
+	"StringBuffer":                    {},
+	"StringBuilder":                   {},
+	"System":                          {},
+	"Thread":                          {},
+	"ThreadGroup":                     {},
+	"ThreadLocal":                     {},
+	"Appendable":                      {},
+	"AutoCloseable":                   {},
+	"Cloneable":                       {},
+	"Readable":                        {},
+	"Runnable":                        {},
+	"Throwable":                       {},
+	"Error":                           {},
+	"Exception":                       {},
+	"RuntimeException":                {},
+	"ArithmeticException":             {},
+	"ArrayIndexOutOfBoundsException":  {},
+	"ArrayStoreException":             {},
+	"ClassCastException":              {},
+	"ClassNotFoundException":          {},
+	"CloneNotSupportedException":      {},
+	"EnumConstantNotPresentException": {},
+	"IllegalAccessException":          {},
+	"IllegalArgumentException":        {},
+	"IllegalMonitorStateException":    {},
+	"IllegalStateException":           {},
+	"IllegalThreadStateException":     {},
+	"IndexOutOfBoundsException":       {},
+	"InstantiationException":          {},
+	"InterruptedException":            {},
+	"NegativeArraySizeException":      {},
+	"NoSuchFieldException":            {},
+	"NoSuchMethodException":           {},
+	"NullPointerException":            {},
+	"NumberFormatException":           {},
+	"ReflectiveOperationException":    {},
+	"SecurityException":               {},
+	"StringIndexOutOfBoundsException": {},
+	"TypeNotPresentException":         {},
+	"UnsupportedOperationException":   {},
+	"AbstractMethodError":             {},
+	"AssertionError":                  {},
+	"BootstrapMethodError":            {},
+	"ClassCircularityError":           {},
+	"ClassFormatError":                {},
+	"ExceptionInInitializerError":     {},
+	"IncompatibleClassChangeError":    {},
+	"InternalError":                   {},
+	"LinkageError":                    {},
+	"NoClassDefFoundError":            {},
+	"NoSuchFieldError":                {},
+	"NoSuchMethodError":               {},
+	"OutOfMemoryError":                {},
+	"StackOverflowError":              {},
+	"UnknownError":                    {},
+	"UnsatisfiedLinkError":            {},
+	"UnsupportedClassVersionError":    {},
+	"VerifyError":                     {},
+	"VirtualMachineError":             {},
+	"Deprecated":                      {},
+	"FunctionalInterface":             {},
+	"Override":                        {},
+	"SafeVarargs":                     {},
+	"SuppressWarnings":                {},
 }
 
 func isMainMethod(node *gotreesitter.Node, content []byte) bool {

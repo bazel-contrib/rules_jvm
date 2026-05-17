@@ -27,6 +27,7 @@ type javaLang struct {
 
 	parser        parser.Parser
 	logger        zerolog.Logger
+	javaLogLevel  string
 	mavenResolver maven.Resolver
 
 	// javaPackageCache is used for module granularity support
@@ -55,7 +56,7 @@ type classExportInfo struct {
 }
 
 func NewLanguage() language.Language {
-	goLevel, _ := logconfig.LogLevel()
+	goLevel, javaLevel := logconfig.LogLevel()
 
 	var logger zerolog.Logger
 	if os.Getenv("GAZELLE_JAVA_LOG_FORMAT") == "json" {
@@ -78,6 +79,7 @@ func NewLanguage() language.Language {
 
 	l := javaLang{
 		logger:           logger,
+		javaLogLevel:     javaLevel,
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
 		classExportCache: make(map[string]classExportInfo),

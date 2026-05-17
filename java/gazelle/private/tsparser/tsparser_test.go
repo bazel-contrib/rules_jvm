@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -48,6 +49,89 @@ public class Foo {}
 	}
 	if pkg.Name.Name != "com.example" {
 		t.Errorf("package name = %q, want %q", pkg.Name.Name, "com.example")
+	}
+}
+
+func TestLeadingCommentsBeforePackageRegression(t *testing.T) {
+	runner, dir := newTestRunner(t)
+	writeJava(t, dir, "src", "LeadingComment.java", `
+// Leading line comment used to trigger parse regressions in some parser modes.
+/* Leading block comment with symbols: ; {} [] */
+package com.example;
+
+import java.util.List;
+import static java.util.Collections.emptyList;
+
+public class LeadingComment {
+	@Override
+	public String toString() {
+		return "ok";
+	}
+
+	public static void main(String[] args) {
+		List<String> values = emptyList();
+		System.out.println(values.size());
+	}
+}
+`)
+
+	pkg, err := runner.ParsePackage(context.Background(), &parser.ParsePackageRequest{
+		Rel:   "src",
+		Files: []string{"LeadingComment.java"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pkg.Name.Name != "com.example" {
+		t.Fatalf("package name = %q, want %q", pkg.Name.Name, "com.example")
+	}
+
+	wantImports := []string{"java.util.Collections", "java.util.List"}
+	gotImports := fqns(pkg.ImportedClasses.SortedSlice())
+	if !reflect.DeepEqual(gotImports, wantImports) {
+		t.Fatalf("imported classes = %v, want %v", gotImports, wantImports)
+	}
+
+	if pkg.ExportedClasses.Len() != 0 {
+		t.Fatalf("exported classes = %v, want none", fqns(pkg.ExportedClasses.SortedSlice()))
+	}
+
+	wantMains := []string{"com.example.LeadingComment"}
+	gotMains := fqns(pkg.Mains.SortedSlice())
+	if !reflect.DeepEqual(gotMains, wantMains) {
+		t.Fatalf("mains = %v, want %v", gotMains, wantMains)
+	}
+
+	meta, ok := pkg.PerClassMetadata["com.example.LeadingComment"]
+	if !ok {
+		t.Fatal("no PerClassMetadata for LeadingComment")
+	}
+	overrideAnns := meta.MethodAnnotationClassNames.Values("toString")
+	if overrideAnns == nil || overrideAnns.Len() != 1 {
+		t.Fatalf("toString annotations = %v, want [Override]", overrideAnns)
+	}
+	if got := overrideAnns.SortedSlice()[0].FullyQualifiedClassName(); got != "Override" {
+		t.Fatalf("toString annotation = %q, want %q", got, "Override")
+	}
+}
+
+func TestParseJavaContentLeadingCommentNoSyntaxError(t *testing.T) {
+	runner, _ := newTestRunner(t)
+
+	tree, err := runner.parseJavaContent([]byte(`
+// Leading comment before package declaration.
+package com.example;
+
+public class ParseTreeSmoke {}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tree.Release()
+
+	if tree.RootNode().HasError() {
+		t.Fatalf("parse tree has syntax errors for leading-comment input")
 	}
 }
 
@@ -95,18 +179,30 @@ public class Foo {}
 	}
 }
 
-func TestExportedClasses(t *testing.T) {
+func TestExportedAPIReturnTypes(t *testing.T) {
 	runner, dir := newTestRunner(t)
 	writeJava(t, dir, "src", "Foo.java", `
 package com.example;
 
-public class Foo {}
-class Bar {}
+import com.external.PrivateReturn;
+import com.external.PublicReturn;
+
+public class Foo {
+	public PublicReturn getPublic() { return null; }
+	protected LocalReturn getProtected() { return null; }
+	PrivateReturn getPackage() { return null; }
+	private PrivateReturn getPrivate() { return null; }
+}
+class LocalReturn {}
 `)
 	writeJava(t, dir, "src", "Baz.java", `
 package com.example;
 
-public interface Baz {}
+import com.external.InterfaceReturn;
+
+public interface Baz {
+	InterfaceReturn get();
+}
 `)
 	writeJava(t, dir, "src", "Status.java", `
 package com.example;
@@ -122,9 +218,8 @@ public enum Status { OK, ERROR }
 		t.Fatal(err)
 	}
 
-	// Only public types: Foo, Baz, Status (not Bar)
 	got := pkg.ExportedClasses.SortedSlice()
-	want := []string{"com.example.Baz", "com.example.Foo", "com.example.Status"}
+	want := []string{"com.external.InterfaceReturn", "com.external.PrivateReturn", "com.external.PublicReturn"}
 	if len(got) != len(want) {
 		t.Fatalf("exported classes = %v, want %v", fqns(got), want)
 	}
@@ -224,7 +319,7 @@ public class MyTest {
 		t.Fatal(err)
 	}
 
-	meta, ok := pkg.PerClassMetadata["MyTest"]
+	meta, ok := pkg.PerClassMetadata["com.example.MyTest"]
 	if !ok {
 		t.Fatal("no PerClassMetadata for MyTest")
 	}
@@ -245,13 +340,13 @@ public class MyTest {
 		t.Errorf("testSomething annotation = %q, want Test", testAnns.SortedSlice()[0].BareOuterClassName())
 	}
 
-	// Method: toString has @Override → java.lang.Override
+	// Method: toString has @Override.
 	overrideAnns := meta.MethodAnnotationClassNames.Values("toString")
 	if overrideAnns == nil || overrideAnns.Len() != 1 {
 		t.Fatalf("toString annotations = %v, want 1", overrideAnns)
 	}
-	if overrideAnns.SortedSlice()[0].FullyQualifiedClassName() != "java.lang.Override" {
-		t.Errorf("toString annotation = %q, want java.lang.Override", overrideAnns.SortedSlice()[0].FullyQualifiedClassName())
+	if overrideAnns.SortedSlice()[0].FullyQualifiedClassName() != "Override" {
+		t.Errorf("toString annotation = %q, want Override", overrideAnns.SortedSlice()[0].FullyQualifiedClassName())
 	}
 
 	// Field: field has @Autowired
@@ -307,11 +402,35 @@ public class B {}
 	if pkg.ImportedClasses.Len() != 2 {
 		t.Errorf("imported classes = %d, want 2", pkg.ImportedClasses.Len())
 	}
-	if pkg.ExportedClasses.Len() != 2 {
-		t.Errorf("exported classes = %d, want 2", pkg.ExportedClasses.Len())
+	if pkg.ExportedClasses.Len() != 0 {
+		t.Errorf("exported classes = %d, want 0", pkg.ExportedClasses.Len())
 	}
 	if pkg.Files.Len() != 2 {
 		t.Errorf("files = %d, want 2", pkg.Files.Len())
+	}
+}
+
+func TestMultiplePackagesError(t *testing.T) {
+	runner, dir := newTestRunner(t)
+	writeJava(t, dir, "src", "A.java", `
+package com.example;
+public class A {}
+`)
+	writeJava(t, dir, "src", "B.java", `
+package example;
+public class B {}
+`)
+
+	_, err := runner.ParsePackage(context.Background(), &parser.ParsePackageRequest{
+		Rel:   "src",
+		Files: []string{"A.java", "B.java"},
+	})
+	if err == nil {
+		t.Fatal("ParsePackage succeeded, want multiple-package error")
+	}
+	want := "InvalidArgument: Expected exactly one java package, but saw 2: com.example, example"
+	if err.Error() != want {
+		t.Fatalf("error = %q, want %q", err.Error(), want)
 	}
 }
 
@@ -334,8 +453,8 @@ public class Script {
 	if pkg.Name.Name != "" {
 		t.Errorf("package name = %q, want empty", pkg.Name.Name)
 	}
-	if pkg.ExportedClasses.Len() != 1 {
-		t.Errorf("exported classes = %d, want 1", pkg.ExportedClasses.Len())
+	if pkg.ExportedClasses.Len() != 0 {
+		t.Errorf("exported classes = %d, want 0", pkg.ExportedClasses.Len())
 	}
 	if pkg.Mains.Len() != 1 {
 		t.Errorf("mains = %d, want 1", pkg.Mains.Len())
@@ -450,7 +569,7 @@ public class Annotated {
 		t.Fatal(err)
 	}
 
-	meta := pkg.PerClassMetadata["Annotated"]
+	meta := pkg.PerClassMetadata["com.example.Annotated"]
 	classAnns := fqns(meta.AnnotationClassNames.SortedSlice())
 	wantClassAnns := []string{"com.thirdparty.ImportedAnn"}
 	if len(classAnns) != len(wantClassAnns) {
@@ -464,10 +583,10 @@ public class Annotated {
 
 	methodAnns := meta.MethodAnnotationClassNames.Values("run")
 	if methodAnns == nil || methodAnns.Len() != 1 {
-		t.Fatalf("run method annotations = %v, want [java.lang.Deprecated]", methodAnns)
+		t.Fatalf("run method annotations = %v, want [Deprecated]", methodAnns)
 	}
-	if methodAnns.SortedSlice()[0].FullyQualifiedClassName() != "java.lang.Deprecated" {
-		t.Fatalf("run method annotation = %q, want java.lang.Deprecated", methodAnns.SortedSlice()[0].FullyQualifiedClassName())
+	if methodAnns.SortedSlice()[0].FullyQualifiedClassName() != "Deprecated" {
+		t.Fatalf("run method annotation = %q, want Deprecated", methodAnns.SortedSlice()[0].FullyQualifiedClassName())
 	}
 
 	scopedMethodAnns := meta.MethodAnnotationClassNames.Values("scoped")
@@ -480,10 +599,10 @@ public class Annotated {
 
 	fieldAnns := meta.FieldAnnotationClassNames.Values("field")
 	if fieldAnns == nil || fieldAnns.Len() != 1 {
-		t.Fatalf("field annotations = %v, want [com.example.LocalAnn]", fieldAnns)
+		t.Fatalf("field annotations = %v, want [LocalAnn]", fieldAnns)
 	}
-	if fieldAnns.SortedSlice()[0].FullyQualifiedClassName() != "com.example.LocalAnn" {
-		t.Fatalf("field annotation = %q, want com.example.LocalAnn", fieldAnns.SortedSlice()[0].FullyQualifiedClassName())
+	if fieldAnns.SortedSlice()[0].FullyQualifiedClassName() != "LocalAnn" {
+		t.Fatalf("field annotation = %q, want LocalAnn", fieldAnns.SortedSlice()[0].FullyQualifiedClassName())
 	}
 }
 
@@ -507,7 +626,7 @@ public class Fields {
 		t.Fatal(err)
 	}
 
-	meta := pkg.PerClassMetadata["Fields"]
+	meta := pkg.PerClassMetadata["com.example.Fields"]
 	for _, field := range []string{"a", "b"} {
 		fieldAnns := meta.FieldAnnotationClassNames.Values(field)
 		if fieldAnns == nil || fieldAnns.Len() != 1 {

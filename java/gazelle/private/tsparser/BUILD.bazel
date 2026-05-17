@@ -19,7 +19,10 @@ go_library(
 
 go_test(
     name = "tsparser_test",
-    srcs = ["tsparser_test.go"],
+    srcs = [
+        "tsparser_bench_test.go",
+        "tsparser_test.go",
+    ],
     embed = [":tsparser"],
     deps = [
         "//java/gazelle/private/parser",
@@ -27,4 +30,3 @@ go_test(
         "@com_github_rs_zerolog//:zerolog",
     ],
 )
-
