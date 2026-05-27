@@ -5,6 +5,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
@@ -159,6 +160,12 @@ public class ClasspathParser {
   }
 
   public ParsedPackageData parseClasses(Path directory, List<String> files) throws IOException {
+    return parseClasses(compiler, directory, files);
+  }
+
+  @VisibleForTesting
+  ParsedPackageData parseClasses(JavaCompiler compiler, Path directory, List<String> files)
+      throws IOException {
     try (StandardJavaFileManager fileManager =
         compiler.getStandardFileManager(null, null, null)) {
       List<? extends JavaFileObject> objectFiles =
@@ -177,16 +184,16 @@ public class ClasspathParser {
         logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
         throw new IOException("No files to process");
       }
-      return parseFileGatherDependencies(objectFiles);
+      return parseFileGatherDependencies(compiler, objectFiles);
     }
   }
 
   public ParsedPackageData parseClasses(List<? extends JavaFileObject> files) throws IOException {
-    return parseFileGatherDependencies(files);
+    return parseFileGatherDependencies(compiler, files);
   }
 
   private ParsedPackageData parseFileGatherDependencies(
-      Iterable<? extends JavaFileObject> compUnits) throws IOException {
+      JavaCompiler compiler, Iterable<? extends JavaFileObject> compUnits) throws IOException {
     ParsedPackageData data = new ParsedPackageData();
     JavacTask task = (JavacTask) compiler.getTask(null, null, null, OPTIONS, null, compUnits);
     try {

@@ -2,10 +2,15 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
@@ -22,10 +27,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -527,32 +534,32 @@ public class ClasspathParserTest {
   }
 
   @Test
-  public void parseClassesByPathDoesNotLeakFileDescriptors(@TempDir Path tempDir)
-      throws IOException {
-    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
-    Assumptions.assumeTrue(
-        osBean instanceof com.sun.management.UnixOperatingSystemMXBean,
-        "FD-count probe only available on Unix-like JVMs");
-    com.sun.management.UnixOperatingSystemMXBean unix =
-        (com.sun.management.UnixOperatingSystemMXBean) osBean;
-
+  public void parseClassesByPathClosesFileManager(@TempDir Path tempDir) throws IOException {
     Path src = tempDir.resolve("Greeter.java");
     Files.writeString(src, "package demo; public class Greeter {}");
 
-    // Warm up so any one-time native allocations don't pollute the delta.
-    for (int i = 0; i < 10; i++) {
-      parser.parseClasses(tempDir, List.of("Greeter.java"));
-    }
-    long before = unix.getOpenFileDescriptorCount();
-    for (int i = 0; i < 500; i++) {
-      parser.parseClasses(tempDir, List.of("Greeter.java"));
-    }
-    long after = unix.getOpenFileDescriptorCount();
+    JavaCompiler realCompiler = ToolProvider.getSystemJavaCompiler();
+    StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null);
+    // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
+    // which fails on JavacFileManager because of its internal init state.
+    StandardJavaFileManager observableFm =
+        mock(StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)));
+    JavaCompiler mockCompiler = mock(JavaCompiler.class);
+    when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
+    when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            inv ->
+                realCompiler.getTask(
+                    inv.getArgument(0),
+                    inv.getArgument(1),
+                    inv.getArgument(2),
+                    inv.getArgument(3),
+                    inv.getArgument(4),
+                    inv.getArgument(5)));
 
-    // Before the try-with-resources fix, the delta grew by ~1 FD per call.
-    Assertions.assertTrue(
-        after - before < 50,
-        String.format("open FD count grew unexpectedly: before=%d after=%d", before, after));
+    parser.parseClasses(mockCompiler, tempDir, List.of("Greeter.java"));
+
+    verify(observableFm).close();
   }
 
   private <T> TreeSet<T> treeSet(T... values) {

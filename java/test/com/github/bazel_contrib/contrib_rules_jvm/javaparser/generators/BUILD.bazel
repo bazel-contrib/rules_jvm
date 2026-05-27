@@ -33,6 +33,7 @@ java_test_suite(
         "@contrib_rules_jvm_deps//:junit_junit",
         "@contrib_rules_jvm_deps//:org_junit_jupiter_junit_jupiter_api",
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
+        "@contrib_rules_jvm_tests//:org_mockito_mockito_core",
     ],
 )
 
