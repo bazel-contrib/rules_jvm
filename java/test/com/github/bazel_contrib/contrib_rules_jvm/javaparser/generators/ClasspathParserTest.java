@@ -538,14 +538,13 @@ public class ClasspathParserTest {
     Files.writeString(src, "package demo; public class Greeter {}");
 
     JavaCompiler realCompiler = ToolProvider.getSystemJavaCompiler();
-    // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
-    // which fails on JavacFileManager because of its internal init state. realFm and observableFm
-    // are both put in try-with-resources so PMD is satisfied; close() is idempotent so the extra
-    // call from this test on top of the production call we're verifying is harmless.
-    try (StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null);
-        StandardJavaFileManager observableFm =
-            mock(
-                StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)))) {
+    try (StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null)) {
+      // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
+      // which fails on JavacFileManager because of its internal init state. We deliberately don't
+      // close observableFm from here: its close() call is what this test is asserting.
+      @SuppressWarnings("PMD.CloseResource")
+      StandardJavaFileManager observableFm =
+          mock(StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)));
       JavaCompiler mockCompiler = mock(JavaCompiler.class);
       when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
       when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
