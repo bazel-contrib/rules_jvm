@@ -159,24 +159,26 @@ public class ClasspathParser {
   }
 
   public ParsedPackageData parseClasses(Path directory, List<String> files) throws IOException {
-    StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-    List<? extends JavaFileObject> objectFiles =
-        files.stream()
-            .map(directory::resolve)
-            .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
-            .map(Lists::newArrayList)
-            .flatMap(List::stream)
-            .collect(Collectors.toList());
-    // This happens when Gazelle is run in module mode, it wants to process the module level
-    // directory, which would not
-    // have any files. This is not an error, and should just be skipped. The IOException is caught
-    // the next level up,
-    // logged, and ignored.
-    if (objectFiles.isEmpty()) {
-      logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
-      throw new IOException("No files to process");
+    try (StandardJavaFileManager fileManager =
+        compiler.getStandardFileManager(null, null, null)) {
+      List<? extends JavaFileObject> objectFiles =
+          files.stream()
+              .map(directory::resolve)
+              .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
+              .map(Lists::newArrayList)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      // This happens when Gazelle is run in module mode, it wants to process the module level
+      // directory, which would not
+      // have any files. This is not an error, and should just be skipped. The IOException is caught
+      // the next level up,
+      // logged, and ignored.
+      if (objectFiles.isEmpty()) {
+        logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
+        throw new IOException("No files to process");
+      }
+      return parseFileGatherDependencies(objectFiles);
     }
-    return parseFileGatherDependencies(objectFiles);
   }
 
   public ParsedPackageData parseClasses(List<? extends JavaFileObject> files) throws IOException {

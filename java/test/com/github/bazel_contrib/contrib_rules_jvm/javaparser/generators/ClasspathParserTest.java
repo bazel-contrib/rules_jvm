@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
@@ -23,9 +25,11 @@ import java.util.stream.Stream;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -510,6 +514,45 @@ public class ClasspathParserTest {
     // Should contain the nested class FQN from the static import, not a
     // same-package fallback like workspace.com.gazelle...Inner
     assertEquals(Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
+  }
+
+  @Test
+  public void parseClassesByPath(@TempDir Path tempDir) throws IOException {
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    ParsedPackageData data = parser.parseClasses(tempDir, List.of("Greeter.java"));
+
+    assertEquals(Set.of("demo"), data.packages);
+  }
+
+  @Test
+  public void parseClassesByPathDoesNotLeakFileDescriptors(@TempDir Path tempDir)
+      throws IOException {
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    Assumptions.assumeTrue(
+        osBean instanceof com.sun.management.UnixOperatingSystemMXBean,
+        "FD-count probe only available on Unix-like JVMs");
+    com.sun.management.UnixOperatingSystemMXBean unix =
+        (com.sun.management.UnixOperatingSystemMXBean) osBean;
+
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    // Warm up so any one-time native allocations don't pollute the delta.
+    for (int i = 0; i < 10; i++) {
+      parser.parseClasses(tempDir, List.of("Greeter.java"));
+    }
+    long before = unix.getOpenFileDescriptorCount();
+    for (int i = 0; i < 500; i++) {
+      parser.parseClasses(tempDir, List.of("Greeter.java"));
+    }
+    long after = unix.getOpenFileDescriptorCount();
+
+    // Before the try-with-resources fix, the delta grew by ~1 FD per call.
+    Assertions.assertTrue(
+        after - before < 50,
+        String.format("open FD count grew unexpectedly: before=%d after=%d", before, after));
   }
 
   private <T> TreeSet<T> treeSet(T... values) {
