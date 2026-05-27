@@ -166,8 +166,7 @@ public class ClasspathParser {
   @VisibleForTesting
   ParsedPackageData parseClasses(JavaCompiler compiler, Path directory, List<String> files)
       throws IOException {
-    try (StandardJavaFileManager fileManager =
-        compiler.getStandardFileManager(null, null, null)) {
+    try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
       List<? extends JavaFileObject> objectFiles =
           files.stream()
               .map(directory::resolve)

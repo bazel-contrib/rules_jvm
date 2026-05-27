@@ -1,7 +1,6 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -539,27 +538,31 @@ public class ClasspathParserTest {
     Files.writeString(src, "package demo; public class Greeter {}");
 
     JavaCompiler realCompiler = ToolProvider.getSystemJavaCompiler();
-    StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null);
     // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
-    // which fails on JavacFileManager because of its internal init state.
-    StandardJavaFileManager observableFm =
-        mock(StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)));
-    JavaCompiler mockCompiler = mock(JavaCompiler.class);
-    when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
-    when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
-        .thenAnswer(
-            inv ->
-                realCompiler.getTask(
-                    inv.getArgument(0),
-                    inv.getArgument(1),
-                    inv.getArgument(2),
-                    inv.getArgument(3),
-                    inv.getArgument(4),
-                    inv.getArgument(5)));
+    // which fails on JavacFileManager because of its internal init state. realFm and observableFm
+    // are both put in try-with-resources so PMD is satisfied; close() is idempotent so the extra
+    // call from this test on top of the production call we're verifying is harmless.
+    try (StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null);
+        StandardJavaFileManager observableFm =
+            mock(
+                StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)))) {
+      JavaCompiler mockCompiler = mock(JavaCompiler.class);
+      when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
+      when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              inv ->
+                  realCompiler.getTask(
+                      inv.getArgument(0),
+                      inv.getArgument(1),
+                      inv.getArgument(2),
+                      inv.getArgument(3),
+                      inv.getArgument(4),
+                      inv.getArgument(5)));
 
-    parser.parseClasses(mockCompiler, tempDir, List.of("Greeter.java"));
+      parser.parseClasses(mockCompiler, tempDir, List.of("Greeter.java"));
 
-    verify(observableFm).close();
+      verify(observableFm).close();
+    }
   }
 
   private <T> TreeSet<T> treeSet(T... values) {
