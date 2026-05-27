@@ -1,6 +1,12 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
@@ -20,12 +26,16 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -510,6 +520,48 @@ public class ClasspathParserTest {
     // Should contain the nested class FQN from the static import, not a
     // same-package fallback like workspace.com.gazelle...Inner
     assertEquals(Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
+  }
+
+  @Test
+  public void parseClassesByPath(@TempDir Path tempDir) throws IOException {
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    ParsedPackageData data = parser.parseClasses(tempDir, List.of("Greeter.java"));
+
+    assertEquals(Set.of("demo"), data.packages);
+  }
+
+  @Test
+  public void parseClassesByPathClosesFileManager(@TempDir Path tempDir) throws IOException {
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    JavaCompiler realCompiler = ToolProvider.getSystemJavaCompiler();
+    try (StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null)) {
+      // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
+      // which fails on JavacFileManager because of its internal init state. We deliberately don't
+      // close observableFm from here: its close() call is what this test is asserting.
+      @SuppressWarnings("PMD.CloseResource")
+      StandardJavaFileManager observableFm =
+          mock(StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)));
+      JavaCompiler mockCompiler = mock(JavaCompiler.class);
+      when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
+      when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              inv ->
+                  realCompiler.getTask(
+                      inv.getArgument(0),
+                      inv.getArgument(1),
+                      inv.getArgument(2),
+                      inv.getArgument(3),
+                      inv.getArgument(4),
+                      inv.getArgument(5)));
+
+      parser.parseClasses(mockCompiler, tempDir, List.of("Greeter.java"));
+
+      verify(observableFm).close();
+    }
   }
 
   private <T> TreeSet<T> treeSet(T... values) {
