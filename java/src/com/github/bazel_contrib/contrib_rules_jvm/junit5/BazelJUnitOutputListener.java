@@ -114,14 +114,19 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
       }
 
       // Loop over the segments until we find a parent object that is a container and has a class
+      // Vintage descriptors use "test" segments for both suites and test cases, so if no class
+      // parent exists we keep the nearest suite parent instead of reporting each test as a suite.
       // source
-      Optional<TestData> parent = testCase.getId().getParentIdObject().map(results::get);
+      Optional<TestData> directParent = testCase.getId().getParentIdObject().map(results::get);
+      Optional<TestData> parent = directParent;
+      boolean foundClassSegment = false;
       while (parent.isPresent()) {
         TestIdentifier parentIdentifier = parent.get().getId();
 
         if (parentIdentifier.isContainer()
             && parentIdentifier.getSource().filter(ClassSource.class::isInstance).isPresent()) {
           // We found the class container parent, break out of the loop
+          foundClassSegment = true;
           break;
         }
 
@@ -130,7 +135,8 @@ public class BazelJUnitOutputListener implements TestExecutionListener, Closeabl
 
       // Fallback to using the testCase itself as the suite if it did not have a class container
       // parent
-      knownSuites.computeIfAbsent(parent.orElse(testCase), id -> new ArrayList<>()).add(testCase);
+      TestData suite = foundClassSegment ? parent.orElse(testCase) : directParent.orElse(testCase);
+      knownSuites.computeIfAbsent(suite, id -> new ArrayList<>()).add(testCase);
     }
 
     return knownSuites;
