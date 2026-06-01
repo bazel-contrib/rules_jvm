@@ -454,7 +454,7 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 		return label.NoLabel, false
 	}
 
-	jr.lang.logger.Warn().
+	jr.lang.logger.Error().
 		Str("package", imp.Name).
 		Str("from rule", from.String()).
 		Strs("classes", pkgClasses).
