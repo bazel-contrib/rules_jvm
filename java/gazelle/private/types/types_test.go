@@ -2,6 +2,7 @@ package types
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -81,5 +82,47 @@ func TestParseClassName(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestClassNameLessMatchesFullyQualifiedStringOrder(t *testing.T) {
+	names := []string{
+		"A",
+		"a.A",
+		"a.Z",
+		"a.b.A",
+		"a.b.C",
+		"a.b.C.Inner",
+		"a.b.C.Inner.Nested",
+		"a.z.A",
+		"com.example.Simple",
+		"com.example.Simple.Inner",
+		"com.google.common.base.Strings",
+		"com.google.gson.Gson",
+	}
+
+	classes := make([]ClassName, 0, len(names))
+	for _, name := range names {
+		className, err := ParseClassName(name)
+		if err != nil {
+			t.Fatalf("ParseClassName(%q): %v", name, err)
+		}
+		classes = append(classes, *className)
+	}
+
+	got := append([]ClassName(nil), classes...)
+	sort.Slice(got, func(i, j int) bool {
+		return ClassNameLess(got[i], got[j])
+	})
+
+	want := append([]ClassName(nil), classes...)
+	sort.Slice(want, func(i, j int) bool {
+		return want[i].FullyQualifiedClassName() < want[j].FullyQualifiedClassName()
+	})
+
+	for i := range want {
+		if got[i].FullyQualifiedClassName() != want[i].FullyQualifiedClassName() {
+			t.Fatalf("sorted[%d] = %q, want %q", i, got[i].FullyQualifiedClassName(), want[i].FullyQualifiedClassName())
+		}
 	}
 }
