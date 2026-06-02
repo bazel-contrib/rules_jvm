@@ -2,12 +2,13 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-class PerClassData {
+public class PerClassData {
   PerClassData() {
     this(new TreeSet<>(), new TreeMap<>(), new TreeMap<>());
   }
@@ -38,7 +39,19 @@ class PerClassData {
   final SortedMap<String, SortedSet<String>> perMethodAnnotations;
   final SortedMap<String, SortedSet<String>> perFieldAnnotations;
 
-  public void merge(PerClassData other) {
+  public Set<String> getAnnotations() {
+    return Set.copyOf(annotations);
+  }
+
+  public Map<String, Set<String>> getPerMethodAnnotations() {
+    return copyAnnotationMap(perMethodAnnotations);
+  }
+
+  public Map<String, Set<String>> getPerFieldAnnotations() {
+    return copyAnnotationMap(perFieldAnnotations);
+  }
+
+  void merge(PerClassData other) {
     annotations.addAll(other.annotations);
     for (Map.Entry<String, SortedSet<String>> methodAndAnnotations :
         other.perMethodAnnotations.entrySet()) {
@@ -58,6 +71,15 @@ class PerClassData {
       }
       existing.addAll(fieldAndAnnotations.getValue());
     }
+  }
+
+  private static Map<String, Set<String>> copyAnnotationMap(
+      SortedMap<String, SortedSet<String>> annotationsByMember) {
+    Map<String, Set<String>> copy = new TreeMap<>();
+    for (Map.Entry<String, SortedSet<String>> entry : annotationsByMember.entrySet()) {
+      copy.put(entry.getKey(), Set.copyOf(entry.getValue()));
+    }
+    return Map.copyOf(copy);
   }
 
   @Override

@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-class ParsedPackageData {
+public class ParsedPackageData {
   /** Packages defined. */
   final Set<String> packages = new TreeSet<>();
 
@@ -28,6 +28,30 @@ class ParsedPackageData {
   final Map<String, PerClassData> perClassData = new TreeMap<>();
 
   ParsedPackageData() {}
+
+  public Set<String> getPackages() {
+    return Set.copyOf(packages);
+  }
+
+  public Set<String> getUsedTypes() {
+    return Set.copyOf(usedTypes);
+  }
+
+  public Set<String> getUsedPackagesWithoutSpecificTypes() {
+    return Set.copyOf(usedPackagesWithoutSpecificTypes);
+  }
+
+  public Set<String> getExportedTypes() {
+    return Set.copyOf(exportedTypes);
+  }
+
+  public Set<String> getMainClasses() {
+    return Set.copyOf(mainClasses);
+  }
+
+  public Map<String, PerClassData> getPerClassData() {
+    return Map.copyOf(perClassData);
+  }
 
   void merge(ParsedPackageData other) {
     packages.addAll(other.packages);

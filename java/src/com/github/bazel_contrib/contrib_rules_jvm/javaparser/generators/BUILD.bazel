@@ -15,7 +15,7 @@ java_library(
         "TimeoutHandler.java",
         "TypeNameResolver.java",
     ],
-    visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
+    visibility = ["//visibility:public"],
     runtime_deps = [
         "@contrib_rules_jvm_deps//:io_grpc_grpc_netty",  #keep
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_simple",  #keep

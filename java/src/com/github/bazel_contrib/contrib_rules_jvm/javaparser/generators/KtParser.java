@@ -58,7 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class KtParser {
-  private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
+  private static final Logger logger = LoggerFactory.getLogger(KtParser.class);
 
   private final CompilerConfiguration compilerConf = createCompilerConfiguration();
   private final KotlinCoreEnvironment env =
