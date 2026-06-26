@@ -53,3 +53,15 @@ func TestOverriddenTestSuffixes(t *testing.T) {
 		})
 	}
 }
+
+// A child package must inherit its parent's java_generate_proto setting, like
+// every other directive. Guards against NewChild() resetting generateProto
+// instead of copying it from the parent.
+func TestGenerateProtoInheritsToChild(t *testing.T) {
+	parent := javaconfig.New("/tmp")
+	parent.SetGenerateProto(false)
+
+	if child := parent.NewChild(); child.GenerateProto() {
+		t.Fatalf("child did not inherit generateProto=false from parent; got true")
+	}
+}
