@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -540,5 +542,117 @@ java_library(
 		t.Errorf("SawmillRawHttpRequest should have exactly 1 provider, got %d", len(pci.prod["SawmillRawHttpRequest"]))
 	} else if pci.prod["SawmillRawHttpRequest"][0] != sawmillLabel {
 		t.Errorf("SawmillRawHttpRequest should be provided by sawmill_raw_http_request_java_library, got %s", pci.prod["SawmillRawHttpRequest"][0])
+	}
+}
+
+// fakeClassCrossResolver is a stand-in for an external gazelle plugin (e.g. a
+// proto/wire generator) that contributes class-level java resolutions via the
+// resolve.CrossResolver interface.
+type fakeClassCrossResolver struct {
+	classToLabel map[string]label.Label
+}
+
+func (f *fakeClassCrossResolver) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp resolve.ImportSpec, lang string) []resolve.FindResult {
+	if imp.Lang != languageName {
+		return nil
+	}
+	if l, ok := f.classToLabel[imp.Imp]; ok {
+		return []resolve.FindResult{{Label: l}}
+	}
+	return nil
+}
+
+// TestCrossResolverClassLevelSplitPackage covers a package that is split between an
+// in-repo java_library and an external plugin: the importer uses one class from each,
+// and must end up depending on both targets. The external class is only reachable
+// because class import specs are never indexed, so the class-level lookup always
+// falls through to the registered CrossResolver.
+func TestCrossResolverClassLevelSplitPackage(t *testing.T) {
+	c, langs, _ := testConfig(t)
+
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+
+	wireLabel := label.New("wire", "", "foo_wire")
+	exts = append(exts, &fakeClassCrossResolver{
+		classToLabel: map[string]label.Label{
+			"com.example.foo.WireMessage": wireLabel,
+		},
+	})
+
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+	rc := testRemoteCache(nil)
+
+	javaPackage := types.NewPackageName("com.example.foo")
+
+	// In-repo provider of the package, declaring only the hand-written class.
+	fooContent := `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "foo",
+    _packages = ["com.example.foo"],
+    visibility = ["//:__subpackages__"],
+)
+`
+	fooFile, err := rule.LoadData(filepath.Join("foo", "BUILD.bazel"), "foo", []byte(fooContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var jLang *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			jLang = jl
+			break
+		}
+	}
+	if jLang == nil {
+		t.Fatal("javaLang not found in langs")
+	}
+
+	fooRule := fooFile.Rules[0]
+	setPackagesPrivateAttr(fooRule)
+	fooLabel := label.New("", "foo", "foo")
+	jLang.classExportCache[fooLabel.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "HandWritten")},
+		testonly: false,
+	}
+	ix.AddRule(c, fooRule, fooFile)
+	ix.Finish()
+
+	// Importer that uses both the in-repo class and the externally-provided one.
+	importerContent := `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "app",
+    srcs = ["App.java"],
+    visibility = ["//:__subpackages__"],
+)
+`
+	importerFile, err := rule.LoadData("BUILD.bazel", "", []byte(importerContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	importerRule := importerFile.Rules[0]
+
+	resolveInput := types.ResolveInput{
+		PackageNames:         sorted_set.NewSortedSetFn([]types.PackageName{types.NewPackageName("com.example.app")}, types.PackageNameLess),
+		ImportedPackageNames: sorted_set.NewSortedSetFn([]types.PackageName{javaPackage}, types.PackageNameLess),
+		ImportedClasses: sorted_set.NewSortedSetFn([]types.ClassName{
+			types.NewClassName(javaPackage, "HandWritten"),
+			types.NewClassName(javaPackage, "WireMessage"),
+		}, types.ClassNameLess),
+		ExportedPackageNames: sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess),
+		ExportedClassNames:   sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess),
+		AnnotationProcessors: sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess),
+	}
+
+	mrslv.Resolver(importerRule, "").Resolve(c, ix, rc, importerRule, resolveInput, label.New("", "", "app"))
+
+	got := importerRule.AttrStrings("deps")
+	sort.Strings(got)
+	want := []string{"//foo", "@wire//:foo_wire"}
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("deps mismatch:\n got: %v\nwant: %v", got, want)
 	}
 }
