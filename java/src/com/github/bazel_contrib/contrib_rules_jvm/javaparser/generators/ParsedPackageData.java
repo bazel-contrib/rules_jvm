@@ -18,6 +18,13 @@ class ParsedPackageData {
   /** The fully qualified names of types that should be exported by this build rule. */
   final Set<String> exportedTypes = new TreeSet<>();
 
+  /**
+   * The fully qualified names of top-level {@code internal} declarations in this package. Keyed as
+   * an importer would record them (e.g. {@code a.b.foo} for a function), so a depender's imported
+   * classes can be matched against them to detect cross-package {@code internal} coupling.
+   */
+  final Set<String> internalTypes = new TreeSet<>();
+
   /** The short name (no package) of any classes that provide a public static main function. */
   final Set<String> mainClasses = new TreeSet<>();
 
@@ -34,6 +41,7 @@ class ParsedPackageData {
     usedTypes.addAll(other.usedTypes);
     usedPackagesWithoutSpecificTypes.addAll(other.usedPackagesWithoutSpecificTypes);
     exportedTypes.addAll(other.exportedTypes);
+    internalTypes.addAll(other.internalTypes);
     mainClasses.addAll(other.mainClasses);
     for (Map.Entry<String, PerClassData> classData : other.perClassData.entrySet()) {
       PerClassData existing = perClassData.get(classData.getKey());

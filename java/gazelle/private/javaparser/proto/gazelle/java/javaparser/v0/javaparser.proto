@@ -48,6 +48,11 @@ message Package {
 
   // The list of classes which dependers may need to have exported to them because they are part of the public interface of the request.
   repeated string exported_classes = 6;
+
+  // The fully-qualified names of top-level `internal` (Kotlin) declarations in the package, keyed
+  // as an importer records them (e.g. "a.b.foo" for a top-level function). Used to detect
+  // cross-package internal coupling, which forces dependers into the same Kotlin module.
+  repeated string internal_classes = 7;
 }
 
 message PerClassMetadata {
