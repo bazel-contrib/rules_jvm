@@ -269,7 +269,16 @@ public class KtParserTest {
   public void staticImportsTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("StaticImports.kt"));
 
-    assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), data.usedTypes);
+    // Function and constant imports (no class-name segment) are recorded as used types in addition
+    // to their package, so a symbol from a split package can be resolved at class granularity. The
+    // package is retained below as the fallback for wholly-owned packages.
+    assertEquals(
+        Set.of(
+            "com.gazelle.java.javaparser.ClasspathParser",
+            "com.gazelle.kotlin.constantpackage.CONSTANT",
+            "com.gazelle.kotlin.constantpackage2.FOO",
+            "com.gazelle.kotlin.functionpackage.someFunction"),
+        data.usedTypes);
     assertEquals(
         Set.of(
             "com.gazelle.kotlin.constantpackage",

@@ -254,6 +254,11 @@ public class KtParser {
           // If it's not a wildcard import and lacks an obvious class name, assume it's a function
           // in a package.
           packageData.usedPackagesWithoutSpecificTypes.add(importName.parent().asString());
+          // Also record the full import (e.g. misk.logging.getLogger) as a used type. For a split
+          // package, class-level resolution can then map the symbol to a single artifact via the
+          // class index, which lists top-level functions under their package. The parent package
+          // above remains the fallback for wholly-owned packages.
+          packageData.usedTypes.add(importName.asString());
         }
       }
       super.visitImportDirective(importDirective);
