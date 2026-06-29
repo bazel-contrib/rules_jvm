@@ -49,3 +49,45 @@ func assertResolves(t *testing.T, r Resolver, excludePackages map[string]struct{
 		t.Errorf("Incorrect label for %v; want %v got %v", pkg, want, got)
 	}
 }
+
+// TestResolverClassifier checks that classes and packages which only exist in a
+// Maven classifier jar (e.g. test-fixtures) resolve to a classifier-suffixed
+// label, exercising both index sections.
+func TestResolverClassifier(t *testing.T) {
+	r, err := NewResolver(
+		WithInstallFile("testdata/classifier_maven_install.json"),
+		WithIndexFile("testdata/classifier_maven_index.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	none := map[string]struct{}{}
+
+	// A package present only in a classifier jar (non-split, "packages" section).
+	assertResolves(t, r, none, "net.sf.json.jdk15", "@maven//:net_sf_json_lib_json_lib_jdk15")
+	// The plain jar still resolves to its plain label.
+	assertResolves(t, r, none, "net.sf.json", "@maven//:net_sf_json_lib_json_lib")
+
+	// A class present only in a test-fixtures jar, in a package shared with the
+	// main jar (split package, "split_package_classes" section), resolves to the
+	// test-fixtures label; the main jar's class resolves to the plain label.
+	assertResolvesClass(t, r, none, "com.example.fixtures.WidgetFixtures", "@maven//:com_example_lib_test_fixtures")
+	assertResolvesClass(t, r, none, "com.example.fixtures.Widget", "@maven//:com_example_lib")
+}
+
+func assertResolvesClass(t *testing.T, r Resolver, excludeArtifacts map[string]struct{}, className, wantLabelStr string) {
+	t.Helper()
+	cn, err := types.ParseClassName(className)
+	if err != nil {
+		t.Fatalf("parsing class name %q: %v", className, err)
+	}
+	got, err := r.ResolveClass(*cn, excludeArtifacts, "maven")
+	if err != nil {
+		t.Errorf("Error finding label for class %v: %v", className, err)
+	}
+	want, _ := label.Parse(wantLabelStr)
+	if got != want {
+		t.Errorf("Incorrect label for class %v; want %v got %v", className, want, got)
+	}
+}

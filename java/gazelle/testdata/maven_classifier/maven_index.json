@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "packages": {},
+  "split_package_classes": {
+    "com.example:widgets": {
+      "com.example.widgets": [
+        "Widget"
+      ]
+    },
+    "com.example:widgets:jar:test-fixtures": {
+      "com.example.widgets": [
+        "WidgetFixtures"
+      ]
+    }
+  }
+}

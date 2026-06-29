@@ -123,6 +123,8 @@ func NewResolver(opts ...ResolverOption) (Resolver, error) {
 
 	r.logger.Debug().Int("count", len(dependencies)).Msg("Dependency count")
 
+	// Seed package and class data recorded directly in the lock file. This is the
+	// only source when no index file is present.
 	for _, depName := range dependencies {
 		coords, err := ParseCoordinate(c.GetDependencyCoordinates(depName))
 		if err != nil {
@@ -134,34 +136,67 @@ func NewResolver(opts ...ResolverOption) (Resolver, error) {
 		for _, class := range c.ListDependencyClasses(depName) {
 			r.classIndex[class] = coords.ArtifactString()
 		}
-		if index != nil {
-			// Use classes section for split package class-level resolution
-			if pkgMap, ok := index.Classes[depName]; ok {
-				for pkg, classes := range pkgMap {
-					// Seed package→artifact mapping so split packages are detected
-					// as "multiple providers" rather than "not found"
-					if pkg != "" {
-						r.data.Add(pkg, coords.ArtifactString())
-					}
-					for _, cls := range classes {
-						fqcn := cls
-						if pkg != "" {
-							fqcn = pkg + "." + cls
-						}
-						r.classIndex[fqcn] = coords.ArtifactString()
-					}
-				}
-			}
-			// Use packages section for simple package→artifact lookup
-			if packages, ok := index.Packages[depName]; ok {
-				for _, pkg := range packages {
-					r.data.Add(pkg, coords.ArtifactString())
-				}
+	}
+
+	// Seed package and class data from the index. Every index key is an artifact's
+	// versionless coordinate (group:artifact[:extension[:classifier]]); plain,
+	// packaging-qualified, and classifier-qualified keys are all seeded the same
+	// way, so a class living only in a classifier jar (e.g. test-fixtures) resolves
+	// just like any other.
+	if index != nil {
+		for _, key := range indexKeys(index) {
+			if coords, ok := parseIndexKey(key); ok {
+				r.seedIndexKey(index, key, coords.ArtifactString())
 			}
 		}
 	}
 
 	return &r, nil
+}
+
+// indexKeys returns the sorted union of the index's package and class keys.
+func indexKeys(index *IndexFile) []string {
+	seen := make(map[string]struct{}, len(index.Classes)+len(index.Packages))
+	for key := range index.Classes {
+		seen[key] = struct{}{}
+	}
+	for key := range index.Packages {
+		seen[key] = struct{}{}
+	}
+	keys := make([]string, 0, len(seen))
+	for key := range seen {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// seedIndexKey records the packages and classes the index attributes to key,
+// mapping them to artifactString (the value passed to the artifact() macro).
+func (r *resolver) seedIndexKey(index *IndexFile, key, artifactString string) {
+	// Use classes section for split package class-level resolution
+	if pkgMap, ok := index.Classes[key]; ok {
+		for pkg, classes := range pkgMap {
+			// Seed package→artifact mapping so split packages are detected
+			// as "multiple providers" rather than "not found"
+			if pkg != "" {
+				r.data.Add(pkg, artifactString)
+			}
+			for _, cls := range classes {
+				fqcn := cls
+				if pkg != "" {
+					fqcn = pkg + "." + cls
+				}
+				r.classIndex[fqcn] = artifactString
+			}
+		}
+	}
+	// Use packages section for simple package→artifact lookup
+	if packages, ok := index.Packages[key]; ok {
+		for _, pkg := range packages {
+			r.data.Add(pkg, artifactString)
+		}
+	}
 }
 
 func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
