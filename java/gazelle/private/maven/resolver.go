@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/bazel"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven/multiset"
@@ -142,19 +143,24 @@ func NewResolver(opts ...ResolverOption) (Resolver, error) {
 	// versionless coordinate (group:artifact[:extension[:classifier]]); plain,
 	// packaging-qualified, and classifier-qualified keys are all seeded the same
 	// way, so a class living only in a classifier jar (e.g. test-fixtures) resolves
-	// just like any other.
+	// just like any other. Keys are seeded most-qualified first so that, on a class
+	// FQCN collision between a plain and a classifier jar, the plain jar's later
+	// overwrite wins.
 	if index != nil {
 		for _, key := range indexKeys(index) {
-			if coords, ok := parseIndexKey(key); ok {
-				r.seedIndexKey(index, key, coords.ArtifactString())
+			coords, err := parseIndexKey(key)
+			if err != nil {
+				r.logger.Fatal().Err(err).Msg("malformed maven_index.json key")
 			}
+			r.seedIndexKey(index, key, coords.ArtifactString())
 		}
 	}
 
 	return &r, nil
 }
 
-// indexKeys returns the sorted union of the index's package and class keys.
+// indexKeys returns the union of the index's package and class keys, ordered
+// most-qualified first so plain coordinates seed last.
 func indexKeys(index *IndexFile) []string {
 	seen := make(map[string]struct{}, len(index.Classes)+len(index.Packages))
 	for key := range index.Classes {
@@ -167,7 +173,13 @@ func indexKeys(index *IndexFile) []string {
 	for key := range seen {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	sort.Slice(keys, func(i, j int) bool {
+		ci, cj := strings.Count(keys[i], ":"), strings.Count(keys[j], ":")
+		if ci != cj {
+			return ci > cj
+		}
+		return keys[i] < keys[j]
+	})
 	return keys
 }
 

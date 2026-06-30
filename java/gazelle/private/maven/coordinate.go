@@ -48,10 +48,10 @@ func (c *coordinate) ArtifactString() string {
 // rules_jvm_external's asKey form, group:artifact[:extension[:classifier]]. Plain,
 // packaging-qualified, and classifier-qualified keys are all handled here, so every
 // index entry maps to a dependency label the same way via ArtifactString.
-func parseIndexKey(key string) (*coordinate, bool) {
+func parseIndexKey(key string) (*coordinate, error) {
 	parts := strings.Split(key, ":")
 	if len(parts) < 2 || len(parts) > 4 {
-		return nil, false
+		return nil, fmt.Errorf("invalid maven_index.json key %q: expected group:artifact[:extension[:classifier]]", key)
 	}
 	c := &coordinate{
 		GroupID:    parts[0],
@@ -63,5 +63,5 @@ func parseIndexKey(key string) (*coordinate, bool) {
 	if len(parts) == 4 {
 		c.Classifier = parts[3]
 	}
-	return c, true
+	return c, nil
 }

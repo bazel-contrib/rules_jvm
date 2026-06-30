@@ -62,7 +62,7 @@ func TestResolverClassifier(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	none := map[string]struct{}{}
+	none := make(map[string]struct{})
 
 	// A package present only in a classifier jar (non-split, "packages" section).
 	assertResolves(t, r, none, "net.sf.json.jdk15", "@maven//:net_sf_json_lib_json_lib_jdk15")
@@ -74,6 +74,9 @@ func TestResolverClassifier(t *testing.T) {
 	// test-fixtures label; the main jar's class resolves to the plain label.
 	assertResolvesClass(t, r, none, "com.example.fixtures.WidgetFixtures", "@maven//:com_example_lib_test_fixtures")
 	assertResolvesClass(t, r, none, "com.example.fixtures.Widget", "@maven//:com_example_lib")
+	// Tiebreak: a class listed in BOTH the plain and the test-fixtures jar
+	// resolves to the plain label
+	assertResolvesClass(t, r, none, "com.example.fixtures.SharedHelper", "@maven//:com_example_lib")
 }
 
 func assertResolvesClass(t *testing.T, r Resolver, excludeArtifacts map[string]struct{}, className, wantLabelStr string) {

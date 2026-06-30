@@ -14,12 +14,14 @@
   "split_package_classes": {
     "com.example:lib": {
       "com.example.fixtures": [
-        "Widget"
+        "Widget",
+        "SharedHelper"
       ]
     },
     "com.example:lib:jar:test-fixtures": {
       "com.example.fixtures": [
-        "WidgetFixtures"
+        "WidgetFixtures",
+        "SharedHelper"
       ]
     }
   }
