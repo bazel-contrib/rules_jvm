@@ -1,0 +1,9 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "api",
+    srcs = ["Api.java"],
+    visibility = ["//:__subpackages__"],
+    exports = ["@maven//:com_example_lib_a"],
+    deps = ["@maven//:com_example_lib_a"],
+)
