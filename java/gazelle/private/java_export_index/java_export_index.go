@@ -20,8 +20,8 @@ type JavaExportResolveInfo struct {
 	InternalVisibility *sorted_set.SortedSet[label.Label]
 }
 
-func (jei *JavaExportIndex) NewJavaExportResolveInfoFromRule(repoName string, r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
-	lbl := label.New(repoName, file.Pkg, r.Name())
+func (jei *JavaExportIndex) NewJavaExportResolveInfoFromRule(r *rule.Rule, file *rule.File) *JavaExportResolveInfo {
+	lbl := label.New("", file.Pkg, r.Name())
 	exportPackageVisibility := label.New("", file.Pkg, "__pkg__")
 
 	var parseErrors []error
@@ -95,12 +95,12 @@ func NewJavaExportIndex(langName string, logger zerolog.Logger) *JavaExportIndex
 
 // RecordRuleWithResolveInput lets the index know about a rule that might declare some packages, and might depend on some other packages later.
 // Must be called before FinalizeIndex.
-func (jei *JavaExportIndex) RecordRuleWithResolveInput(repoName string, file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
+func (jei *JavaExportIndex) RecordRuleWithResolveInput(file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
 	pkg := ""
 	if file != nil {
 		pkg = file.Pkg
 	}
-	lbl := label.New(repoName, pkg, r.Name())
+	lbl := label.New("", pkg, r.Name())
 	if jei.readyForResolve {
 		jei.logger.Fatal().
 			Str("label", lbl.String()).
@@ -115,8 +115,8 @@ func (jei *JavaExportIndex) RecordRuleWithResolveInput(repoName string, file *ru
 
 // RecordJavaExport lets the index know about a java_export rule, for later resolution.
 // Must be called before FinalizeIndex.
-func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *rule.File) {
-	lbl := label.New(repoName, f.Pkg, r.Name())
+func (jei *JavaExportIndex) RecordJavaExport(r *rule.Rule, f *rule.File) {
+	lbl := label.New("", f.Pkg, r.Name())
 	if jei.readyForResolve {
 		jei.logger.Fatal().
 			Str("label", lbl.String()).
@@ -128,7 +128,7 @@ func (jei *JavaExportIndex) RecordJavaExport(repoName string, r *rule.Rule, f *r
 			Str("label", lbl.String()).
 			Msg("java_export rule contained a non-empty `srcs` attribute, but it will be ignored during resolution. Instead, please use the `exports` or `runtime_deps` attributes and depend on the generated `java_library`")
 	}
-	jei.javaExports[lbl] = jei.NewJavaExportResolveInfoFromRule(repoName, r, f)
+	jei.javaExports[lbl] = jei.NewJavaExportResolveInfoFromRule(r, f)
 }
 
 // FinalizeIndex processes all the `java_exports` we've recorded when traversing the repository, to:
