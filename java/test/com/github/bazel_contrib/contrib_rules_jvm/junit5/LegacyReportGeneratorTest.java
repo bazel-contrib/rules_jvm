@@ -8,8 +8,9 @@ public class LegacyReportGeneratorTest {
 
   @Test
   public void shouldUseLegacyReportGenerator() {
-    // This test is mainly to verify that the runner doesn't crash when "open" is specified.
-    // Actual report output is not verified, as this is tricky from within the test.
+    // This test verifies that ActualRunner doesn't crash when report_generator = "legacy".
+    // The report file written to TEST_UNDECLARED_OUTPUTS_DIR is verified by the
+    // verify-legacy-report sh_test target, which runs this binary and inspects its output.
     assertTrue(true, "Test executed successfully with legacy report generator");
   }
 }
