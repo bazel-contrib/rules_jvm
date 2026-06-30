@@ -124,7 +124,7 @@ func (c *Config) NewChild() *Config {
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
-		generateProto:          true,
+		generateProto:          c.generateProto,
 		generateProtoServices:  c.generateProtoServices,
 		generateBinary:         c.generateBinary,
 		generateResources:      c.generateResources,
