@@ -324,6 +324,67 @@ func TestAddNonLocalImports(t *testing.T) {
 	}
 }
 
+// TestFilterPackagesInModule covers the module-wide export/import filter used at
+// the module root under aggregate-at-root granularity. A sub-package's imported
+// or exported classes can name a sibling sub-package that the module itself
+// already owns; without stripping those refs, the module's own packages leak
+// into `deps`/`exports` at resolve time.
+func TestFilterPackagesInModule(t *testing.T) {
+	modulePackages := stringsToPackageNames([]string{
+		"com.example.mod.consumer",
+		"com.example.mod.leaf",
+	})
+	packages := stringsToPackageNames([]string{
+		"com.example.mod.leaf",   // owned by the module: drop
+		"com.example.mod.other",  // sibling name, NOT owned: keep
+		"com.external.something", // outside the module: keep
+	})
+
+	got := filterPackagesInModule(packages, modulePackages).SortedSlice()
+	want := stringsToPackageNames([]string{
+		"com.example.mod.other",
+		"com.external.something",
+	}).SortedSlice()
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("filterPackagesInModule() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestFilterClassesInModule is the class-level companion. A cross-package
+// reference (e.g. a Kotlin extension-function receiver in a sibling
+// sub-package) records the class under its package name -- and if that package
+// is one the module owns, the class must be dropped along with the package.
+func TestFilterClassesInModule(t *testing.T) {
+	modulePackages := stringsToPackageNames([]string{
+		"com.example.mod.consumer",
+		"com.example.mod.leaf",
+	})
+	classes := sorted_set.NewSortedSetFn[types.ClassName]([]types.ClassName{}, types.ClassNameLess)
+	for _, s := range []string{
+		"com.example.mod.leaf.Widget",       // owned by the module: drop
+		"com.example.mod.other.Sibling",     // sibling name, NOT owned: keep
+		"com.external.something.Interloper", // outside the module: keep
+	} {
+		name, err := types.ParseClassName(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		classes.Add(*name)
+	}
+
+	var got []string
+	for _, c := range filterClassesInModule(classes, modulePackages).SortedSlice() {
+		got = append(got, c.FullyQualifiedClassName())
+	}
+	want := []string{
+		"com.example.mod.other.Sibling",
+		"com.external.something.Interloper",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("filterClassesInModule() mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func newTestJavaLang(t *testing.T) javaLang {
 	t.Helper()
 	return javaLang{

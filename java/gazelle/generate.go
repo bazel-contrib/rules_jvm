@@ -253,23 +253,16 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	allPackageNamesSlice := allPackageNames.SortedSlice()
-	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
-		for _, n := range allPackageNamesSlice {
-			if i.Name == n.Name {
-				return false
-			}
-		}
-		return true
-	})
-	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
-		for _, n := range allPackageNamesSlice {
-			if c.PackageName().Name == n.Name {
-				return false
-			}
-		}
-		return true
-	})
+	nonLocalProductionJavaImports := filterPackagesInModule(productionJavaImports, allPackageNames)
+	nonLocalProductionJavaImportedClasses := filterClassesInModule(productionJavaImportedClasses, allPackageNames)
+	// Exports from sub-packages can name classes in *other* packages of the same
+	// module (e.g. a Kotlin extension function on a class from a sibling package).
+	// Those are added to nonLocalJavaExports / nonLocalJavaExternalExportedClasses by
+	// `addFilteringOutOwnPackage`, which only knows the per-file ownPackage, not the
+	// module-wide set. Strip them here so the module's own packages don't leak into
+	// `exports` at resolve time -- mirroring the imports filter above.
+	nonLocalJavaExports = filterPackagesInModule(nonLocalJavaExports, allPackageNames)
+	nonLocalJavaExternalExportedClasses = filterClassesInModule(nonLocalJavaExternalExportedClasses, allPackageNames)
 
 	javaLibraryKind := "java_library"
 	if hasKotlinFiles {
@@ -630,6 +623,37 @@ func addNonLocalImportsAndExports(toImports *sorted_set.SortedSet[types.PackageN
 	if toExports != nil {
 		addFilteringOutOwnPackage(toExports, toExportedClasses, fromExportedClasses, pkg, localClasses)
 	}
+}
+
+// filterPackagesInModule returns a copy of packages with any entry whose name
+// appears in modulePackages removed. Used at the module root under
+// aggregate-at-root granularity to strip refs that a sub-package emitted for a
+// sibling package the module itself already owns.
+func filterPackagesInModule(packages, modulePackages *sorted_set.SortedSet[types.PackageName]) *sorted_set.SortedSet[types.PackageName] {
+	moduleSlice := modulePackages.SortedSlice()
+	return packages.Filter(func(p types.PackageName) bool {
+		for _, m := range moduleSlice {
+			if p.Name == m.Name {
+				return false
+			}
+		}
+		return true
+	})
+}
+
+// filterClassesInModule returns a copy of classes with any entry whose package
+// appears in modulePackages removed. Companion to filterPackagesInModule for
+// class-level tracking (imported/exported classes).
+func filterClassesInModule(classes *sorted_set.SortedSet[types.ClassName], modulePackages *sorted_set.SortedSet[types.PackageName]) *sorted_set.SortedSet[types.ClassName] {
+	moduleSlice := modulePackages.SortedSlice()
+	return classes.Filter(func(c types.ClassName) bool {
+		for _, m := range moduleSlice {
+			if c.PackageName().Name == m.Name {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 func addFilteringOutOwnPackage(to *sorted_set.SortedSet[types.PackageName], toClasses *sorted_set.SortedSet[types.ClassName], from *sorted_set.SortedSet[types.ClassName], ownPackage types.PackageName, localOuterClassNames *sorted_set.SortedSet[string]) {
