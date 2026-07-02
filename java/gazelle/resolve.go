@@ -161,7 +161,11 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 // `associates` exists only on Kotlin test rules, so this is gated on the rule having Kotlin
 // sources; a java_test/java_junit5_test has no such attribute.
 func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, r *rule.Rule, isTestRule bool, from label.Label) {
-	if !isTestRule || !ruleHasKotlinSources(r) {
+	if !ruleHasKotlinSources(r) {
+		return
+	}
+	if !isTestRule {
+		jr.populateProductionAssociatesAttr(c, r, from)
 		return
 	}
 

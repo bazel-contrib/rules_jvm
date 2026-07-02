@@ -15,6 +15,7 @@ go_library(
         "generate.go",
         "lang.go",
         "resolve.go",
+        "resolve_associates.go",
     ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle",
     visibility = ["//visibility:public"],

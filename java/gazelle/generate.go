@@ -798,6 +798,12 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], exports *sorted_set.SortedSet[types.PackageName], exportedClasses *sorted_set.SortedSet[types.ClassName], externalExportedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config) {
 	r := rule.NewRule(javaLibraryRuleKind, name)
 
+	if javaLibraryRuleKind == "kt_jvm_library" {
+		// Record this Kotlin library so the resolver can turn a depender's same-module dep
+		// on it into an `associates` (friend) edge, preserving module-wide `internal`.
+		l.kotlinLibraries[label.New("", pathToPackageRelativeToBazelWorkspace, name).String()] = true
+	}
+
 	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
 	for _, src := range srcsRelativeToBazelWorkspace {
 		srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src), filepath.ToSlash(pathToPackageRelativeToBazelWorkspace+"/")))
