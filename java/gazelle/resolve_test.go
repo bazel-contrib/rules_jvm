@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -655,4 +656,127 @@ java_library(
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("deps mismatch:\n got: %v\nwant: %v", got, want)
 	}
+}
+
+// TestRuleIsTestOnly covers `testonly = True` detection across the two shapes
+// Gazelle has used to store the attribute: older Gazelle emitted
+// `*bzl.LiteralExpr{Token: "True"}` for `SetAttr("testonly", true)`; current
+// Gazelle emits `*bzl.Ident{Name: "True"}`. Both must be recognised so
+// `isTestRule` stays consistent when a BUILD file is round-tripped through
+// Gazelle across versions.
+func TestRuleIsTestOnly(t *testing.T) {
+	for name, tc := range map[string]struct {
+		attr bzl.Expr
+		want bool
+	}{
+		"unset":                    {attr: nil, want: false},
+		"ident-true":               {attr: &bzl.Ident{Name: "True"}, want: true},
+		"ident-false":              {attr: &bzl.Ident{Name: "False"}, want: false},
+		"literalexpr-true":         {attr: &bzl.LiteralExpr{Token: "True"}, want: true},
+		"literalexpr-false":        {attr: &bzl.LiteralExpr{Token: "False"}, want: false},
+		"string-true-not-testonly": {attr: &bzl.StringExpr{Value: "True"}, want: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := rule.NewRule("java_library", "example")
+			if tc.attr != nil {
+				r.SetAttr("testonly", tc.attr)
+			}
+			if got := ruleIsTestOnly(r); got != tc.want {
+				t.Errorf("ruleIsTestOnly(%T = %v) = %v, want %v", tc.attr, tc.attr, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRuleIsTestOnlyRoundTrip pins down what `Rule.SetAttr("testonly", true)`
+// stores in the current Gazelle release. If Gazelle ever changes the encoding
+// again (e.g. back to LiteralExpr, or to a new shape), this test tells us to
+// extend `ruleIsTestOnly` to cover it.
+func TestRuleIsTestOnlyRoundTrip(t *testing.T) {
+	r := rule.NewRule("java_library", "example")
+	r.SetAttr("testonly", true)
+	if !ruleIsTestOnly(r) {
+		t.Errorf("ruleIsTestOnly must recognise the shape emitted by SetAttr; attr = %#v", r.Attr("testonly"))
+	}
+}
+
+// TestResolveTestOnlyIdentSuppressesOwnPackageError is the end-to-end guard.
+// A testonly library that imports its own package (no external provider) must
+// be treated as a test rule so `isTestRule && ownPackageNames.Contains(imp)`
+// silently skips the import instead of raising an "Unable to find package"
+// error and setting hasHadErrors. The BUILD input uses `testonly = True`
+// encoded as *bzl.Ident, matching what current Gazelle emits after a round
+// trip through the parser.
+func TestResolveTestOnlyIdentSuppressesOwnPackageError(t *testing.T) {
+	c, langs, _ := testConfig(t)
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+	rc := testRemoteCache(nil)
+
+	// Locate the javaLang so we can inspect hasHadErrors after Resolve.
+	var jLang *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			jLang = jl
+			break
+		}
+	}
+	if jLang == nil {
+		t.Fatal("javaLang not found in test config")
+	}
+	// Report unresolved packages as NoExternalImportsError (the shape a real
+	// Maven resolver returns) so Resolve falls through to the isTestRule check
+	// instead of calling logger.Fatal on the "unexpected import" error the
+	// default TestMavenResolver raises.
+	jLang.mavenResolver = &noExternalMavenResolver{}
+
+	const content = `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "helpers",
+    srcs = ["Helpers.java"],
+    testonly = True,
+    _imported_packages = ["com.example.helpers"],
+    _packages = ["com.example.helpers"],
+    visibility = ["//:__subpackages__"],
+)`
+	f, err := rule.LoadData("BUILD.bazel", "", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Pre-condition: the parser lands `testonly = True` as *bzl.Ident. If Gazelle
+	// ever changes this again we want the test to say so, not silently pass because
+	// the LiteralExpr branch still fires.
+	got := f.Rules[0].Attr("testonly")
+	if _, ok := got.(*bzl.Ident); !ok {
+		t.Fatalf("test precondition violated: parsed `testonly = True` as %T, expected *bzl.Ident", got)
+	}
+
+	imports := make([]interface{}, len(f.Rules))
+	for i, r := range f.Rules {
+		imports[i] = convertImportsAttr(r)
+		ix.AddRule(c, r, f)
+	}
+	ix.Finish()
+	for i, r := range f.Rules {
+		mrslv.Resolver(r, "").Resolve(c, ix, rc, r, imports[i], label.New("", "", r.Name()))
+	}
+
+	if jLang.hasHadErrors {
+		t.Errorf("Resolve set hasHadErrors on a testonly library importing its own package; the isTestRule check likely missed `testonly = True` stored as *bzl.Ident")
+	}
+}
+
+// noExternalMavenResolver reports every package as unresolved via a
+// *maven.NoExternalImportsError, mirroring what the real resolver returns for
+// packages that no artifact provides.
+type noExternalMavenResolver struct{}
+
+func (r *noExternalMavenResolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	return label.NoLabel, &maven.NoExternalImportsError{PackageName: pkg.Name}
+}
+
+func (r *noExternalMavenResolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
+	return label.NoLabel, nil
 }
