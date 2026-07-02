@@ -365,7 +365,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, false, javaLibraryKind, &res, cfg)
+		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, cfg.TestOnly(), javaLibraryKind, &res, cfg)
 	}
 
 	if cfg.GenerateBinary() {
@@ -434,6 +434,21 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperJavaFiles.Len() > 0,
 					&res,
 				)
+				// Cache the helper classes under the suite's "<suite>-test-lib" label (the helper
+				// library the macro emits). The resolver consults this so it only depends on the
+				// helper lib for classes it actually declares -- a class the production provider
+				// doesn't declare may be a main top-level function, not a test helper.
+				if testHelperJavaFiles.Len() > 0 {
+					helperClasses := make([]types.ClassName, 0, testHelperJavaFiles.Len())
+					for _, tf := range testHelperJavaFiles.SortedSlice() {
+						helperClasses = append(helperClasses, *tf.ClassName())
+					}
+					helperLabel := label.New("", args.Rel, testHelperLibname(suiteName))
+					l.classExportCache[helperLabel.String()] = classExportInfo{
+						classes:  helperClasses,
+						testonly: true,
+					}
+				}
 			}
 
 			sortedSeparateTestJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
@@ -735,9 +750,10 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	r.SetAttr("srcs", srcs)
 	if testonly {
 		r.SetAttr("testonly", true)
-	} else {
-		r.SetAttr("visibility", []string{"//:__subpackages__"})
 	}
+	// Visibility is independent of testonly: a testonly library still needs to be visible to its
+	// (testonly) consumers in other packages -- e.g. a testFixtures source set depended on by tests.
+	r.SetAttr("visibility", []string{"//:__subpackages__"})
 
 	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
 	for _, pkg := range packages.SortedSlice() {
