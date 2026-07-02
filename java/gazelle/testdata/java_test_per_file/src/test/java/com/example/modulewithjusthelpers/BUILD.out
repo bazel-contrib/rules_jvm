@@ -9,5 +9,6 @@ java_library(
         "Helper.java",
         "withdirectory/Helper.java",
     ],
+    visibility = ["//:__subpackages__"],
     deps = ["@maven//:com_google_guava_guava"],
 )

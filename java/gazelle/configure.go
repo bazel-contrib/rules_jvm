@@ -82,6 +82,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestSuiteNamingConvention,
 		javaconfig.JavaTestMode,
 		javaconfig.JvmKotlinEnabled,
+		javaconfig.JavaTestOnly,
 		javaconfig.MavenIndexFile,
 	}
 }
@@ -275,6 +276,16 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				default:
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
 						javaconfig.JvmKotlinEnabled, d.Value)
+				}
+			case javaconfig.JavaTestOnly:
+				switch d.Value {
+				case "true":
+					cfg.SetTestOnly(true)
+				case "false":
+					cfg.SetTestOnly(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JavaTestOnly, d.Value)
 				}
 
 			case javaconfig.JavaLibraryNamingConvention:
