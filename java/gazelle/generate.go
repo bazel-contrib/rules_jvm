@@ -541,7 +541,12 @@ func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg 
 			return !group.Packages.Contains(i)
 		})
 		nonLocalImportedClasses := importedClasses.Filter(func(c types.ClassName) bool {
-			return !group.Packages.Contains(c.PackageName())
+			// Keep a class for resolution if it belongs to another group/package, OR if this
+			// group owns the package but does not itself declare the class -- a split package
+			// (e.g. notification-builder's generated Campaigns living in a hand-written
+			// package of the same name). Such a class must cross-resolve to its real
+			// provider rather than be assumed local to this group.
+			return !group.Packages.Contains(c.PackageName()) || !ownClasses.Contains(c)
 		})
 
 		// NOTE: module resources are attached to every group, bundling them into each
