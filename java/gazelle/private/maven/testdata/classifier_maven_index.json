@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "packages": {
+    "com.example:lib": [
+      "com.example.lib"
+    ],
+    "net.sf.json-lib:json-lib": [
+      "net.sf.json"
+    ],
+    "net.sf.json-lib:json-lib:jar:jdk15": [
+      "net.sf.json.jdk15"
+    ]
+  },
+  "split_package_classes": {
+    "com.example:lib": {
+      "com.example.fixtures": [
+        "Widget",
+        "SharedHelper"
+      ]
+    },
+    "com.example:lib:jar:test-fixtures": {
+      "com.example.fixtures": [
+        "WidgetFixtures",
+        "SharedHelper"
+      ]
+    }
+  }
+}
