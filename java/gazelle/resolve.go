@@ -275,6 +275,23 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 		}
 	}
 
+	// A class whose package this rule owns is normally assumed to be provided by the rule
+	// itself, so that package is filtered out of requiredPackageNames and the loop above
+	// never visits it. But an external gazelle plugin (e.g. notification-builder's Campaigns)
+	// can provide a class in a package the rule otherwise owns -- a split package. The
+	// generate step keeps such a class in importedClasses precisely because the rule does
+	// not declare it, so consult registered CrossResolvers for its real provider.
+	if importedClasses != nil && ownPackageNames != nil {
+		for _, className := range importedClasses.SortedSlice() {
+			if !ownPackageNames.Contains(className.PackageName()) {
+				continue
+			}
+			if l := jr.resolveClassFromCrossResolver(c, pc, className, ix, from); l != label.NoLabel {
+				labels.Add(l)
+			}
+		}
+	}
+
 	setLabelAttrIncludingExistingValues(r, attrName, labels)
 
 }

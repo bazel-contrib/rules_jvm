@@ -1,0 +1,2 @@
+# gazelle:java_module_granularity scc
+# gazelle:jvm_kotlin_enabled false

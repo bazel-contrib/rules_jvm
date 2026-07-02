@@ -1,0 +1,41 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:jvm_kotlin_enabled true
+# gazelle:java_module_granularity scc
+
+kt_jvm_library(
+    name = "base",
+    srcs = ["base/Base.kt"],
+    visibility = ["//:__subpackages__"],
+)
+
+kt_jvm_library(
+    name = "cyclea",
+    srcs = [
+        "cyclea/CycleA.kt",
+        "cycleb/CycleB.kt",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+kt_jvm_library(
+    name = "secret",
+    srcs = [
+        "secret/Secret.kt",
+        "secretuser/SecretUser.kt",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+kt_jvm_library(
+    name = "solo",
+    srcs = ["solo/Solo.kt"],
+    visibility = ["//:__subpackages__"],
+)
+
+kt_jvm_library(
+    name = "user",
+    srcs = ["user/User.kt"],
+    visibility = ["//:__subpackages__"],
+    deps = [":base"],
+)
