@@ -227,6 +227,24 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 				}
 				if l := jr.resolveClassFromCrossResolver(c, pc, className, ix, from); l != label.NoLabel {
 					labels.Add(l)
+					continue
+				}
+				if isTestRule {
+					// A test may import a class from a testonly library (e.g. a testFixtures source
+					// set) whose package the resolved production target also owns; the in-repo class
+					// index includes testonly providers for test rules.
+					if l := jr.resolveSingleClass(c, pc, className, ix, from, true); l != label.NoLabel {
+						labels.Add(l)
+						continue
+					}
+					// Or the class may be a helper in another package's java_test_suite (its
+					// "<suite>-test-lib"). Depend on that helper library, but only when it actually
+					// declares the class -- a class the production provider doesn't declare may be a
+					// main top-level function, not a test helper, which must not pull the lib in.
+					if l := jr.resolveTestSuiteHelperClass(c, imp, className, ix, from); l != label.NoLabel {
+						labels.Add(l)
+						continue
+					}
 				}
 			}
 			continue
@@ -621,6 +639,33 @@ func (jr *Resolver) ruleDeclaresClass(lbl label.Label, className types.ClassName
 // misses the index and falls through to CrossResolve. This lets external plugins
 // (e.g. proto/wire generators) provide class-level resolutions even when an in-repo
 // target owns the enclosing package (a split package).
+// resolveTestSuiteHelperClass returns the "<suite>-test-lib" helper library of the lone
+// java_test_suite that provides imp AND declares className, or NoLabel otherwise.
+// java_test_suite moves its non-test sources into a helper library named <suite>-test-lib;
+// a test in another package that imports one of those helpers must depend on it. This mirrors
+// resolveSinglePackageWithAmbiguity's test-suite branch, which only fires when imp has no
+// production provider -- here we cover the case where it has one (a split main/test-suite
+// package), so the package itself resolves to production and only the helper class is missing.
+// The className check guards against false positives: a class the production provider does not
+// declare may be a main top-level function (not registered as a class), which the helper lib
+// does not declare either and must not pull in.
+func (jr *Resolver) resolveTestSuiteHelperClass(c *config.Config, imp types.PackageName, className types.ClassName, ix *resolve.RuleIndex, from label.Label) label.Label {
+	spec := resolve.ImportSpec{Lang: languageName, Imp: types.NewResolvableJavaPackage(imp, true, true).String()}
+	matches := ix.FindRulesByImportWithConfig(c, spec, languageName)
+	if len(matches) != 1 {
+		return label.NoLabel
+	}
+	l := matches[0].Label
+	if l == from {
+		return label.NoLabel
+	}
+	l.Name += "-test-lib"
+	if !jr.ruleDeclaresClass(l, className) {
+		return label.NoLabel
+	}
+	return simplifyLabel(c.RepoName, l, from)
+}
+
 func (jr *Resolver) resolveClassFromCrossResolver(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label) label.Label {
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
