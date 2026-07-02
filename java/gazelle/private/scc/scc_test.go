@@ -1,4 +1,4 @@
-package kotlinscc
+package scc
 
 import (
 	"reflect"

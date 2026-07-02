@@ -12,8 +12,8 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/kotlinscc"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/scc"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -481,8 +481,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 // emitModuleProductionLibraries emits one production library per SCC group of the
 // module's production packages. Each group is the minimal set of source directories
-// that must compile as a single Kotlin module (import cycles plus internal coupling --
-// see the kotlinscc package); every other package is its own singleton group. Imports
+// that must compile as a single target (import cycles for any JVM language, plus Kotlin
+// internal coupling -- see the scc package); every other package is its own singleton
+// group. Imports
 // satisfied by another group are left in place for the resolver to turn into `deps`
 // pointing at that group's label, which works because each group registers the packages
 // it owns.
@@ -498,9 +499,9 @@ func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg 
 		productionPackagesByDir[mRel] = mJavaPkg
 	}
 
-	graph, err := kotlinscc.New(productionPackagesByDir)
+	graph, err := scc.New(productionPackagesByDir)
 	if err != nil {
-		log.Fatal().Err(err).Msg("could not compute Kotlin module collapse")
+		log.Fatal().Err(err).Msg("could not compute module collapse")
 	}
 
 	for _, group := range graph.Groups() {

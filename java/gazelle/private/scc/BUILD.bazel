@@ -1,9 +1,9 @@
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "kotlinscc",
-    srcs = ["kotlinscc.go"],
-    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/kotlinscc",
+    name = "scc",
+    srcs = ["scc.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/scc",
     visibility = ["//visibility:public"],
     deps = [
         "//java/gazelle/private/java",
@@ -13,9 +13,9 @@ go_library(
 )
 
 go_test(
-    name = "kotlinscc_test",
-    srcs = ["kotlinscc_test.go"],
-    embed = [":kotlinscc"],
+    name = "scc_test",
+    srcs = ["scc_test.go"],
+    embed = [":scc"],
     deps = [
         "//java/gazelle/private/java",
         "//java/gazelle/private/sorted_set",

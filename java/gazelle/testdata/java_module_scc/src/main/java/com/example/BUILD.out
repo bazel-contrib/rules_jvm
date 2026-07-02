@@ -1,0 +1,21 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+# gazelle:java_module_granularity scc
+# gazelle:jvm_kotlin_enabled false
+
+java_library(
+    name = "a",
+    srcs = [
+        "a/A.java",
+        "b/B.java",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
+java_library(
+    name = "solo",
+    srcs = ["solo/Solo.java"],
+    visibility = ["//:__subpackages__"],
+    exports = [":a"],
+    deps = [":a"],
+)

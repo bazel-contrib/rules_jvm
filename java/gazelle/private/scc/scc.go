@@ -1,19 +1,20 @@
-// Package kotlinscc groups a Kotlin module's source directories into the minimal
-// set of kt_jvm_library targets that can compile.
+// Package scc groups a JVM module's source directories into the minimal set of
+// library targets that can compile.
 //
-// One kt_jvm_library is one Kotlin module, and Kotlin `internal` is module-scoped.
-// So two directories must share a target when either:
-//
-//   - they import each other cyclically (Bazel forbids target dependency cycles), or
-//   - one references the other's `internal` symbol (rules_kotlin requires both to be
-//     the same module; an associate cannot bridge two modules).
+// Bazel forbids target dependency cycles, so two directories that import each other
+// cyclically must share one target. This constraint is language-agnostic -- Java
+// package cycles collapse the same way Kotlin ones do. Kotlin adds a second
+// constraint: one library is one Kotlin module and `internal` is module-scoped, so a
+// directory referencing another's `internal` symbol must also share its target
+// (rules_kotlin requires both to be the same module; an associate cannot bridge two
+// modules). For a pure-Java module only the cycle constraint applies.
 //
 // Both constraints are expressed as edges of a directed graph over directories and
 // resolved with a single strongly-connected-components pass: each SCC of size > 1
 // becomes one collapsed target; every other directory stays its own target. The SCC
 // condensation is a DAG, so every cross-target edge is an acyclic public import that
 // Bazel can express as an ordinary `deps` edge.
-package kotlinscc
+package scc
 
 import (
 	"fmt"
@@ -25,7 +26,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 )
 
-// Group is a set of source directories that must compile as a single Kotlin module.
+// Group is a set of source directories that must compile as a single library target.
 type Group struct {
 	// Dirs are the member directories (gazelle Rels), sorted lexicographically.
 	Dirs []string
@@ -53,8 +54,8 @@ func (g *Graph) GroupForDir(dir string) *Group { return g.dirToGroup[dir] }
 func (g *Graph) GroupForPackage(pkg types.PackageName) *Group { return g.packageToGroup[pkg] }
 
 // New computes the collapse for one module from its production packages, keyed by
-// source directory (gazelle Rel). Directories that must share a Kotlin module end up
-// in the same Group; every other directory is its own singleton Group.
+// source directory (gazelle Rel). Directories that must share a target end up in the
+// same Group; every other directory is its own singleton Group.
 func New(packagesByDir map[string]*java.Package) (*Graph, error) {
 	dirs := make([]string, 0, len(packagesByDir))
 	for dir := range packagesByDir {
@@ -304,7 +305,7 @@ func (g *Graph) assertAcyclic(adjacency map[string]*sorted_set.SortedSet[string]
 			switch color[m] {
 			case gray:
 				return fmt.Errorf(
-					"kotlinscc: group dependency graph has a cycle (a misclassified edge): %s",
+					"scc: group dependency graph has a cycle (a misclassified edge): %s",
 					strings.Join(append(append([]string{}, path...), m), " -> "))
 			case white:
 				if err := visit(m); err != nil {
