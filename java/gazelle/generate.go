@@ -365,7 +365,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, false, javaLibraryKind, &res, cfg)
+		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, cfg.TestOnly(), javaLibraryKind, &res, cfg)
 	}
 
 	if cfg.GenerateBinary() {
@@ -735,9 +735,10 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	r.SetAttr("srcs", srcs)
 	if testonly {
 		r.SetAttr("testonly", true)
-	} else {
-		r.SetAttr("visibility", []string{"//:__subpackages__"})
 	}
+	// Visibility is independent of testonly: a testonly library still needs to be visible to its
+	// (testonly) consumers in other packages -- e.g. a testFixtures source set depended on by tests.
+	r.SetAttr("visibility", []string{"//:__subpackages__"})
 
 	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
 	for _, pkg := range packages.SortedSlice() {
