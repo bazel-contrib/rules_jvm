@@ -142,7 +142,79 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, resolveInput.ImportedClasses, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, resolveInput.ExportedClassNames, ix, isTestRule, from, resolveInput.PackageNames)
 
+	jr.populateAssociatesAttr(c, ix, resolveInput, r, isTestRule, from)
+
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
+}
+
+// populateAssociatesAttr makes a Kotlin test target a friend (associate) of the production
+// library for its own package(s). Gradle compiles a module's main and test sources as one
+// Kotlin module, so tests can read main's `internal` members; per-package Bazel targets are
+// separate modules, and a rules_kotlin associate restores that single-module friendship.
+//
+// The associate must itself be a single module, so it is the same-package production
+// counterpart: the in-repo, non-test provider of the test's own package (found via the index;
+// for a collapsed SCC main library this is the one target that registers the package). When a
+// package has more than one in-repo provider the friendship is ambiguous, so it is skipped --
+// the resulting "internal in another module" compile error points at the real problem.
+//
+// `associates` exists only on Kotlin test rules, so this is gated on the rule having Kotlin
+// sources; a java_test/java_junit5_test has no such attribute.
+func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleIndex, resolveInput types.ResolveInput, r *rule.Rule, isTestRule bool, from label.Label) {
+	if !ruleHasKotlinSources(r) {
+		return
+	}
+	if !isTestRule {
+		jr.populateProductionAssociatesAttr(c, r, from)
+		return
+	}
+
+	associates := sorted_set.NewSortedSetFn([]label.Label{}, sorted_set.LabelLess)
+	for _, pkg := range resolveInput.PackageNames.SortedSlice() {
+		mainSpec := resolve.ImportSpec{Lang: languageName, Imp: types.NewResolvableJavaPackage(pkg, false, false).String()}
+		matches := ix.FindRulesByImportWithConfig(c, mainSpec, languageName)
+		if len(matches) == 1 && matches[0].Label != from {
+			associates.Add(simplifyLabel(c.RepoName, matches[0].Label, from))
+		}
+	}
+	if associates.Len() == 0 {
+		return
+	}
+
+	asStrings := make([]string, 0, associates.Len())
+	associateSet := make(map[string]bool, associates.Len())
+	for _, a := range associates.SortedSlice() {
+		s := a.String()
+		asStrings = append(asStrings, s)
+		associateSet[s] = true
+	}
+	r.SetAttr("associates", asStrings)
+
+	// An associate is a friend dependency already on the compile and runtime classpath, so
+	// drop it from deps to avoid naming the same target twice (rules_kotlin treats associates
+	// as deps).
+	if deps := r.AttrStrings("deps"); len(deps) > 0 {
+		kept := make([]string, 0, len(deps))
+		for _, d := range deps {
+			if !associateSet[d] {
+				kept = append(kept, d)
+			}
+		}
+		if len(kept) == 0 {
+			r.DelAttr("deps")
+		} else {
+			r.SetAttr("deps", kept)
+		}
+	}
+}
+
+func ruleHasKotlinSources(r *rule.Rule) bool {
+	for _, src := range r.AttrStrings("srcs") {
+		if strings.HasSuffix(src, ".kt") {
+			return true
+		}
+	}
+	return false
 }
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
@@ -271,6 +343,23 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 					Stringer("from", from).
 					Msg("package has multiple providers and class-level resolution failed for all classes")
 				jr.lang.hasHadErrors = true
+			}
+		}
+	}
+
+	// A class whose package this rule owns is normally assumed to be provided by the rule
+	// itself, so that package is filtered out of requiredPackageNames and the loop above
+	// never visits it. But an external gazelle plugin (e.g. notification-builder's Campaigns)
+	// can provide a class in a package the rule otherwise owns -- a split package. The
+	// generate step keeps such a class in importedClasses precisely because the rule does
+	// not declare it, so consult registered CrossResolvers for its real provider.
+	if importedClasses != nil && ownPackageNames != nil {
+		for _, className := range importedClasses.SortedSlice() {
+			if !ownPackageNames.Contains(className.PackageName()) {
+				continue
+			}
+			if l := jr.resolveClassFromCrossResolver(c, pc, className, ix, from); l != label.NoLabel {
+				labels.Add(l)
 			}
 		}
 	}

@@ -189,6 +189,7 @@ public class GrpcServer {
               .setName(Iterables.getOnlyElement(packages))
               .addAllImportedClasses(data.usedTypes)
               .addAllExportedClasses(data.exportedTypes)
+              .addAllInternalClasses(data.internalTypes)
               .addAllImportedPackagesWithoutSpecificClasses(data.usedPackagesWithoutSpecificTypes)
               .addAllMains(data.mainClasses);
       for (Map.Entry<String, PerClassData> classEntry : data.perClassData.entrySet()) {

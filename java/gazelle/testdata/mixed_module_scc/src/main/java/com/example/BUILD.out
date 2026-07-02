@@ -1,0 +1,13 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:java_module_granularity scc
+
+kt_jvm_library(
+    name = "j",
+    srcs = [
+        "j/J.java",
+        "k/K.kt",
+    ],
+    module_name = "src_main_java_com_example",
+    visibility = ["//:__subpackages__"],
+)

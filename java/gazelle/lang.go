@@ -42,6 +42,11 @@ type javaLang struct {
 	// Key is the stringified label (e.g., "//pkg:name").
 	classExportCache map[string]classExportInfo
 
+	// kotlinLibraries holds the stringified label ("//pkg:name") of every generated
+	// kt_jvm_library. The resolver reads it to move a target's same-module deps into
+	// `associates` (Kotlin friends), so module-wide `internal` survives the fine-grained split.
+	kotlinLibraries map[string]bool
+
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
@@ -83,6 +88,7 @@ func NewLanguage() language.Language {
 		javaPackageCache: make(map[string]*java.Package),
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
 		classExportCache: make(map[string]classExportInfo),
+		kotlinLibraries:  make(map[string]bool),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
@@ -153,8 +159,12 @@ var kotlinLibraryKind = rule.KindInfo{
 		"exports": true,
 		"srcs":    true,
 	},
-	MergeableAttrs: map[string]bool{"srcs": true},
+	// associates and module_name are populated in the resolve phase
+	// (populateProductionAssociatesAttr); manage them so re-runs keep them in sync instead
+	// of preserving a stale value.
+	MergeableAttrs: map[string]bool{"srcs": true, "associates": true, "module_name": true},
 	ResolveAttrs: map[string]bool{
+		"associates":   true,
 		"deps":         true,
 		"exports":      true,
 		"runtime_deps": true,

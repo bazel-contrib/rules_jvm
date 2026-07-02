@@ -63,6 +63,41 @@ func TestParseExportedClassesFromKotlinFeatures(t *testing.T) {
 	}
 }
 
+func TestParseInternalClassesKeying(t *testing.T) {
+	// internal_classes carries top-level Kotlin `internal` declarations keyed as an importer
+	// records them. A class keeps its PascalCase name; a top-level function is keyed by package +
+	// simple name (e.g. "a.b.foo"), NOT its "a.b.FooKt.foo" JVM identity -- so it must parse to the
+	// same ClassName a depender's `import a.b.foo` produces, letting Part B match the coupling.
+	resp := &pb.Package{
+		Name: "a.b",
+		InternalClasses: []string{
+			"a.b.InternalClass",
+			"a.b.internalFunction",
+		},
+	}
+
+	got := make(map[string]types.ClassName)
+	for _, internal := range resp.GetInternalClasses() {
+		className, err := types.ParseClassName(internal)
+		if err != nil {
+			t.Fatalf("failed to parse internal class %q: %v", internal, err)
+		}
+		got[internal] = *className
+	}
+
+	cls := got["a.b.InternalClass"]
+	if cls.PackageName().Name != "a.b" || cls.BareOuterClassName() != "InternalClass" {
+		t.Errorf("InternalClass: got package %q class %q, want package \"a.b\" class \"InternalClass\"",
+			cls.PackageName().Name, cls.BareOuterClassName())
+	}
+
+	fn := got["a.b.internalFunction"]
+	if fn.PackageName().Name != "a.b" || fn.BareOuterClassName() != "internalFunction" {
+		t.Errorf("internalFunction: got package %q class %q, want package \"a.b\" class \"internalFunction\"",
+			fn.PackageName().Name, fn.BareOuterClassName())
+	}
+}
+
 func TestParsePackageWithKotlinFeatureExports(t *testing.T) {
 	// Create a mock response similar to what the Java parser would send
 	// when parsing Kotlin code with inline functions, extension functions, etc.

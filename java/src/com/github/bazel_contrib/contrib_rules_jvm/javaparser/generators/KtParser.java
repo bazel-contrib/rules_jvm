@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.psi.KtImportDirective;
 import org.jetbrains.kotlin.psi.KtModifierListOwner;
+import org.jetbrains.kotlin.psi.KtNamedDeclaration;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.jetbrains.kotlin.psi.KtNullableType;
 import org.jetbrains.kotlin.psi.KtObjectDeclaration;
@@ -273,6 +274,7 @@ public class KtParser {
         return;
       }
       packageData.perClassData.put(clazz.getFqName().toString(), new PerClassData());
+      recordInternalType(clazz, clazz.getFqName());
       super.visitClass(clazz);
       popState(clazz);
     }
@@ -287,6 +289,7 @@ public class KtParser {
       }
 
       packageData.perClassData.put(object.getFqName().toString(), new PerClassData());
+      recordInternalType(object, object.getFqName());
 
       super.visitObjectDeclaration(object);
       popState(object);
@@ -300,6 +303,8 @@ public class KtParser {
         popState(property);
         return;
       }
+
+      recordInternalType(property, packageQualifiedName(property));
 
       KtTypeReference typeReference = property.getTypeReference();
       if (typeReference != null) {
@@ -352,6 +357,8 @@ public class KtParser {
         popState(function);
         return;
       }
+
+      recordInternalType(function, packageQualifiedName(function));
 
       // Check if this is a componentN() function for destructuring
       boolean isComponentFunction =
@@ -913,6 +920,39 @@ public class KtParser {
 
     private boolean isVisible() {
       return !visibilityStack.contains(Visibility.PRIVATE);
+    }
+
+    /** True when the declaration currently being visited is itself declared {@code internal}. */
+    private boolean isInternal() {
+      return !visibilityStack.isEmpty() && visibilityStack.peek() == Visibility.INTERNAL;
+    }
+
+    private boolean isTopLevel(KtElement element) {
+      return element.getParent() instanceof KtFile;
+    }
+
+    /**
+     * Records a top-level {@code internal} declaration so dependers can be detected as needing
+     * friend (associate) access. Only top-level symbols are recorded: coupling is
+     * package-to-package and nested members aren't importable on their own. The name must match
+     * what an importer records for {@code import a.b.foo} (see {@link #visitImportDirective}) --
+     * i.e. {@code a.b.foo} for a function/property, not its {@code a.b.FooKt.foo} JVM identity.
+     */
+    private void recordInternalType(KtElement declaration, FqName fqName) {
+      if (fqName != null && isInternal() && isTopLevel(declaration)) {
+        packageData.internalTypes.add(fqName.toString());
+      }
+    }
+
+    /**
+     * The package-qualified simple name (e.g. {@code a.b.foo}), matching an importer's used type.
+     */
+    private FqName packageQualifiedName(KtNamedDeclaration declaration) {
+      String name = declaration.getName();
+      if (name == null) {
+        return null;
+      }
+      return declaration.getContainingKtFile().getPackageFqName().child(Name.identifier(name));
     }
 
     private boolean isJvmStatic(KtAnnotated annotatedThing) {
