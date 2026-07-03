@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
@@ -59,6 +60,11 @@ import org.slf4j.LoggerFactory;
 
 public class KtParser {
   private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
+
+  // Matches a dotted identifier chain -- letters/digits/underscores only. Rejects any receiver
+  // text with parentheses (a call chain) so we don't record `foo(x).bar(y).Baz` as an FQN.
+  private static final Pattern QUALIFIED_NAME =
+      Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+");
 
   private final CompilerConfiguration compilerConf = createCompilerConfiguration();
   private final KotlinCoreEnvironment env =
@@ -627,8 +633,9 @@ public class KtParser {
 
           // FQN constructor / static call: com.example.ClassName(args) or
           // com.example.ClassName.fn() — when the call's name is a class-like
-          // identifier and the receiver chain has dots, record the full qualified type.
-          if (isLikelyClassName(functionName) && receiverExpression.getText().contains(".")) {
+          // identifier and the receiver is a dotted identifier chain (not an arbitrary
+          // call chain like `foo(x).bar(y)`), record the full qualified type.
+          if (isLikelyClassName(functionName) && isQualifiedName(receiverExpression.getText())) {
             packageData.usedTypes.add(receiverExpression.getText() + "." + functionName);
           }
         }
@@ -645,7 +652,7 @@ public class KtParser {
         String selectorName = ((KtSimpleNameExpression) selectorExpression).getReferencedName();
         if (isLikelyClassName(selectorName)
             && receiverExpression != null
-            && receiverExpression.getText().contains(".")) {
+            && isQualifiedName(receiverExpression.getText())) {
           packageData.usedTypes.add(receiverExpression.getText() + "." + selectorName);
         }
       }
@@ -736,6 +743,10 @@ public class KtParser {
                 + resolvedType
                 + " will use componentN() dependencies already captured");
       }
+    }
+
+    private boolean isQualifiedName(String text) {
+      return QUALIFIED_NAME.matcher(text).matches();
     }
 
     /**
