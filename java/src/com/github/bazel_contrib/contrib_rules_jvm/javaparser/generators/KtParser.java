@@ -236,9 +236,12 @@ public class KtParser {
       }
       if (foundClass) {
         FqName className = importName;
-        if (!isLikelyClassName(importName.shortName().asString())) {
-          // If we're directly importing a function from a parent class or object, use the parent.
-          className = importName.parent();
+        // Walk up to the outermost class-like segment. A deeply nested member import
+        // (e.g. clientsync/ktranslate StringResources.foo.bar.baz) names a member nested
+        // under a class, so the resolvable type is the longest prefix ending in a class
+        // segment -- not just the immediate parent, which would leave a phantom package.
+        while (!className.isRoot() && !isLikelyClassName(className.shortName().asString())) {
+          className = className.parent();
         }
         String localName = importDirective.getAliasName();
         if (localName == null) {
