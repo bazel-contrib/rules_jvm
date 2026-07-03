@@ -4,6 +4,7 @@ java_library(
     name = "hashelpers",
     testonly = True,
     srcs = ["Helper.java"],
+    visibility = ["//:__subpackages__"],
     deps = [
         "//src/main/java/com/example/myproject",
         "@maven//:com_google_guava_guava",
