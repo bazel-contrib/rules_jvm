@@ -21,12 +21,16 @@ VINTAGE_NESTED_TEST = [
     "NestedClassesVintageTest.java",
 ]
 
+TIMEOUT_OUTPUT_CAPTURE_TEST = [
+    "TimeoutOutputCaptureTest.java",
+]
+
 java_test_suite(
     name = "small-tests",
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST,
+        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST + TIMEOUT_OUTPUT_CAPTURE_TEST,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -106,5 +110,19 @@ java_junit5_test(
         "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+# Integration test for timeout stdout capture. This test intentionally times out
+# to verify that stdout is captured even when tests are interrupted by SIGTERM.
+# Run with: bazel test //java/test/.../junit5:timeout-output-capture-test --test_timeout=3
+java_junit5_test(
+    name = "timeout-output-capture-test",
+    size = "small",
+    srcs = TIMEOUT_OUTPUT_CAPTURE_TEST,
+    tags = ["manual"],  # Don't run in normal test suites
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.TimeoutOutputCaptureTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
 )
