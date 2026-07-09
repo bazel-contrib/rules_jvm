@@ -32,6 +32,7 @@ def create_jvm_test_suite(
         size = None,
         package_prefixes = [],
         test_suffixes_excludes = [],
+        test_name_prefix = "",
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -51,6 +52,7 @@ def create_jvm_test_suite(
       srcs: A list of source files.
       test_suffixes: A list of suffixes (eg. `["Test.kt"]`)
       test_suffixes_excludes: A list of suffix excludes (eg. `["BaseTest.kt"]`)
+      test_name_prefix: Optional prefix for generated test names to avoid conflict between multiple suites.
       package: The package name to use. If `None`, a value will be
         calculated from the bazel package.
       library_attributes: Attributes to pass to `define_library`.
@@ -133,7 +135,7 @@ def create_jvm_test_suite(
 
     for src in test_srcs:
         suffix = src.rfind(".")
-        test_name = src[:suffix]
+        test_name = test_name_prefix + src[:suffix]
         test_class = get_class_name(package, src, package_prefixes)
 
         test_name = define_test(
