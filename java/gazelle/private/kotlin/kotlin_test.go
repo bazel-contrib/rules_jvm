@@ -14,6 +14,12 @@ func TestIsStdLib(t *testing.T) {
 		"kotlin.collections": true,
 		"java.lang":          false,
 		"com.example":        false,
+		// kotlin.test ships as a separate artifact, so it is not stdlib.
+		"kotlin.test":       false,
+		"kotlin.test.junit": false,
+		// kotlin.testing is a distinct package that still lives under kotlin, so the
+		// kotlin.test exclusion must not match it on a bare string prefix.
+		"kotlin.testing": true,
 	}
 
 	for pkg, want := range tests {

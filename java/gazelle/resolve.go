@@ -118,10 +118,8 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
 	isTestRule := packageConfig.IsTestRule(r.Kind())
-	if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
-		if literalExpr.Token == "True" {
-			isTestRule = true
-		}
+	if ruleIsTestOnly(r) {
+		isTestRule = true
 	}
 
 	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside the java_export.
@@ -143,6 +141,20 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, resolveInput.ExportedClassNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
+}
+
+// ruleIsTestOnly reports whether the rule sets `testonly = True`. Older Gazelle
+// releases stored `SetAttr("testonly", true)` as `*build.LiteralExpr{Token:"True"}`;
+// current releases store it as `*build.Ident{Name:"True"}`. Accept either shape so
+// downstream logic (isTestRule) works across Gazelle versions.
+func ruleIsTestOnly(r *rule.Rule) bool {
+	switch v := r.Attr("testonly").(type) {
+	case *build.Ident:
+		return v.Name == "True"
+	case *build.LiteralExpr:
+		return v.Token == "True"
+	}
+	return false
 }
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
