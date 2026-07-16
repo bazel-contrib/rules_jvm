@@ -633,12 +633,6 @@ func (jr *Resolver) ruleDeclaresClass(lbl label.Label, className types.ClassName
 	return false
 }
 
-// resolveClassFromCrossResolver consults registered Gazelle CrossResolvers for a
-// class-level java import. Because the Java plugin intentionally never registers
-// classes in the global RuleIndex, a class-level FindRulesByImportWithConfig always
-// misses the index and falls through to CrossResolve. This lets external plugins
-// (e.g. proto/wire generators) provide class-level resolutions even when an in-repo
-// target owns the enclosing package (a split package).
 // resolveTestSuiteHelperClass returns the "<suite>-test-lib" helper library of the lone
 // java_test_suite that provides imp AND declares className, or NoLabel otherwise.
 // java_test_suite moves its non-test sources into a helper library named <suite>-test-lib;
@@ -666,6 +660,12 @@ func (jr *Resolver) resolveTestSuiteHelperClass(c *config.Config, imp types.Pack
 	return simplifyLabel(c.RepoName, l, from)
 }
 
+// resolveClassFromCrossResolver consults registered Gazelle CrossResolvers for a
+// class-level java import. Because the Java plugin intentionally never registers
+// classes in the global RuleIndex, a class-level FindRulesByImportWithConfig always
+// misses the index and falls through to CrossResolve. This lets external plugins
+// (e.g. proto/wire generators) provide class-level resolutions even when an in-repo
+// target owns the enclosing package (a split package).
 func (jr *Resolver) resolveClassFromCrossResolver(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label) label.Label {
 	importSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
 	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
