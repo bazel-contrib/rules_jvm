@@ -1,0 +1,15 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+# gazelle:java_module_granularity module
+
+kt_jvm_library(
+    name = "example",
+    srcs = [
+        "Root.kt",
+        "extensions/Extensions.kt",
+        "model/Model.kt",
+    ],
+    visibility = ["//:__subpackages__"],
+    exports = ["@maven//:com_google_code_gson_gson"],
+    deps = ["@maven//:com_google_code_gson_gson"],
+)

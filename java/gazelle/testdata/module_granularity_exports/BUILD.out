@@ -1,0 +1,3 @@
+# gazelle:jvm_kotlin_enabled true
+# gazelle:resolve java com.example.model.Model @maven//:com_example_model
+# gazelle:resolve java com.google.gson.JsonObject @maven//:com_google_code_gson_gson
