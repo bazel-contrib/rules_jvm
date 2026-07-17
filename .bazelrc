@@ -6,6 +6,11 @@ build:jdk11 --java_language_version=11
 build:jdk11 --tool_java_runtime_version=remotejdk_11
 build:jdk11 --tool_java_language_version=11
 
+build:jdk21 --java_runtime_version=remotejdk_21
+build:jdk21 --java_language_version=21
+build:jdk21 --tool_java_runtime_version=remotejdk_21
+build:jdk21 --tool_java_language_version=21
+
 build --java_runtime_version=remotejdk_17
 build --java_language_version=17
 build --tool_java_runtime_version=remotejdk_17

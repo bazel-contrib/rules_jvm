@@ -22,9 +22,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnabledIf("isJava21OrHigher")
 public class TurbineClasspathParserTest {
+
+  static boolean isJava21OrHigher() {
+    return Runtime.version().feature() >= 21;
+  }
 
   private static Path workspace;
   private static Path directory;
@@ -131,8 +137,7 @@ public class TurbineClasspathParserTest {
   public void testWildcardImport() throws IOException {
     ParsedPackageData data = parser.parseClasses(directory, List.of("WildcardImport.java"));
     assertEquals(Set.of(), data.usedTypes);
-    assertEquals(
-        Set.of("com.google.common.primitives"), data.usedPackagesWithoutSpecificTypes);
+    assertEquals(Set.of("com.google.common.primitives"), data.usedPackagesWithoutSpecificTypes);
   }
 
   @Test
@@ -147,8 +152,7 @@ public class TurbineClasspathParserTest {
 
   @Test
   public void testAnnotationAfterImportOnNestedClass() throws IOException {
-    ParsedPackageData data =
-        parser.parseClasses(directory, List.of("NestedClassAnnotations.java"));
+    ParsedPackageData data = parser.parseClasses(directory, List.of("NestedClassAnnotations.java"));
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
@@ -216,8 +220,7 @@ public class TurbineClasspathParserTest {
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
-            new PerClassData(
-                treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
+            new PerClassData(treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
         data.perClassData);
   }
 
@@ -237,15 +240,14 @@ public class TurbineClasspathParserTest {
 
   @Test
   @Disabled(
-      "Turbine has no method bodies: anonymous inner class annotations in field initialisers are not captured")
+      "Turbine has no method bodies: anonymous inner class annotations in field initialisers are"
+          + " not captured")
   public void testAnonymousInnerClass() throws IOException {
     ParsedPackageData data = parser.parseClasses(directory, List.of("AnonymousInnerClass.java"));
 
     Set<String> expectedTypes =
         Set.of(
-            "java.util.HashMap",
-            "javax.annotation.Nullable",
-            "org.jetbrains.annotations.Nullable");
+            "java.util.HashMap", "javax.annotation.Nullable", "org.jetbrains.annotations.Nullable");
     assertEquals(expectedTypes, data.usedTypes);
 
     Map<String, PerClassData> expectedPerClassMetadata = new TreeMap<>();
@@ -336,8 +338,7 @@ public class TurbineClasspathParserTest {
     ParsedPackageData data =
         parser.parseClasses(directory, List.of("SamePackageWithInnerClass.java"));
     assertEquals(
-        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalHelper"),
-        data.usedTypes);
+        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalHelper"), data.usedTypes);
   }
 
   @Test
@@ -376,14 +377,14 @@ public class TurbineClasspathParserTest {
     ParsedPackageData data = parser.parseClasses(directory, List.of("ClassLiteral.java"));
     assertEquals(
         Set.of(
-            "com.example.Registry",
-            "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
+            "com.example.Registry", "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
         data.usedTypes);
   }
 
   @Test
   @Disabled(
-      "Turbine has no method bodies: bare method receivers (SomeClass.method()) inside methods are not captured")
+      "Turbine has no method bodies: bare method receivers (SomeClass.method()) inside methods are"
+          + " not captured")
   public void testBareClassMethodReceiver() throws IOException {
     ParsedPackageData data =
         parser.parseClasses(directory, List.of("BareClassMethodReceiver.java"));

@@ -1,10 +1,11 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,15 +16,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Parses Java source files using Turbine for declaration-level analysis, with an automatic
- * per-file fallback to javac for files that contain {@code .class} literals unresolved by Turbine.
+ * Parses Java source files using Turbine for declaration-level analysis, with an automatic per-file
+ * fallback to javac for files that contain {@code .class} literals unresolved by Turbine.
  *
  * <p>Turbine strips method bodies, so same-package types used only via {@code Foo.class} literals
  * (without an explicit import) are not captured. This matters for split-package targets where
  * {@code Foo} may live in a different Bazel target. The spot-check after the Turbine pass detects
  * exactly those files and re-parses them with javac, keeping the fast path for the rest.
  *
- * <p>A {@code # gazelle:java-parser full} directive can force javac for an entire directory when
+ * <p>A {@code # gazelle:java_parser javac} directive can force javac for an entire directory when
  * the auto-detection is insufficient.
  */
 public class HybridClasspathParser {
@@ -54,10 +55,9 @@ public class HybridClasspathParser {
     // Step 2: Build the set of simple class names already resolved by Turbine across this
     // directory. If a class is already in usedTypes (via an explicit import in any file), any
     // .class literal for it is already covered — no fallback needed.
-    Set<String> resolvedSimpleNames = new HashSet<>();
-    for (String fqn : turbineResult.usedTypes) {
-      resolvedSimpleNames.add(simpleName(fqn));
-    }
+    Set<String> resolvedSimpleNames =
+        Sets.newHashSet(
+            Iterables.transform(turbineResult.usedTypes, HybridClasspathParser::simpleName));
 
     // Step 3: Identify files that have .class literals for unresolved (same-package) types
     List<String> needsJavac = new ArrayList<>();

@@ -78,10 +78,12 @@ public class TurbineClasspathParser {
       typeParameterNames = new TreeSet<>();
       imports = new HashMap<>();
 
-      unit.pkg().ifPresent(pkg -> {
-        currentPackage = joinIdents(pkg.name());
-        data.packages.add(currentPackage);
-      });
+      unit.pkg()
+          .ifPresent(
+              pkg -> {
+                currentPackage = joinIdents(pkg.name());
+                data.packages.add(currentPackage);
+              });
 
       for (Tree.ImportDecl imp : unit.imports()) {
         String name = joinIdents(imp.type());
@@ -204,7 +206,8 @@ public class TurbineClasspathParser {
           data.exportedTypes.addAll(paramTypes);
         }
         for (Tree.Anno anno : param.annos()) {
-          TypeNameResolver.resolve(joinIdents(anno.name()), imports, currentPackage, excludedNames())
+          TypeNameResolver.resolve(
+                  joinIdents(anno.name()), imports, currentPackage, excludedNames())
               .ifPresent(data.usedTypes::add);
         }
       }
@@ -252,10 +255,11 @@ public class TurbineClasspathParser {
     private Set<String> resolveClassTy(Tree.ClassTy ty) {
       Set<String> result = new TreeSet<>();
       TypeNameResolver.resolve(classTypeName(ty), imports, currentPackage, excludedNames())
-          .ifPresent(resolved -> {
-            result.add(resolved);
-            data.usedTypes.add(resolved);
-          });
+          .ifPresent(
+              resolved -> {
+                result.add(resolved);
+                data.usedTypes.add(resolved);
+              });
       for (Tree tyarg : ty.tyargs()) {
         result.addAll(resolveTree(tyarg));
       }

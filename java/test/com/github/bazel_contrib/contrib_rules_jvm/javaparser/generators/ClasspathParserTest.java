@@ -391,9 +391,12 @@ public class ClasspathParserTest {
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/ExportingClass.java"));
     ParsedPackageData data = parser.parseClasses(files);
 
+    // ClasspathParser reports the type argument of a parameterized return but not the outer
+    // generic type itself; TurbineClasspathParser exports both.
     Set<String> expected =
         Set.of(
             "example.external.PackageReturn",
+            "example.external.ParameterizedArgReturn",
             "example.external.ProtectedReturn",
             "example.external.PublicReturn");
     assertEquals(expected, data.exportedTypes);
