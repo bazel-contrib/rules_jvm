@@ -164,6 +164,31 @@
       "com.google.summit.serialization",
       "com.google.summit.translation"
     ],
+    "com.google.turbine:turbine": [
+      "com.google.turbine.binder",
+      "com.google.turbine.binder.bound",
+      "com.google.turbine.binder.bytecode",
+      "com.google.turbine.binder.env",
+      "com.google.turbine.binder.lookup",
+      "com.google.turbine.binder.sym",
+      "com.google.turbine.bytecode",
+      "com.google.turbine.bytecode.sig",
+      "com.google.turbine.deps",
+      "com.google.turbine.diag",
+      "com.google.turbine.escape",
+      "com.google.turbine.lower",
+      "com.google.turbine.main",
+      "com.google.turbine.model",
+      "com.google.turbine.options",
+      "com.google.turbine.parallel",
+      "com.google.turbine.parse",
+      "com.google.turbine.processing",
+      "com.google.turbine.proto",
+      "com.google.turbine.tree",
+      "com.google.turbine.type",
+      "com.google.turbine.types",
+      "com.google.turbine.zip"
+    ],
     "com.lihaoyi:geny_2.13": [
       "geny"
     ],

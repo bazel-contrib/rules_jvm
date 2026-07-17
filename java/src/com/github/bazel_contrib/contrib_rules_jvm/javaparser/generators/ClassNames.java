@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import java.util.Set;
+
 /**
  * Shared heuristics for deciding whether a simple name looks like a class name (PascalCase) vs. a
  * constant, type parameter, or other identifier.
@@ -7,6 +9,106 @@ package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 final class ClassNames {
 
   private ClassNames() {}
+
+  /** Simple names of types implicitly available in every Java compilation unit (java.lang.*). */
+  static final Set<String> JAVA_LANG_TYPES =
+      Set.of(
+          // Primitive wrappers
+          "Boolean",
+          "Byte",
+          "Character",
+          "Double",
+          "Float",
+          "Integer",
+          "Long",
+          "Short",
+          "Void",
+          // Core types
+          "CharSequence",
+          "Class",
+          "ClassLoader",
+          "Comparable",
+          "Enum",
+          "Iterable",
+          "Math",
+          "Number",
+          "Object",
+          "Package",
+          "Process",
+          "ProcessBuilder",
+          "Record",
+          "Runtime",
+          "SecurityManager",
+          "StackTraceElement",
+          "StrictMath",
+          "String",
+          "StringBuffer",
+          "StringBuilder",
+          "System",
+          "Thread",
+          "ThreadGroup",
+          "ThreadLocal",
+          // Interfaces
+          "Appendable",
+          "AutoCloseable",
+          "Cloneable",
+          "Readable",
+          "Runnable",
+          // Throwable hierarchy (commonly referenced without import)
+          "Throwable",
+          "Error",
+          "Exception",
+          "RuntimeException",
+          "ArithmeticException",
+          "ArrayIndexOutOfBoundsException",
+          "ArrayStoreException",
+          "ClassCastException",
+          "ClassNotFoundException",
+          "CloneNotSupportedException",
+          "EnumConstantNotPresentException",
+          "IllegalAccessException",
+          "IllegalArgumentException",
+          "IllegalMonitorStateException",
+          "IllegalStateException",
+          "IllegalThreadStateException",
+          "IndexOutOfBoundsException",
+          "InstantiationException",
+          "InterruptedException",
+          "NegativeArraySizeException",
+          "NoSuchFieldException",
+          "NoSuchMethodException",
+          "NullPointerException",
+          "NumberFormatException",
+          "ReflectiveOperationException",
+          "SecurityException",
+          "StringIndexOutOfBoundsException",
+          "TypeNotPresentException",
+          "UnsupportedOperationException",
+          "AbstractMethodError",
+          "AssertionError",
+          "BootstrapMethodError",
+          "ClassCircularityError",
+          "ClassFormatError",
+          "ExceptionInInitializerError",
+          "IncompatibleClassChangeError",
+          "InternalError",
+          "LinkageError",
+          "NoClassDefFoundError",
+          "NoSuchFieldError",
+          "NoSuchMethodError",
+          "OutOfMemoryError",
+          "StackOverflowError",
+          "UnknownError",
+          "UnsatisfiedLinkError",
+          "UnsupportedClassVersionError",
+          "VerifyError",
+          "VirtualMachineError",
+          // Annotations
+          "Deprecated",
+          "FunctionalInterface",
+          "Override",
+          "SafeVarargs",
+          "SuppressWarnings");
 
   /**
    * Returns true if the given simple name looks like a PascalCase class name.

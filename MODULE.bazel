@@ -188,6 +188,7 @@ maven.install(
         "com.google.errorprone:error_prone_annotations:2.35.1",
         "com.google.googlejavaformat:google-java-format:1.24.0",
         "com.google.guava:guava:33.3.1-jre",
+        "com.google.turbine:turbine:1.15.0",
         "commons-cli:commons-cli:1.9.0",
         "io.grpc:grpc-api",
         "io.grpc:grpc-core",
