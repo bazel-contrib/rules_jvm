@@ -1,5 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators.ClassNames.isLikelyClassName;
+
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -14,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
@@ -58,6 +61,11 @@ import org.slf4j.LoggerFactory;
 public class KtParser {
   private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
+  // Matches a dotted identifier chain -- letters/digits/underscores only. Rejects any receiver
+  // text with parentheses (a call chain) so we don't record `foo(x).bar(y).Baz` as an FQN.
+  private static final Pattern QUALIFIED_NAME =
+      Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+");
+
   private final CompilerConfiguration compilerConf = createCompilerConfiguration();
   private final KotlinCoreEnvironment env =
       KotlinCoreEnvironment.createForProduction(
@@ -101,11 +109,78 @@ public class KtParser {
     return conf;
   }
 
+  // Auto-imported names from kotlin.*, kotlin.collections.*, kotlin.io.* etc. These should
+  // not trigger the same-package fallback in the resolver. Only the bare simple names that
+  // can appear in source without an explicit import are listed.
+  private static final Set<String> KOTLIN_WELL_KNOWN_TYPES =
+      Set.of(
+          // Type system
+          "Any",
+          "Nothing",
+          "Unit",
+          // Primitive wrappers
+          "Boolean",
+          "Byte",
+          "Char",
+          "Double",
+          "Float",
+          "Int",
+          "Long",
+          "Short",
+          // Strings / text
+          "CharSequence",
+          "String",
+          // Numbers / arrays
+          "Number",
+          "Array",
+          "BooleanArray",
+          "ByteArray",
+          "CharArray",
+          "DoubleArray",
+          "FloatArray",
+          "IntArray",
+          "LongArray",
+          "ShortArray",
+          // Throwables
+          "Throwable",
+          "Exception",
+          "Error",
+          "RuntimeException",
+          "IllegalArgumentException",
+          "IllegalStateException",
+          "NullPointerException",
+          "UnsupportedOperationException",
+          "IndexOutOfBoundsException",
+          "ClassCastException",
+          // Common types
+          "Comparable",
+          "Cloneable",
+          "Enum",
+          "Lazy",
+          "Pair",
+          "Triple",
+          // kotlin.collections
+          "Collection",
+          "MutableCollection",
+          "Iterable",
+          "MutableIterable",
+          "Iterator",
+          "MutableIterator",
+          "List",
+          "MutableList",
+          "ListIterator",
+          "MutableListIterator",
+          "Map",
+          "MutableMap",
+          "Set",
+          "MutableSet",
+          "Sequence");
+
   public static class KtFileVisitor extends KtTreeVisitorVoid {
     final ParsedPackageData packageData = new ParsedPackageData();
 
     private Stack<Visibility> visibilityStack = new Stack<>();
-    private HashMap<String, FqName> fqImportByNameOrAlias = new HashMap<>();
+    private HashMap<String, String> fqImportByNameOrAlias = new HashMap<>();
 
     // Track inline functions and their dependencies
     private String currentInlineFunction = null;
@@ -167,16 +242,19 @@ public class KtParser {
       }
       if (foundClass) {
         FqName className = importName;
-        if (!isLikelyClassName(importName.shortName().asString())) {
-          // If we're directly importing a function from a parent class or object, use the parent.
-          className = importName.parent();
+        // Walk up to the outermost class-like segment. A deeply nested member import
+        // (e.g. clientsync/ktranslate StringResources.foo.bar.baz) names a member nested
+        // under a class, so the resolvable type is the longest prefix ending in a class
+        // segment -- not just the immediate parent, which would leave a phantom package.
+        while (!className.isRoot() && !isLikelyClassName(className.shortName().asString())) {
+          className = className.parent();
         }
         String localName = importDirective.getAliasName();
         if (localName == null) {
           localName = className.shortName().toString();
         }
         packageData.usedTypes.add(className.toString());
-        fqImportByNameOrAlias.put(localName, className);
+        fqImportByNameOrAlias.put(localName, className.toString());
       } else {
         if (importDirective.isAllUnder()) {
           // If it's a wildcard import with no obvious class name, assume it's a package.
@@ -185,6 +263,11 @@ public class KtParser {
           // If it's not a wildcard import and lacks an obvious class name, assume it's a function
           // in a package.
           packageData.usedPackagesWithoutSpecificTypes.add(importName.parent().asString());
+          // Also record the full import (e.g. misk.logging.getLogger) as a used type. For a split
+          // package, class-level resolution can then map the symbol to a single artifact via the
+          // class index, which lists top-level functions under their package. The parent package
+          // above remains the fallback for wholly-owned packages.
+          packageData.usedTypes.add(importName.asString());
         }
       }
       super.visitImportDirective(importDirective);
@@ -416,6 +499,32 @@ public class KtParser {
     public void visitTypeReference(KtTypeReference reference) {
       logger.debug("Type reference: " + reference.getText());
 
+      // Type references in any position (parameters, return types, properties, supertypes,
+      // is/as casts, annotations) flow through the shared resolver:
+      //   - FQN names like com.example.Foo are reconstructed from the qualifier chain and
+      //     pass through as-is.
+      //   - Bare imported names resolve via the import map.
+      //   - Bare class-like names not in imports fall back to the file's package
+      //     (split-package case), unless they are well-known kotlin.* types.
+      // Generic type arguments are KtTypeReference children and are visited via super.
+      KtTypeElement rootType = getRootType(reference);
+      if (rootType instanceof KtUserType) {
+        KtUserType userType = (KtUserType) rootType;
+        String name =
+            userType.getQualifier() != null
+                ? reconstructQualifiedName(userType)
+                : userType.getReferencedName();
+        // Gate by isLikelyClassName for bare names so type parameters and other identifiers
+        // don't trigger the same-package fallback. FQN names always have dots and pass through.
+        if (name != null && (name.contains(".") || isLikelyClassName(name))) {
+          FqName filePackage = reference.getContainingKtFile().getPackageFqName();
+          String currentPackage = filePackage.isRoot() ? null : filePackage.asString();
+          TypeNameResolver.resolve(
+                  name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
+              .ifPresent(packageData.usedTypes::add);
+        }
+      }
+
       super.visitTypeReference(reference);
     }
 
@@ -433,117 +542,33 @@ public class KtParser {
           expression.getText(),
           expression.getReferencedName());
 
-      // If we're inside an inline function, track class usage
-      if (currentInlineFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        // This includes both PascalCase class names and constructor calls
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentInlineFunctionDeps.add(fqName);
-            logger.debug("Inline function " + currentInlineFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentInlineFunctionDeps.add(referencedName);
-            logger.debug(
-                "Inline function " + currentInlineFunction + " uses class: " + referencedName);
-          } else {
-            // For unresolved class names, add them as potential dependencies
-            // This handles cases where imports might not be fully resolved
-            logger.debug(
-                "Inline function "
-                    + currentInlineFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
+      String referencedName = expression.getReferencedName();
+      if (isLikelyClassName(referencedName)) {
+        trackClassUsage(referencedName, currentInlineFunction, currentInlineFunctionDeps);
+        trackClassUsage(referencedName, currentExtensionFunction, currentExtensionFunctionDeps);
+        if (currentlyInPropertyDelegate) {
+          trackClassUsage(referencedName, "property delegate", currentPropertyDelegateDeps);
         }
-      }
-
-      // If we're inside an extension function, track class usage
-      if (currentExtensionFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentExtensionFunctionDeps.add(fqName);
-            logger.debug(
-                "Extension function " + currentExtensionFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentExtensionFunctionDeps.add(referencedName);
-            logger.debug(
-                "Extension function "
-                    + currentExtensionFunction
-                    + " uses class: "
-                    + referencedName);
-          } else {
-            logger.debug(
-                "Extension function "
-                    + currentExtensionFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
-        }
-      }
-
-      // If we're inside a property delegate, track class usage
-      if (currentlyInPropertyDelegate) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentPropertyDelegateDeps.add(fqName);
-            logger.debug("Property delegate uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentPropertyDelegateDeps.add(referencedName);
-            logger.debug("Property delegate uses class: " + referencedName);
-          } else {
-            logger.debug("Property delegate uses unresolved class: " + referencedName);
-          }
-        }
-      }
-
-      // If we're inside a componentN() function, track class usage
-      if (currentComponentFunction != null) {
-        String referencedName = expression.getReferencedName();
-
-        // Check if this is a class reference (constructor call or type reference)
-        if (isLikelyClassName(referencedName)) {
-          // Try to resolve to fully qualified name
-          if (fqImportByNameOrAlias.containsKey(referencedName)) {
-            String fqName = fqImportByNameOrAlias.get(referencedName).toString();
-            currentComponentFunctionDeps.add(fqName);
-            logger.debug(
-                "ComponentN function " + currentComponentFunction + " uses class: " + fqName);
-          } else if (referencedName.contains(".")) {
-            // Already fully qualified
-            currentComponentFunctionDeps.add(referencedName);
-            logger.debug(
-                "ComponentN function "
-                    + currentComponentFunction
-                    + " uses class: "
-                    + referencedName);
-          } else {
-            logger.debug(
-                "ComponentN function "
-                    + currentComponentFunction
-                    + " uses unresolved class: "
-                    + referencedName);
-          }
-        }
+        trackClassUsage(referencedName, currentComponentFunction, currentComponentFunctionDeps);
       }
 
       super.visitSimpleNameExpression(expression);
+    }
+
+    private void trackClassUsage(String referencedName, String context, Set<String> deps) {
+      if (context == null || deps == null) {
+        return;
+      }
+      if (fqImportByNameOrAlias.containsKey(referencedName)) {
+        String fqName = fqImportByNameOrAlias.get(referencedName);
+        deps.add(fqName);
+        logger.debug(context + " uses class: " + fqName);
+      } else if (referencedName.contains(".")) {
+        deps.add(referencedName);
+        logger.debug(context + " uses class: " + referencedName);
+      } else {
+        logger.debug(context + " uses unresolved class: " + referencedName);
+      }
     }
 
     @Override
@@ -597,14 +622,38 @@ public class KtParser {
       logger.debug("AST: Dot qualified expression: " + expression.getText());
 
       KtExpression selectorExpression = expression.getSelectorExpression();
+      KtExpression receiverExpression = expression.getReceiverExpression();
       if (selectorExpression instanceof KtCallExpression) {
         KtCallExpression callExpr = (KtCallExpression) selectorExpression;
-        KtExpression receiverExpression = expression.getReceiverExpression();
         if (receiverExpression != null && callExpr.getCalleeExpression() != null) {
           String receiverType = getSimpleExpressionType(receiverExpression);
           String functionName = callExpr.getCalleeExpression().getText();
 
           checkExtensionFunctionCall(receiverType, functionName);
+
+          // FQN constructor / static call: com.example.ClassName(args) or
+          // com.example.ClassName.fn() — when the call's name is a class-like
+          // identifier and the receiver is a dotted identifier chain (not an arbitrary
+          // call chain like `foo(x).bar(y)`), record the full qualified type.
+          if (isLikelyClassName(functionName) && isQualifiedName(receiverExpression.getText())) {
+            packageData.usedTypes.add(receiverExpression.getText() + "." + functionName);
+          }
+        }
+
+        // Same-package bare class method receiver: SamePackageHelper.create() —
+        // a single class-like identifier as the receiver, with no import. This
+        // matters for split packages where the class lives in a different Bazel target.
+        recordSamePackageReceiverIfBareClass(receiverExpression, expression);
+      } else if (selectorExpression instanceof KtSimpleNameExpression) {
+        // FQN class reference as the selector of a DQE chain:
+        // com.example.ClassName.staticMember or com.example.ClassName.staticMethod()
+        // is parsed as outer-DQE(receiver=com.example.ClassName, selector=staticMethod()),
+        // and the inner DQE here has receiver=com.example, selector=ClassName.
+        String selectorName = ((KtSimpleNameExpression) selectorExpression).getReferencedName();
+        if (isLikelyClassName(selectorName)
+            && receiverExpression != null
+            && isQualifiedName(receiverExpression.getText())) {
+          packageData.usedTypes.add(receiverExpression.getText() + "." + selectorName);
         }
       }
 
@@ -696,6 +745,10 @@ public class KtParser {
       }
     }
 
+    private boolean isQualifiedName(String text) {
+      return QUALIFIED_NAME.matcher(text).matches();
+    }
+
     /**
      * Check if a type is a built-in data type that automatically provides componentN() functions.
      */
@@ -716,7 +769,7 @@ public class KtParser {
     private String resolveTypeToFqName(String typeName) {
       // Try to resolve using imports
       if (fqImportByNameOrAlias.containsKey(typeName)) {
-        return fqImportByNameOrAlias.get(typeName).toString();
+        return fqImportByNameOrAlias.get(typeName);
       }
 
       // If it's already fully qualified, return as-is
@@ -809,7 +862,7 @@ public class KtParser {
         String name = simpleExpr.getReferencedName();
 
         if (fqImportByNameOrAlias.containsKey(name)) {
-          return fqImportByNameOrAlias.get(name).toString();
+          return fqImportByNameOrAlias.get(name);
         }
 
         switch (name) {
@@ -837,33 +890,6 @@ public class KtParser {
 
     private FqName packageRelativeName(FqName name, KtFile file) {
       return FqNamesUtilKt.tail(name, file.getPackageFqName());
-    }
-
-    /** Returns true if this simple name is PascalCase. */
-    private boolean isLikelyClassName(String name) {
-      if (name.isEmpty() || !firstLetterIsUppercase(name)) {
-        return false;
-      }
-      // If the name is all uppercase, assume it's a constant. At worst, we'll still
-      // import the package, which seems a safer default than assuming it's a class
-      // that we then can't find.
-      for (int i = 1; i < name.length(); i++) {
-        char c = name.charAt(i);
-        if (Character.isLetter(c) && Character.isLowerCase(c)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    private boolean firstLetterIsUppercase(String value) {
-      for (int i = 0; i < value.length(); i++) {
-        char c = value.charAt(i);
-        if (Character.isLetter(c)) {
-          return Character.isUpperCase(c);
-        }
-      }
-      return false;
     }
 
     private Optional<KtNamedFunction> retrievePossibleMainFunction(KtObjectDeclaration object) {
@@ -927,19 +953,47 @@ public class KtParser {
     private Optional<String> tryGetFullyQualifiedName(KtTypeElement typeElement) {
       if (typeElement instanceof KtUserType) {
         KtUserType userType = (KtUserType) typeElement;
-        String identifier = userType.getReferencedName();
-        if (identifier.contains(".")) {
-          return Optional.of(identifier);
-        } else {
-          if (fqImportByNameOrAlias.containsKey(identifier)) {
-            return Optional.of(fqImportByNameOrAlias.get(identifier).toString());
-          } else {
-            return Optional.empty();
-          }
+        // FQN type with a qualifier chain (e.g. com.example.Foo): walk the chain.
+        if (userType.getQualifier() != null) {
+          return Optional.of(reconstructQualifiedName(userType));
         }
-      } else {
+        String identifier = userType.getReferencedName();
+        if (fqImportByNameOrAlias.containsKey(identifier)) {
+          return Optional.of(fqImportByNameOrAlias.get(identifier));
+        }
         return Optional.empty();
       }
+      return Optional.empty();
+    }
+
+    private void recordSamePackageReceiverIfBareClass(
+        KtExpression receiverExpression, KtElement contextElement) {
+      if (!(receiverExpression instanceof KtSimpleNameExpression)) {
+        return;
+      }
+      String name = ((KtSimpleNameExpression) receiverExpression).getReferencedName();
+      // The DQE visitor fires for non-class receivers too (someObject.method()), so the
+      // class-name heuristic is the gate that decides whether to consult the resolver.
+      if (!isLikelyClassName(name)) {
+        return;
+      }
+      FqName filePackage = contextElement.getContainingKtFile().getPackageFqName();
+      String currentPackage = filePackage.isRoot() ? null : filePackage.asString();
+      TypeNameResolver.resolve(name, fqImportByNameOrAlias, currentPackage, KOTLIN_WELL_KNOWN_TYPES)
+          .ifPresent(packageData.usedTypes::add);
+    }
+
+    private String reconstructQualifiedName(KtUserType userType) {
+      java.util.Deque<String> parts = new java.util.ArrayDeque<>();
+      KtUserType current = userType;
+      while (current != null) {
+        String name = current.getReferencedName();
+        if (name != null) {
+          parts.addFirst(name);
+        }
+        current = current.getQualifier();
+      }
+      return String.join(".", parts);
     }
 
     private FqName javaClassNameForKtFile(KtFile file) {
@@ -959,7 +1013,7 @@ public class KtParser {
 
       // Try to resolve to fully qualified name if it's in imports
       if (fqImportByNameOrAlias.containsKey(typeText)) {
-        return fqImportByNameOrAlias.get(typeText).toString();
+        return fqImportByNameOrAlias.get(typeText);
       }
 
       // For built-in types like String, Int, etc., add java.lang prefix if needed
@@ -1070,7 +1124,7 @@ public class KtParser {
 
           // Try to resolve from imports
           if (fqImportByNameOrAlias.containsKey(calleeName)) {
-            return fqImportByNameOrAlias.get(calleeName).toString();
+            return fqImportByNameOrAlias.get(calleeName);
           }
 
           // Return the simple name as a fallback

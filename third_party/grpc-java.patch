@@ -18,7 +18,94 @@ diff -ruN a/api/BUILD.bazel b/api/BUILD.bazel
 diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 --- a/compiler/BUILD.bazel	2026-01-16 15:19:24
 +++ b/compiler/BUILD.bazel	2026-01-16 15:19:57
-@@ -24,9 +24,9 @@
+@@ -1,22 +1,75 @@
+-load("@rules_cc//cc:defs.bzl", "cc_binary")
+ load("@rules_java//java:defs.bzl", "java_library")
+ load("@rules_jvm_external//:defs.bzl", "artifact")
+ load("//:java_grpc_library.bzl", "java_rpc_toolchain")
+
+-# This should not generally be referenced. Users should use java_grpc_library
+-cc_binary(
+-    name = "grpc_java_plugin",
+-    srcs = [
+-        "src/java_plugin/cpp/java_generator.cpp",
+-        "src/java_plugin/cpp/java_generator.h",
+-        "src/java_plugin/cpp/java_plugin.cpp",
++config_setting(
++    name = "linux_x86_64",
++    constraint_values = [
++        "@platforms//os:linux",
++        "@platforms//cpu:x86_64",
+     ],
+-    visibility = ["//visibility:public"],
+-    deps = [
+-        "@com_google_protobuf//:protoc_lib",
++)
++
++config_setting(
++    name = "linux_aarch64",
++    constraint_values = [
++        "@platforms//os:linux",
++        "@platforms//cpu:aarch64",
+     ],
+ )
+
++config_setting(
++    name = "macos_x86_64",
++    constraint_values = [
++        "@platforms//os:macos",
++        "@platforms//cpu:x86_64",
++    ],
++)
++
++config_setting(
++    name = "macos_aarch64",
++    constraint_values = [
++        "@platforms//os:macos",
++        "@platforms//cpu:aarch64",
++    ],
++)
++
++config_setting(
++    name = "windows_x86_64",
++    constraint_values = [
++        "@platforms//os:windows",
++        "@platforms//cpu:x86_64",
++    ],
++)
++
++# Use precompiled protoc-gen-grpc-java binaries from Maven Central
++# instead of building the protoc plugin from C++ source.
++alias(
++    name = "grpc_java_plugin",
++    actual = select({
++        ":linux_x86_64": "@protoc_gen_grpc_java_linux_x86_64//file",
++        ":linux_aarch64": "@protoc_gen_grpc_java_linux_aarch_64//file",
++        ":macos_x86_64": "@protoc_gen_grpc_java_osx_x86_64//file",
++        ":macos_aarch64": "@protoc_gen_grpc_java_osx_aarch_64//file",
++        ":windows_x86_64": "@protoc_gen_grpc_java_windows_x86_64//file",
++    }),
++    visibility = ["//visibility:public"],
++)
++
++# Use precompiled protoc binaries from the protobuf GitHub release
++# instead of building protoc from C++ source.
++alias(
++    name = "prebuilt_protoc",
++    actual = select({
++        ":linux_x86_64": "@prebuilt_protoc_linux_x86_64//:protoc",
++        ":linux_aarch64": "@prebuilt_protoc_linux_aarch_64//:protoc",
++        ":macos_x86_64": "@prebuilt_protoc_osx_x86_64//:protoc",
++        ":macos_aarch64": "@prebuilt_protoc_osx_aarch_64//:protoc",
++        ":windows_x86_64": "@prebuilt_protoc_win64//:protoc",
++    }),
++    visibility = ["//:__subpackages__"],
++)
++
+ java_library(
+     name = "java_grpc_library_deps__do_not_reference",
+     visibility = ["//xds:__pkg__"],
+@@ -24,9 +77,9 @@
          "//api",
          "//protobuf",
          "//stub",
@@ -30,8 +117,8 @@ diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 +        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
- 
-@@ -36,8 +36,8 @@
+
+@@ -36,8 +89,8 @@
          "//api",
          "//protobuf-lite",
          "//stub",
@@ -41,7 +128,19 @@ diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 +        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
- 
+
+diff -ruN a/java_grpc_library.bzl b/java_grpc_library.bzl
+--- a/java_grpc_library.bzl	2026-01-16 15:19:24
++++ b/java_grpc_library.bzl	2026-01-16 15:19:57
+@@ -41,7 +41,7 @@
+         "plugin_arg": attr.string(),
+         "_protoc": attr.label(
+             cfg = "exec",
+-            default = Label("@com_google_protobuf//:protoc"),
++            default = Label("//compiler:prebuilt_protoc"),
+             executable = True,
+         ),
+         "java_plugins": attr.label_list(
 diff -ruN a/netty/BUILD.bazel b/netty/BUILD.bazel
 --- a/netty/BUILD.bazel	2026-01-16 15:19:23
 +++ b/netty/BUILD.bazel	2026-01-16 15:19:32
@@ -83,7 +182,7 @@ diff -ruN a/netty/BUILD.bazel b/netty/BUILD.bazel
 +        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
- 
+
 diff -ruN a/protobuf/BUILD.bazel b/protobuf/BUILD.bazel
 --- a/protobuf/BUILD.bazel	2026-01-16 15:19:24
 +++ b/protobuf/BUILD.bazel	2026-01-16 15:20:11
@@ -121,7 +220,7 @@ diff -ruN a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
 +        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
 +    ],
  )
- 
+
  # This config is not fully-reliable. If it breaks, it is probably because you
 diff -ruN a/stub/BUILD.bazel b/stub/BUILD.bazel
 --- a/stub/BUILD.bazel	2026-01-16 15:19:23

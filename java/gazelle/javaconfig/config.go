@@ -97,6 +97,25 @@ const (
 
 	// Tells the code generator to generate `pkg_files` rules for the resources directories
 	JavaGenerateResources = "java_generate_resources"
+
+	// JavaTestOnly marks every production library generated in this directory (and, being
+	// inherited, its children) as `testonly`. Use it for a non-test source set that exists
+	// only to support tests -- e.g. Gradle's testFixtures -- which `IsTestPackage` does not
+	// auto-detect. Marking the target testonly keeps it out of production targets' provider
+	// set, so a package it shares with main resolves unambiguously to the main library.
+	// Can be either "true" or "false". Defaults to "false".
+	JavaTestOnly = "java_testonly"
+
+	// JavaLibraryNamingConvention controls the naming of java_library and kt_jvm_library targets.
+	// The value is a template string where {dirname} is replaced with the leaf directory name.
+	// Defaults to "" (unset), which preserves the current behavior of using the directory name.
+	JavaLibraryNamingConvention = "java_library_naming_convention"
+
+	// JavaTestSuiteNamingConvention controls the naming of java_test_suite targets.
+	// The value is a template string where {dirname} is replaced with the leaf directory name.
+	// Defaults to "" (unset), which preserves the current behavior (dirname in package mode,
+	// dirname + "-tests" in module mode).
+	JavaTestSuiteNamingConvention = "java_test_suite_naming_convention"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -122,7 +141,7 @@ func (c *Config) NewChild() *Config {
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
 		isModuleRoot:           false,
-		generateProto:          true,
+		generateProto:          c.generateProto,
 		generateProtoServices:  c.generateProtoServices,
 		generateBinary:         c.generateBinary,
 		generateResources:      c.generateResources,
@@ -140,6 +159,9 @@ func (c *Config) NewChild() *Config {
 		mavenRepositoryName:    c.mavenRepositoryName,
 		annotationProcessorFullQualifiedClassToPluginClass: annotationProcessorFullQualifiedClassToPluginClass,
 		annotationProcessorExtraImports:                    annotationProcessorExtraImports,
+		libraryNamingConvention:                            c.libraryNamingConvention,
+		testSuiteNamingConvention:                          c.testSuiteNamingConvention,
+		testOnly:                                           c.testOnly,
 	}
 }
 
@@ -179,6 +201,9 @@ type Config struct {
 	annotationProcessorExtraImports                    map[string]*sorted_set.SortedSet[types.ClassName]
 	sourcesetRoot                                      string
 	stripResourcesPrefix                               string
+	libraryNamingConvention                            string
+	testSuiteNamingConvention                          string
+	testOnly                                           bool
 }
 
 type LoadInfo struct {
@@ -211,6 +236,9 @@ func New(repoRoot string) *Config {
 		annotationProcessorExtraImports:                    make(map[string]*sorted_set.SortedSet[types.ClassName]),
 		sourcesetRoot:                                      "",
 		stripResourcesPrefix:                               "",
+		libraryNamingConvention:                            "{dirname}",
+		testSuiteNamingConvention:                          "{dirname}",
+		testOnly:                                           false,
 	}
 }
 
@@ -266,6 +294,14 @@ func (c *Config) KotlinEnabled() bool {
 
 func (c *Config) SetKotlinEnabled(enabled bool) {
 	c.kotlinEnabled = enabled
+}
+
+func (c *Config) TestOnly() bool {
+	return c.testOnly
+}
+
+func (c *Config) SetTestOnly(testOnly bool) {
+	c.testOnly = testOnly
 }
 
 func (c *Config) MavenRepositoryName() string {
@@ -445,6 +481,45 @@ func (c *Config) StripResourcesPrefix() string {
 
 func (c *Config) SetStripResourcesPrefix(prefix string) {
 	c.stripResourcesPrefix = prefix
+}
+
+func (c *Config) LibraryNamingConvention() string {
+	return c.libraryNamingConvention
+}
+
+func (c *Config) SetLibraryNamingConvention(convention string) error {
+	if convention == "" {
+		return fmt.Errorf("value must not be empty")
+	}
+	c.libraryNamingConvention = convention
+	return nil
+}
+
+func (c *Config) TestSuiteNamingConvention() string {
+	return c.testSuiteNamingConvention
+}
+
+func (c *Config) SetTestSuiteNamingConvention(convention string) error {
+	if convention == "" {
+		return fmt.Errorf("value must not be empty")
+	}
+	c.testSuiteNamingConvention = convention
+	return nil
+}
+
+// MapLibraryName returns the library target name for the given directory name.
+func (c *Config) MapLibraryName(dirname string) string {
+	return strings.ReplaceAll(c.libraryNamingConvention, "{dirname}", dirname)
+}
+
+// MapTestSuiteName returns the test suite target name for the given directory name.
+// In module mode, the default convention is "{dirname}-tests" for backward compatibility.
+func (c *Config) MapTestSuiteName(dirname string, isModule bool) string {
+	convention := c.testSuiteNamingConvention
+	if isModule && convention == "{dirname}" {
+		convention = "{dirname}-tests"
+	}
+	return strings.ReplaceAll(convention, "{dirname}", dirname)
 }
 
 func equalStringSlices(l, r []string) bool {

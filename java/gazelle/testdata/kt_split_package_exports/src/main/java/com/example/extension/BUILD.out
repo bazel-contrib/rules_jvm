@@ -1,0 +1,9 @@
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+
+kt_jvm_library(
+    name = "extension",
+    srcs = ["ExtensionUtils.kt"],
+    visibility = ["//:__subpackages__"],
+    exports = ["@maven//:com_example_lib_a"],
+    deps = ["@maven//:com_example_lib_a"],
+)

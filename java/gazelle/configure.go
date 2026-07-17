@@ -64,24 +64,27 @@ func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (jc *Configurer) KnownDirectives() []string {
 	return []string{
+		javaconfig.JavaAnnotationProcessorPlugin,
+		javaconfig.JavaAnnotationProcessorExtraImports,
 		javaconfig.JavaExcludeArtifact,
 		javaconfig.JavaExtensionDirective,
-		javaconfig.JavaMavenInstallFile,
-		javaconfig.MavenIndexFile,
-		javaconfig.JavaModuleGranularityDirective,
-		javaconfig.JavaTestFileSuffixes,
-		javaconfig.JavaTestMode,
+		javaconfig.JavaGenerateBinary,
 		javaconfig.JavaGenerateProto,
 		javaconfig.JavaGenerateProtoServices,
 		javaconfig.JavaGenerateResources,
+		javaconfig.JavaLibraryNamingConvention,
+		javaconfig.JavaMavenInstallFile,
 		javaconfig.JavaMavenRepositoryName,
-		javaconfig.JavaAnnotationProcessorPlugin,
-		javaconfig.JavaAnnotationProcessorExtraImports,
+		javaconfig.JavaModuleGranularityDirective,
 		javaconfig.JavaResolveToJavaExports,
 		javaconfig.JavaSourcesetRoot,
 		javaconfig.JavaStripResourcesPrefix,
-		javaconfig.JavaGenerateBinary,
+		javaconfig.JavaTestFileSuffixes,
+		javaconfig.JavaTestSuiteNamingConvention,
+		javaconfig.JavaTestMode,
 		javaconfig.JvmKotlinEnabled,
+		javaconfig.JavaTestOnly,
+		javaconfig.MavenIndexFile,
 	}
 }
 
@@ -280,6 +283,26 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				default:
 					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
 						javaconfig.JvmKotlinEnabled, d.Value)
+				}
+			case javaconfig.JavaTestOnly:
+				switch d.Value {
+				case "true":
+					cfg.SetTestOnly(true)
+				case "false":
+					cfg.SetTestOnly(false)
+				default:
+					jc.lang.logger.Fatal().Msgf("invalid value for directive %q: %s: possible values are true/false",
+						javaconfig.JavaTestOnly, d.Value)
+				}
+
+			case javaconfig.JavaLibraryNamingConvention:
+				if err := cfg.SetLibraryNamingConvention(d.Value); err != nil {
+					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.JavaLibraryNamingConvention)
+				}
+
+			case javaconfig.JavaTestSuiteNamingConvention:
+				if err := cfg.SetTestSuiteNamingConvention(d.Value); err != nil {
+					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.JavaTestSuiteNamingConvention)
 				}
 			}
 		}

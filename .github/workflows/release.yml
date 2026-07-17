@@ -26,3 +26,10 @@ jobs:
           body_path: release_notes.txt
           files: rules_jvm-*.tar.gz
           fail_on_unmatched_files: true
+  publish:
+    needs: build
+    uses: ./.github/workflows/publish.yaml
+    with:
+      tag_name: ${{ inputs.tag_name || github.ref_name }}
+    secrets:
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}

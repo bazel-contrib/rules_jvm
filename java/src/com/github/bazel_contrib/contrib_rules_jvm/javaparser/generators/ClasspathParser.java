@@ -1,12 +1,12 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
+import static com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators.ClassNames.isLikelyClassName;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -149,8 +150,6 @@ public class ClasspathParser {
           "SafeVarargs",
           "SuppressWarnings");
 
-  private final ParsedPackageData data = new ParsedPackageData();
-
   // get the system java compiler instance
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
   private static final List<String> OPTIONS =
@@ -160,60 +159,44 @@ public class ClasspathParser {
     // Doesn't need to do anything currently
   }
 
-  public ParsedPackageData getParsedPackageData() {
-    return data;
+  public ParsedPackageData parseClasses(Path directory, List<String> files) throws IOException {
+    return parseClasses(compiler, directory, files);
   }
 
-  public ImmutableSet<String> getUsedTypes() {
-    return ImmutableSet.copyOf(data.usedTypes);
-  }
-
-  public ImmutableSet<String> getUsedPackagesWithoutSpecificTypes() {
-    return ImmutableSet.copyOf(data.usedPackagesWithoutSpecificTypes);
-  }
-
-  public ImmutableSet<String> getExportedTypes() {
-    return ImmutableSet.copyOf(data.exportedTypes);
-  }
-
-  public ImmutableSet<String> getPackages() {
-    return ImmutableSet.copyOf(data.packages);
-  }
-
-  public ImmutableSet<String> getMainClasses() {
-    return ImmutableSet.copyOf(data.mainClasses);
-  }
-
-  public void parseClasses(Path directory, List<String> files) throws IOException {
-    StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-    List<? extends JavaFileObject> objectFiles =
-        files.stream()
-            .map(directory::resolve)
-            .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
-            .map(Lists::newArrayList)
-            .flatMap(List::stream)
-            .collect(Collectors.toList());
-    // This happens when Gazelle is run in module mode, it wants to process the module level
-    // directory, which would not
-    // have any files. This is not an error, and should just be skipped. The IOException is caught
-    // the next level up,
-    // logged, and ignored.
-    if (objectFiles.isEmpty()) {
-      logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
-      throw new IOException("No files to process");
-    }
-    parseFileGatherDependencies(objectFiles);
-  }
-
-  public void parseClasses(List<? extends JavaFileObject> files) throws IOException {
-    this.parseFileGatherDependencies(files);
-  }
-
-  private void parseFileGatherDependencies(Iterable<? extends JavaFileObject> compUnits)
+  @VisibleForTesting
+  ParsedPackageData parseClasses(JavaCompiler compiler, Path directory, List<String> files)
       throws IOException {
+    try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
+      List<? extends JavaFileObject> objectFiles =
+          files.stream()
+              .map(directory::resolve)
+              .map(fileName -> fileManager.getJavaFileObjects(fileName.toString()))
+              .map(Lists::newArrayList)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      // This happens when Gazelle is run in module mode, it wants to process the module level
+      // directory, which would not
+      // have any files. This is not an error, and should just be skipped. The IOException is caught
+      // the next level up,
+      // logged, and ignored.
+      if (objectFiles.isEmpty()) {
+        logger.debug("JavaTools: No files given to parse, skipping directory: {}", directory);
+        throw new IOException("No files to process");
+      }
+      return parseFileGatherDependencies(compiler, objectFiles);
+    }
+  }
+
+  public ParsedPackageData parseClasses(List<? extends JavaFileObject> files) throws IOException {
+    return parseFileGatherDependencies(compiler, files);
+  }
+
+  private ParsedPackageData parseFileGatherDependencies(
+      JavaCompiler compiler, Iterable<? extends JavaFileObject> compUnits) throws IOException {
+    ParsedPackageData data = new ParsedPackageData();
     JavacTask task = (JavacTask) compiler.getTask(null, null, null, OPTIONS, null, compUnits);
     try {
-      ClassScanner scanner = new ClassScanner();
+      ClassScanner scanner = new ClassScanner(data);
       for (CompilationUnitTree compileUnitTree : task.parse()) {
         compileUnitTree.accept(scanner, null);
       }
@@ -223,12 +206,18 @@ public class ClasspathParser {
     } catch (Exception exception) {
       logger.error("JavaTools failed to parse {}, skipping file", compUnits, exception);
     }
+    return data;
   }
 
   class ClassScanner extends TreeScanner<Void, Void> {
+    private final ParsedPackageData data;
     private CompilationUnitTree compileUnit;
     private String fileName;
     @Nullable private String currentPackage;
+
+    ClassScanner(ParsedPackageData data) {
+      this.data = data;
+    }
 
     // Stack of possibly-nested contexts we may currently be in.
     // First element is the outer-most context (e.g. top-level class), last element is the
@@ -302,6 +291,15 @@ public class ClasspathParser {
       if (i.isStatic()) {
         String staticPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedTypes.add(staticPackage);
+        // Static imports of nested classes (e.g., `import static Outer.Inner`) make the
+        // inner class available as a bare type. Register it in currentFileImports so
+        // that later type references resolve to the import rather than falling through
+        // to the same-package catch-all in checkFullyQualifiedType.
+        String lastComponent = name.substring(name.lastIndexOf('.') + 1);
+        if (isLikelyClassName(lastComponent)) {
+          currentFileImports.put(lastComponent, name);
+          data.usedTypes.add(name);
+        }
       } else if (name.endsWith(".*")) {
         String wildcardPackage = name.substring(0, name.lastIndexOf('.'));
         data.usedPackagesWithoutSpecificTypes.add(wildcardPackage);
@@ -326,6 +324,7 @@ public class ClasspathParser {
       for (Tree implement : t.getImplementsClause()) {
         checkFullyQualifiedType(implement);
       }
+      handleAnnotations(t.getModifiers().getAnnotations());
       for (AnnotationTree annotation : t.getModifiers().getAnnotations()) {
         String annotationClassName = annotation.getAnnotationType().toString();
         String importedFullyQualified = currentFileImports.get(annotationClassName);
@@ -416,33 +415,46 @@ public class ClasspathParser {
     public Void visitMethodInvocation(MethodInvocationTree node, Void v) {
       if (node.getMethodSelect() instanceof MemberSelectTree) {
         ExpressionTree container = ((MemberSelectTree) node.getMethodSelect()).getExpression();
-        if (container instanceof MemberSelectTree) {
-          MemberSelectTree containerMST = (MemberSelectTree) container;
-          if (looksLikeClassName(containerMST.getIdentifier().toString())) {
-            checkFullyQualifiedType(container);
-          }
-        }
+        maybeRecordMethodReceiverType(container);
       }
       return super.visitMethodInvocation(node, v);
     }
 
+    private void maybeRecordMethodReceiverType(ExpressionTree container) {
+      String receiverTypeName = methodReceiverTypeName(container);
+      if (receiverTypeName == null) {
+        return;
+      }
+      // Imported identifiers are known types even when they are acronym-style names
+      // (for example UUID), which our heuristic would otherwise reject.
+      if (currentFileImports.containsKey(receiverTypeName)
+          || looksLikeClassName(receiverTypeName)) {
+        checkFullyQualifiedType(container);
+      }
+    }
+
+    @Nullable
+    private String methodReceiverTypeName(ExpressionTree container) {
+      if (container instanceof MemberSelectTree) {
+        return ((MemberSelectTree) container).getIdentifier().toString();
+      }
+      if (container.getKind() == Tree.Kind.IDENTIFIER) {
+        return container.toString();
+      }
+      return null;
+    }
+
     private boolean looksLikeClassName(String identifier) {
-      if (identifier.isEmpty()) {
-        return false;
+      return isLikelyClassName(identifier);
+    }
+
+    @Override
+    public Void visitMemberSelect(MemberSelectTree node, Void v) {
+      // Foo.class — the expression part is a type reference.
+      if (node.getIdentifier().toString().equals("class")) {
+        checkFullyQualifiedType(node.getExpression());
       }
-      // Classes start with UpperCase.
-      if (!Character.isUpperCase(identifier.charAt(0))) {
-        return false;
-      }
-      // Single-char upper-case may well be a class-name.
-      if (identifier.length() == 1) {
-        return true;
-      }
-      // SNAKE_CASE is for constants not classes.
-      if (identifier.chars().allMatch(c -> Character.isUpperCase(c) || c == '_')) {
-        return false;
-      }
-      return true;
+      return super.visitMemberSelect(node, v);
     }
 
     @Override
@@ -456,6 +468,8 @@ public class ClasspathParser {
       if (node.getType() != null) {
         checkFullyQualifiedType(node.getType());
       }
+
+      handleAnnotations(node.getModifiers().getAnnotations());
 
       // Local variables inside methods shouldn't be treated as fields.
       if (isDirectlyInClass()) {
@@ -476,6 +490,13 @@ public class ClasspathParser {
       return super.visitVariable(node, unused);
     }
 
+    private Set<String> excludedSamePackageNames() {
+      Set<String> excluded = new TreeSet<>(JAVA_LANG_TYPES);
+      excluded.addAll(locallyDefinedClassNames);
+      excluded.addAll(typeParameterNames);
+      return excluded;
+    }
+
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
       if (identifier == null) {
@@ -484,27 +505,15 @@ public class ClasspathParser {
       Set<String> types = new TreeSet<>();
       if (identifier.getKind() == Tree.Kind.IDENTIFIER
           || identifier.getKind() == Tree.Kind.MEMBER_SELECT) {
-        String typeName = identifier.toString();
-        List<String> components = Splitter.on(".").splitToList(typeName);
-        if (currentFileImports.containsKey(components.get(0))) {
-          String importedType = currentFileImports.get(components.get(0));
-          data.usedTypes.add(importedType);
-          types.add(importedType);
-        } else if (components.size() > 1) {
-          data.usedTypes.add(typeName);
-          types.add(typeName);
-        } else if (currentPackage != null
-            && !typeName.isEmpty()
-            && !locallyDefinedClassNames.contains(typeName)
-            && !JAVA_LANG_TYPES.contains(typeName)
-            && !typeParameterNames.contains(typeName)) {
-          // Bare class name, not imported, not locally defined — resolve against
-          // current package. This handles same-package references like
-          // "extends AbstractIdentifier" where the referenced class is in the
-          // same Java package but potentially a different Bazel package.
-          String qualifiedName = currentPackage + "." + typeName;
-          data.usedTypes.add(qualifiedName);
-          types.add(qualifiedName);
+        Optional<String> resolved =
+            TypeNameResolver.resolve(
+                identifier.toString(),
+                currentFileImports,
+                currentPackage,
+                excludedSamePackageNames());
+        if (resolved.isPresent()) {
+          data.usedTypes.add(resolved.get());
+          types.add(resolved.get());
         }
       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {
         Tree baseType = ((ParameterizedTypeTree) identifier).getType();
@@ -563,44 +572,44 @@ public class ClasspathParser {
       parts.add(nestedClassName);
       return Joiner.on('.').join(parts);
     }
-  }
 
-  private void noteAnnotatedClass(
-      String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedClass(
+        String annotatedFullyQualifiedClassName, String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      data.perClassData
+          .get(annotatedFullyQualifiedClassName)
+          .annotations
+          .add(annotationFullyQualifiedClassName);
     }
-    data.perClassData
-        .get(annotatedFullyQualifiedClassName)
-        .annotations
-        .add(annotationFullyQualifiedClassName);
-  }
 
-  private void noteAnnotatedMethod(
-      String annotatedFullyQualifiedClassName,
-      String methodName,
-      String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedMethod(
+        String annotatedFullyQualifiedClassName,
+        String methodName,
+        String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+      if (!classData.perMethodAnnotations.containsKey(methodName)) {
+        classData.perMethodAnnotations.put(methodName, new TreeSet<>());
+      }
+      classData.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
     }
-    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
-    if (!classData.perMethodAnnotations.containsKey(methodName)) {
-      classData.perMethodAnnotations.put(methodName, new TreeSet<>());
-    }
-    classData.perMethodAnnotations.get(methodName).add(annotationFullyQualifiedClassName);
-  }
 
-  private void noteAnnotatedField(
-      String annotatedFullyQualifiedClassName,
-      String fieldName,
-      String annotationFullyQualifiedClassName) {
-    if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
-      data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+    private void noteAnnotatedField(
+        String annotatedFullyQualifiedClassName,
+        String fieldName,
+        String annotationFullyQualifiedClassName) {
+      if (!data.perClassData.containsKey(annotatedFullyQualifiedClassName)) {
+        data.perClassData.put(annotatedFullyQualifiedClassName, new PerClassData());
+      }
+      PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
+      if (!classData.perFieldAnnotations.containsKey(fieldName)) {
+        classData.perFieldAnnotations.put(fieldName, new TreeSet<>());
+      }
+      classData.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
     }
-    PerClassData classData = data.perClassData.get(annotatedFullyQualifiedClassName);
-    if (!classData.perFieldAnnotations.containsKey(fieldName)) {
-      classData.perFieldAnnotations.put(fieldName, new TreeSet<>());
-    }
-    classData.perFieldAnnotations.get(fieldName).add(annotationFullyQualifiedClassName);
   }
 }

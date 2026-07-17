@@ -3,6 +3,7 @@ load("@rules_java//java:defs.bzl", "java_binary", "java_library")
 java_library(
     name = "generators",
     srcs = [
+        "ClassNames.java",
         "ClasspathParser.java",
         "GrpcServer.java",
         "JavaIdentifier.java",
@@ -12,6 +13,7 @@ java_library(
         "ParsedPackageData.java",
         "PerClassData.java",
         "TimeoutHandler.java",
+        "TypeNameResolver.java",
     ],
     visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
     runtime_deps = [
