@@ -93,6 +93,14 @@ const (
 	// Tells the code generator to generate `pkg_files` rules for the resources directories
 	JavaGenerateResources = "java_generate_resources"
 
+	// JavaTestOnly marks every production library generated in this directory (and, being
+	// inherited, its children) as `testonly`. Use it for a non-test source set that exists
+	// only to support tests -- e.g. Gradle's testFixtures -- which `IsTestPackage` does not
+	// auto-detect. Marking the target testonly keeps it out of production targets' provider
+	// set, so a package it shares with main resolves unambiguously to the main library.
+	// Can be either "true" or "false". Defaults to "false".
+	JavaTestOnly = "java_testonly"
+
 	// JavaLibraryNamingConvention controls the naming of java_library and kt_jvm_library targets.
 	// The value is a template string where {dirname} is replaced with the leaf directory name.
 	// Defaults to "" (unset), which preserves the current behavior of using the directory name.
@@ -143,6 +151,7 @@ func (c *Config) NewChild() *Config {
 		annotationProcessorFullQualifiedClassToPluginClass: annotationProcessorFullQualifiedClassToPluginClass,
 		libraryNamingConvention:                            c.libraryNamingConvention,
 		testSuiteNamingConvention:                          c.testSuiteNamingConvention,
+		testOnly:                                           c.testOnly,
 	}
 }
 
@@ -183,6 +192,7 @@ type Config struct {
 	stripResourcesPrefix                               string
 	libraryNamingConvention                            string
 	testSuiteNamingConvention                          string
+	testOnly                                           bool
 }
 
 type LoadInfo struct {
@@ -216,6 +226,7 @@ func New(repoRoot string) *Config {
 		stripResourcesPrefix:      "",
 		libraryNamingConvention:   "{dirname}",
 		testSuiteNamingConvention: "{dirname}",
+		testOnly:                  false,
 	}
 }
 
@@ -271,6 +282,14 @@ func (c *Config) KotlinEnabled() bool {
 
 func (c *Config) SetKotlinEnabled(enabled bool) {
 	c.kotlinEnabled = enabled
+}
+
+func (c *Config) TestOnly() bool {
+	return c.testOnly
+}
+
+func (c *Config) SetTestOnly(testOnly bool) {
+	c.testOnly = testOnly
 }
 
 func (c *Config) MavenRepositoryName() string {

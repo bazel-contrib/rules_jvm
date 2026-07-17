@@ -1,6 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -192,6 +193,20 @@ public class KtParserTest {
     assertTrue(
         data.usedTypes.contains("java.util.ArrayList"),
         "Should detect FQN constructor call for ArrayList. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testCallChainWithClassLikeSelectorNotTreatedAsFqn() throws IOException {
+    // A Kotlin call chain like `Value.foo(1).Bar()` has a receiver whose text
+    // contains a `.` but is not a fully-qualified identifier (it has parens).
+    // The class-like final selector must not cause the chain to be recorded as a
+    // fully-qualified class reference.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("CallChainReceivers.kt"));
+
+    assertFalse(
+        data.usedTypes.contains("Value.foo(1).Bar"),
+        "Call-chain receivers with parens must not be treated as FQN class references. Found: "
+            + data.usedTypes);
   }
 
   @Test

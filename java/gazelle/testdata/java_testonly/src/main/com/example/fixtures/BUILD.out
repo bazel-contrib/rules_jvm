@@ -1,9 +1,10 @@
 load("@rules_java//java:defs.bzl", "java_library")
 
+# gazelle:java_testonly true
+
 java_library(
-    name = "justhelpers",
+    name = "fixtures",
     testonly = True,
-    srcs = ["Helper.java"],
+    srcs = ["Fixtures.java"],
     visibility = ["//:__subpackages__"],
-    deps = ["@maven//:com_google_guava_guava"],
 )

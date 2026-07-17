@@ -381,7 +381,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		} else {
 			// "module" (one coarse library for the whole subtree) and "package" (this
 			// single package) both emit exactly one library here.
-			l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, false, javaLibraryKind, &res, cfg)
+			l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, cfg.TestOnly(), javaLibraryKind, &res, cfg)
 		}
 	}
 
@@ -553,7 +553,7 @@ func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg 
 		// NOTE: module resources are attached to every group, bundling them into each
 		// group's jar. Revisit (e.g. a shared resources target) if duplicate resources
 		// cause runtime problems.
-		l.generateJavaLibrary(args.File, args.Rel, group.Name, groupFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, group.Packages, nonLocalImports, nonLocalImportedClasses, exports, ownClasses, externalExportedClasses, annotationProcessorClasses, false, groupLibraryKind, res, cfg)
+		l.generateJavaLibrary(args.File, args.Rel, group.Name, groupFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, group.Packages, nonLocalImports, nonLocalImportedClasses, exports, ownClasses, externalExportedClasses, annotationProcessorClasses, cfg.TestOnly(), groupLibraryKind, res, cfg)
 	}
 }
 
@@ -836,9 +836,10 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	r.SetAttr("srcs", srcs)
 	if testonly {
 		r.SetAttr("testonly", true)
-	} else {
-		r.SetAttr("visibility", []string{"//:__subpackages__"})
 	}
+	// Visibility is independent of testonly: a testonly library still needs to be visible to its
+	// (testonly) consumers in other packages -- e.g. a testFixtures source set depended on by tests.
+	r.SetAttr("visibility", []string{"//:__subpackages__"})
 
 	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
 	for _, pkg := range packages.SortedSlice() {
