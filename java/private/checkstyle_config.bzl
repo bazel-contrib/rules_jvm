@@ -91,7 +91,7 @@ checkstyle_config = rule(
             doc = "Checkstyle binary to use.",
             default = "@contrib_rules_jvm//java:checkstyle_cli",
             executable = True,
-            cfg = "exec",
+            cfg = "target",
             providers = [
                 JavaInfo,
             ],

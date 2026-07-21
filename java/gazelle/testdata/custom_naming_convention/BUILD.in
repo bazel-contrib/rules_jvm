@@ -1,0 +1,1 @@
+# gazelle:resolve java org.junit @maven//:junit_junit

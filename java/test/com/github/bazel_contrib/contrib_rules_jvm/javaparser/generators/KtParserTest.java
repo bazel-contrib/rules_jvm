@@ -1,6 +1,7 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -149,30 +150,150 @@ public class KtParserTest {
   }
 
   @Test
-  public void detectsFqnClassReferences() throws IOException {
+  public void testFqnExpressionsDetected() throws IOException {
+    // `visitDotQualifiedExpression` doesn't reconstruct FQN class references.
+    // FQN constructor calls (`com.example.Foo()`) and FQN static calls
+    // (`com.example.Foo.method()`) bypass imports entirely and are invisible.
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("FullyQualifieds.kt"));
 
-    // FQN constructor calls and class references detected via visitDotQualifiedExpression
+    // FQN constructor call: workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest()
     assertTrue(
         data.usedTypes.contains(
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest"),
-        "Should detect FQN constructor call: " + data.usedTypes);
+        "Should detect FQN constructor call. Found: " + data.usedTypes);
+
+    // FQN class reference: workspace.com.gazelle.java.javaparser.utils.Printer.print()
     assertTrue(
         data.usedTypes.contains("workspace.com.gazelle.java.javaparser.utils.Printer"),
-        "Should detect FQN class reference (static method call): " + data.usedTypes);
+        "Should detect FQN class in static method call. Found: " + data.usedTypes);
+
+    // FQN class reference: workspace.com.gazelle.java.javaparser.factories.Factory.create()
     assertTrue(
         data.usedTypes.contains("workspace.com.gazelle.java.javaparser.factories.Factory"),
-        "Should detect FQN class reference (factory call): " + data.usedTypes);
+        "Should detect FQN class in static method call. Found: " + data.usedTypes);
+
+    // FQN constructor call: java.util.ArrayList<String>()
     assertTrue(
         data.usedTypes.contains("java.util.ArrayList"),
-        "Should detect FQN generic constructor call: " + data.usedTypes);
+        "Should detect FQN constructor call for ArrayList. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testCallChainWithClassLikeSelectorNotTreatedAsFqn() throws IOException {
+    // A Kotlin call chain like `Value.foo(1).Bar()` has a receiver whose text
+    // contains a `.` but is not a fully-qualified identifier (it has parens).
+    // The class-like final selector must not cause the chain to be recorded as a
+    // fully-qualified class reference.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("CallChainReceivers.kt"));
+
+    assertFalse(
+        data.usedTypes.contains("Value.foo(1).Bar"),
+        "Call-chain receivers with parens must not be treated as FQN class references. Found: "
+            + data.usedTypes);
+  }
+
+  @Test
+  public void testFqnTypePositionsDetected() throws IOException {
+    // `tryGetFullyQualifiedName` calls `KtUserType.getReferencedName()` which returns
+    // only the last segment (e.g. "InputData"), never the full "com.example.types.InputData".
+    // The qualifier chain was never walked, so FQN types in all type positions are invisible.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnTypePositions.kt"));
+
+    // FQN function parameter type
+    assertTrue(
+        data.usedTypes.contains("com.example.types.InputData"),
+        "Should detect FQN parameter type. Found: " + data.usedTypes);
+
+    // FQN function return type
+    assertTrue(
+        data.usedTypes.contains("com.example.types.OutputData"),
+        "Should detect FQN return type. Found: " + data.usedTypes);
+
+    // FQN property type
+    assertTrue(
+        data.usedTypes.contains("com.example.config.AppConfig"),
+        "Should detect FQN property type. Found: " + data.usedTypes);
+
+    // FQN in is-check
+    assertTrue(
+        data.usedTypes.contains("com.example.types.Marker"),
+        "Should detect FQN in is-check. Found: " + data.usedTypes);
+
+    // FQN in as-cast
+    assertTrue(
+        data.usedTypes.contains("com.example.types.Castable"),
+        "Should detect FQN in as-cast. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testFqnAnnotationsDetected() throws IOException {
+    // FQN annotations (`@com.example.MyAnnotation`) bypassed import handling entirely.
+    // In Kotlin PSI, annotation types are KtUserType nodes with qualifier chains,
+    // but no annotation-specific handling routes them through FQN detection.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("FqnAnnotations.kt"));
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.ClassAnnotation"),
+        "Should detect FQN class annotation. Found: " + data.usedTypes);
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.FieldAnnotation"),
+        "Should detect FQN field annotation. Found: " + data.usedTypes);
+
+    assertTrue(
+        data.usedTypes.contains("com.example.annotations.MethodAnnotation"),
+        "Should detect FQN method annotation. Found: " + data.usedTypes);
+  }
+
+  @Test
+  public void testSamePackageInAllTypePositions() throws IOException {
+    // Mirrors ClasspathParserTest.testSamePackageAllTypePositions: same-package
+    // class names used as supertype, field type, parameter type, return type,
+    // is-check, and as-cast should all flow through the resolver and end up in
+    // usedTypes with the file's package prefixed. Built-in names like Boolean
+    // and Any must not be added (kotlin.* skip list).
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("SamePackageAllPositions.kt"));
+
+    assertEquals(
+        Set.of(
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeSuperType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeFieldType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeParamType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeReturnType",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeMarker",
+            "workspace.com.gazelle.kotlin.javaparser.generators.SomeCastTarget"),
+        data.usedTypes);
+  }
+
+  @Test
+  public void testBareClassMethodReceiver() throws IOException {
+    // `KtParser` relied entirely on imports for `usedTypes`. A same-package class
+    // used as a bare method receiver (`SamePackageHelper.create()`) has no import,
+    // and `visitSimpleNameExpression` never adds unresolved class names to `usedTypes`.
+    // This matters for split packages where the class is in a different Bazel target.
+    // `ClasspathParser` handles this via `checkFullyQualifiedType`'s same-package fallback.
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("BareClassMethodReceiver.kt"));
+
+    assertTrue(
+        data.usedTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.SamePackageHelper"),
+        "Should detect same-package bare class method receiver. Found: " + data.usedTypes);
   }
 
   @Test
   public void staticImportsTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("StaticImports.kt"));
 
-    assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), data.usedTypes);
+    // Function and constant imports (no class-name segment) are recorded as used types in addition
+    // to their package, so a symbol from a split package can be resolved at class granularity. The
+    // package is retained below as the fallback for wholly-owned packages.
+    assertEquals(
+        Set.of(
+            "com.gazelle.java.javaparser.ClasspathParser",
+            "com.gazelle.kotlin.constantpackage.CONSTANT",
+            "com.gazelle.kotlin.constantpackage2.FOO",
+            "com.gazelle.kotlin.functionpackage.someFunction"),
+        data.usedTypes);
     assertEquals(
         Set.of(
             "com.gazelle.kotlin.constantpackage",

@@ -118,10 +118,8 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
 	isTestRule := packageConfig.IsTestRule(r.Kind())
-	if literalExpr, ok := r.Attr("testonly").(*build.LiteralExpr); ok {
-		if literalExpr.Token == "True" {
-			isTestRule = true
-		}
+	if ruleIsTestOnly(r) {
+		isTestRule = true
 	}
 
 	// If the current library is exported under a `java_export`, it shouldn't be visible for targets outside the java_export.
@@ -140,9 +138,23 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	}
 
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, resolveInput.ImportedClasses, ix, isTestRule, from, resolveInput.PackageNames)
-	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, nil, ix, isTestRule, from, resolveInput.PackageNames)
+	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, resolveInput.ExportedClassNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
+}
+
+// ruleIsTestOnly reports whether the rule sets `testonly = True`. Older Gazelle
+// releases stored `SetAttr("testonly", true)` as `*build.LiteralExpr{Token:"True"}`;
+// current releases store it as `*build.Ident{Name:"True"}`. Accept either shape so
+// downstream logic (isTestRule) works across Gazelle versions.
+func ruleIsTestOnly(r *rule.Rule) bool {
+	switch v := r.Attr("testonly").(type) {
+	case *build.Ident:
+		return v.Name == "True"
+	case *build.LiteralExpr:
+		return v.Token == "True"
+	}
+	return false
 }
 
 func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, requiredPackageNames *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], ix *resolve.RuleIndex, isTestRule bool, from label.Label, ownPackageNames *sorted_set.SortedSet[types.PackageName]) {
@@ -214,6 +226,21 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 		dep, ambiguous := jr.resolveSinglePackageWithAmbiguity(c, pc, imp, ix, from, isTestRule, ownPackageNames, pkgClasses)
 		if dep != label.NoLabel {
 			labels.Add(simplifyLabel(c.RepoName, dep, from))
+
+			// The package resolved unambiguously to a single target, but an external
+			// gazelle plugin (e.g. a proto/wire generator) may own some classes of the same
+			// package. Class import specs are never registered in the global index, so a
+			// class-level lookup always falls through to registered CrossResolvers. Only
+			// probe classes the resolved target doesn't already declare, to keep the fast
+			// path fast when there is no external provider.
+			for _, className := range classesByPackage[imp] {
+				if jr.ruleDeclaresClass(dep, className) {
+					continue
+				}
+				if l := jr.resolveClassFromCrossResolver(c, pc, className, ix, from); l != label.NoLabel {
+					labels.Add(l)
+				}
+			}
 			continue
 		}
 
@@ -454,7 +481,7 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 		return label.NoLabel, false
 	}
 
-	jr.lang.logger.Warn().
+	jr.lang.logger.Error().
 		Str("package", imp.Name).
 		Str("from rule", from.String()).
 		Strs("classes", pkgClasses).
@@ -547,7 +574,9 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 	}
 
 	if len(candidates) == 0 {
-		return label.NoLabel
+		// No in-repo provider for this class. Mirror Gazelle's index-then-CrossResolve
+		// ordering at class granularity: consult external plugins via the cross-resolver.
+		return jr.resolveClassFromCrossResolver(c, pc, className, ix, from)
 	}
 
 	if len(candidates) == 1 {
@@ -578,6 +607,60 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 		Strs("targets", labels).
 		Msg("resolveSingleClass found MULTIPLE providers for class")
 
+	return label.NoLabel
+}
+
+// ruleDeclaresClass reports whether the rule at lbl is known (via the class export
+// cache) to provide the outer class of className. It lets the fast path skip
+// cross-resolver probes for classes the resolved in-repo target already owns.
+func (jr *Resolver) ruleDeclaresClass(lbl label.Label, className types.ClassName) bool {
+	cacheLabel := label.New("", lbl.Pkg, lbl.Name)
+	info, ok := jr.lang.classExportCache[cacheLabel.String()]
+	if !ok {
+		return false
+	}
+	for _, cls := range info.classes {
+		if cls.PackageName() == className.PackageName() && cls.BareOuterClassName() == className.BareOuterClassName() {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveClassFromCrossResolver consults registered Gazelle CrossResolvers for a
+// class-level java import. Because the Java plugin intentionally never registers
+// classes in the global RuleIndex, a class-level FindRulesByImportWithConfig always
+// misses the index and falls through to CrossResolve. This lets external plugins
+// (e.g. proto/wire generators) provide class-level resolutions even when an in-repo
+// target owns the enclosing package (a split package).
+func (jr *Resolver) resolveClassFromCrossResolver(c *config.Config, pc *javaconfig.Config, className types.ClassName, ix *resolve.RuleIndex, from label.Label) label.Label {
+	importSpec := resolve.ImportSpec{Lang: languageName, Imp: className.FullyQualifiedClassName()}
+	matches := ix.FindRulesByImportWithConfig(c, importSpec, languageName)
+	if len(matches) == 0 {
+		return label.NoLabel
+	}
+
+	if pc.ResolveToJavaExports() {
+		matches = jr.tryResolvingToJavaExport(matches, from)
+	}
+
+	candidates := sorted_set.NewSortedSetFn[label.Label]([]label.Label{}, sorted_set.LabelLess)
+	for _, m := range matches {
+		candidates.Add(m.Label)
+	}
+
+	if candidates.Len() == 1 {
+		return simplifyLabel(c.RepoName, candidates.SortedSlice()[0], from)
+	}
+
+	labelStrings := make([]string, 0, candidates.Len())
+	for _, l := range candidates.SortedSlice() {
+		labelStrings = append(labelStrings, l.String())
+	}
+	jr.lang.logger.Error().
+		Str("class", className.FullyQualifiedClassName()).
+		Strs("targets", labelStrings).
+		Msg("cross-resolver returned multiple providers for class")
 	return label.NoLabel
 }
 

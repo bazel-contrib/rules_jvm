@@ -6,9 +6,11 @@ java_test_suite(
     name = "generators",
     size = "small",
     srcs = [
+        "ClassNamesTest.java",
         "ClasspathParserTest.java",
         "JavaIdentifierTest.java",
         "KtParserTest.java",
+        "TypeNameResolverTest.java",
     ],
     jvm_flags = [
         "-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG",
@@ -31,6 +33,7 @@ java_test_suite(
         "@contrib_rules_jvm_deps//:junit_junit",
         "@contrib_rules_jvm_deps//:org_junit_jupiter_junit_jupiter_api",
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_api",
+        "@contrib_rules_jvm_tests//:org_mockito_mockito_core",
     ],
 )
 

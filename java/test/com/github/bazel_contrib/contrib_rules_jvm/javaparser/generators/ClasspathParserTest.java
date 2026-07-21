@@ -1,6 +1,12 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
@@ -20,12 +26,16 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,36 +86,36 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
     assertEquals(1, files.size());
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    Assertions.assertTrue(parser.getUsedTypes().isEmpty());
-    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
-    assertEquals(Set.of("Main"), parser.getMainClasses());
+    Assertions.assertTrue(data.usedTypes.isEmpty());
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), data.packages);
+    assertEquals(Set.of("Main"), data.mainClasses);
   }
 
   @Test
   public void verifyPackages() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
-    parser.parseClasses(files);
-    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
+    ParsedPackageData data = parser.parseClasses(files);
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), data.packages);
   }
 
   @Test
   public void verifyNoPackageWithAnnotation() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/NoPackage.java"));
-    parser.parseClasses(files);
-    assertEquals(Set.of(), parser.getPackages());
+    ParsedPackageData data = parser.parseClasses(files);
+    assertEquals(Set.of(), data.packages);
   }
 
   @Test
   public void verifyMainClasses() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Main.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    assertEquals(Set.of("Main"), parser.getMainClasses());
+    assertEquals(Set.of("Main"), data.mainClasses);
   }
 
   @Test
@@ -114,9 +124,9 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/ClasspathParser.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    assertEquals(0, parser.getMainClasses().size());
+    assertEquals(0, data.mainClasses.size());
   }
 
   @Test
@@ -127,32 +137,32 @@ public class ClasspathParserTest {
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/PackageParser.java"),
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/ClasspathParser.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), parser.getPackages());
+    assertEquals(Set.of("workspace.com.gazelle.java.javaparser.generators"), data.packages);
   }
 
   @Test
   public void verifyImportsOnParse() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Hello.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     assertEquals(
         Set.of(
             "com.google.common.primitives.Ints",
             "workspace.com.gazelle.java.javaparser.generators.DeleteBookRequest",
             "workspace.com.gazelle.java.javaparser.generators.HelloProto"),
-        parser.getUsedTypes());
+        data.usedTypes);
   }
 
   @Test
   public void testWildcardImportOverlap() throws IOException {
     List<? extends JavaFileObject> files =
         List.of(testFiles.get("/workspace/com/gazelle/java/javaparser/generators/Wildcards.java"));
-    parser.parseClasses(files);
-    assertEquals(Set.of("org.junit.jupiter.api.Assertions"), parser.getUsedTypes());
-    assertEquals(Set.of("org.junit.jupiter.api"), parser.getUsedPackagesWithoutSpecificTypes());
+    ParsedPackageData data = parser.parseClasses(files);
+    assertEquals(Set.of("org.junit.jupiter.api.Assertions"), data.usedTypes);
+    assertEquals(Set.of("org.junit.jupiter.api"), data.usedPackagesWithoutSpecificTypes);
   }
 
   @Test
@@ -160,13 +170,13 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/PackageParser.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
         Set.of(
             "com.gazelle.java.ArrayParse",
             "com.gazelle.java.ClasspathParser",
             "com.gazelle.java.OtherClasspathParse"),
-        parser.getUsedTypes());
+        data.usedTypes);
   }
 
   @Test
@@ -174,9 +184,9 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/StaticImports.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), parser.getUsedTypes());
+    assertEquals(Set.of("com.gazelle.java.javaparser.ClasspathParser"), data.usedTypes);
   }
 
   @Test
@@ -184,11 +194,10 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/WildcardImport.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
-    assertEquals(Set.of(), parser.getUsedTypes());
-    assertEquals(
-        Set.of("com.google.common.primitives"), parser.getUsedPackagesWithoutSpecificTypes());
+    assertEquals(Set.of(), data.usedTypes);
+    assertEquals(Set.of("com.google.common.primitives"), data.usedPackagesWithoutSpecificTypes);
   }
 
   @Test
@@ -197,13 +206,13 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnnotationAfterImport.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImport",
             new PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
-        parser.getParsedPackageData().perClassData);
+        data.perClassData);
   }
 
   @Test
@@ -212,13 +221,13 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/NestedClassAnnotations.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     assertEquals(
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.NestedClassAnnotations.Inner",
             new PerClassData(treeSet("com.example.FlakyTest"), new TreeMap<>(), new TreeMap<>())),
-        parser.getParsedPackageData().perClassData);
+        data.perClassData);
   }
 
   @Test
@@ -227,7 +236,7 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnnotationOnField.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     TreeMap<String, SortedSet<String>> expectedOuterClassFieldAnnotations = new TreeMap<>();
     expectedOuterClassFieldAnnotations.put("someField", treeSet("lombok.Getter"));
@@ -249,7 +258,7 @@ public class ClasspathParserTest {
         "workspace.com.gazelle.java.javaparser.generators.AnnotationOnField.InnerEnum",
         new PerClassData(new TreeSet<>(), new TreeMap<>(), expectedInnerEnumFieldAnnotations));
 
-    assertEquals(expected, parser.getParsedPackageData().perClassData);
+    assertEquals(expected, data.perClassData);
   }
 
   @Test
@@ -258,7 +267,7 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnnotationAfterImportOnMethod.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     TreeMap<String, SortedSet<String>> expectedPerMethodAnnotations = new TreeMap<>();
     expectedPerMethodAnnotations.put("someTest", treeSet("org.junit.jupiter.api.Test"));
@@ -267,7 +276,7 @@ public class ClasspathParserTest {
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationAfterImportOnMethod",
             new PerClassData(new TreeSet<>(), expectedPerMethodAnnotations, new TreeMap<>())),
-        parser.getParsedPackageData().perClassData);
+        data.perClassData);
   }
 
   @Test
@@ -276,7 +285,7 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnnotationFromJavaStandardLibrary.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     // Ideally this would resolve to java.lang.Deprecated, but nothing currently does that
     // resolution.
@@ -284,7 +293,7 @@ public class ClasspathParserTest {
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationFromJavaStandardLibrary",
             new PerClassData(treeSet("Deprecated"), new TreeMap<>(), new TreeMap<>())),
-        parser.getParsedPackageData().perClassData);
+        data.perClassData);
   }
 
   @Test
@@ -293,7 +302,7 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnnotationWithoutImport.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     // Ideally this would resolve to a fully-qualified class-name, but we don't currently keep
     // enough state to do that resolution, so we report what we can.
@@ -301,7 +310,7 @@ public class ClasspathParserTest {
         Map.of(
             "workspace.com.gazelle.java.javaparser.generators.AnnotationWithoutImport",
             new PerClassData(treeSet("WhoKnowsWhereIAmFrom"), new TreeMap<>(), new TreeMap<>())),
-        parser.getParsedPackageData().perClassData);
+        data.perClassData);
   }
 
   @Test
@@ -310,7 +319,7 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/FullyQualifieds.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     Set<String> expected =
         Set.of(
@@ -319,7 +328,7 @@ public class ClasspathParserTest {
             "workspace.com.gazelle.java.javaparser.utils.Printer",
             "workspace.com.gazelle.java.javaparser.factories.Factory",
             "java.util.ArrayList");
-    assertEquals(expected, parser.getUsedTypes());
+    assertEquals(expected, data.usedTypes);
   }
 
   @Test
@@ -328,12 +337,12 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/AnonymousInnerClass.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     Set<String> expectedTypes =
         Set.of(
             "java.util.HashMap", "javax.annotation.Nullable", "org.jetbrains.annotations.Nullable");
-    assertEquals(expectedTypes, parser.getUsedTypes());
+    assertEquals(expectedTypes, data.usedTypes);
 
     Map<String, PerClassData> expectedPerClassMetadata = new TreeMap<>();
     TreeMap<String, SortedSet<String>> expectedPerMethodAnnotations = new TreeMap<>();
@@ -344,7 +353,7 @@ public class ClasspathParserTest {
     expectedPerClassMetadata.put(
         "workspace.com.gazelle.java.javaparser.generators.AnonymousInnerClass.",
         new PerClassData(treeSet(), expectedPerMethodAnnotations, new TreeMap<>()));
-    assertEquals(expectedPerClassMetadata, parser.getParsedPackageData().perClassData);
+    assertEquals(expectedPerClassMetadata, data.perClassData);
   }
 
   @Test
@@ -353,14 +362,14 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/MethodWithImportedType.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     Set<String> expected =
         Set.of(
             "com.example.OuterReturnType",
             "com.example.OtherOuterReturnType",
             "com.example.Outer.InnerReturnType");
-    assertEquals(expected, parser.getUsedTypes());
+    assertEquals(expected, data.usedTypes);
   }
 
   @Test
@@ -369,10 +378,10 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/ExportingInterface.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     Set<String> expected = Set.of("example.external.NeedsExporting", "example.external.Outer");
-    assertEquals(expected, parser.getExportedTypes());
+    assertEquals(expected, data.exportedTypes);
   }
 
   @Test
@@ -380,14 +389,14 @@ public class ClasspathParserTest {
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get("/workspace/com/gazelle/java/javaparser/generators/ExportingClass.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
 
     Set<String> expected =
         Set.of(
             "example.external.PackageReturn",
             "example.external.ProtectedReturn",
             "example.external.PublicReturn");
-    assertEquals(expected, parser.getExportedTypes());
+    assertEquals(expected, data.exportedTypes);
   }
 
   @Test
@@ -396,14 +405,14 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/SamePackageReference.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
         Set.of(
             "workspace.com.gazelle.java.javaparser.generators.AbstractIdentifier",
             "workspace.com.gazelle.java.javaparser.generators.SomeHelper",
             "workspace.com.gazelle.java.javaparser.generators.SomeInput",
             "workspace.com.gazelle.java.javaparser.generators.SomeInterface"),
-        parser.getUsedTypes());
+        data.usedTypes);
   }
 
   @Test
@@ -412,10 +421,9 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/SamePackageWithInnerClass.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
-        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalHelper"),
-        parser.getUsedTypes());
+        Set.of("workspace.com.gazelle.java.javaparser.generators.ExternalHelper"), data.usedTypes);
   }
 
   @Test
@@ -424,29 +432,136 @@ public class ClasspathParserTest {
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/SamePackageWithGenerics.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
-        Set.of("workspace.com.gazelle.java.javaparser.generators.SomeBound"),
-        parser.getUsedTypes());
+        Set.of("workspace.com.gazelle.java.javaparser.generators.SomeBound"), data.usedTypes);
   }
 
   @Test
   public void testSamePackageAllTypePositions() throws IOException {
     // Exercises many code paths where checkFullyQualifiedType is called:
-    // field type, method annotation, method type param bound, throws clause.
+    // class annotation, field type, method annotation, method type param bound, throws clause.
     // Also verifies filtering of type parameters (R) and java.lang types (String).
     List<? extends JavaFileObject> files =
         List.of(
             testFiles.get(
                 "/workspace/com/gazelle/java/javaparser/generators/SamePackageAllPositions.java"));
-    parser.parseClasses(files);
+    ParsedPackageData data = parser.parseClasses(files);
     assertEquals(
         Set.of(
+            "workspace.com.gazelle.java.javaparser.generators.SomeClassAnnotation",
             "workspace.com.gazelle.java.javaparser.generators.SomeFieldType",
             "workspace.com.gazelle.java.javaparser.generators.SomeMethodAnnotation",
             "workspace.com.gazelle.java.javaparser.generators.SomeMethodBound",
             "workspace.com.gazelle.java.javaparser.generators.SomeCheckedException"),
-        parser.getUsedTypes());
+        data.usedTypes);
+  }
+
+  @Test
+  public void testFqnAnnotationOnFieldAndClass() throws IOException {
+    // `visitClass` and `visitVariable` have annotation loops that call
+    // noteAnnotatedClass/noteAnnotatedField but never call handleAnnotations,
+    // so FQN annotations (e.g. @com.example.ClassAnnotation) don't get passed
+    // through checkFullyQualifiedType and are invisible to dependency resolution.
+    // `visitMethod` does call `handleAnnotations`, so method-level FQN annotations work.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/FqnAnnotationOnFieldAndClass.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of("com.example.ClassAnnotation", "com.example.FieldAnnotation"), data.usedTypes);
+  }
+
+  @Test
+  public void testClassLiteral() throws IOException {
+    // There is no `visitMemberSelect` override, so `Foo.class` patterns go
+    // undetected. The expression part (`Foo`) should be treated as a type reference.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get("/workspace/com/gazelle/java/javaparser/generators/ClassLiteral.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of(
+            "com.example.Registry", "workspace.com.gazelle.java.javaparser.generators.MyHandler"),
+        data.usedTypes);
+  }
+
+  @Test
+  public void testBareClassMethodReceiver() throws IOException {
+    // `visitMethodInvocation` only handles MemberSelectTree receivers
+    // (`a.B.method()`), not IdentifierTree receivers (`B.method()`). A same-package
+    // class used as a bare method receiver is missed because there's no import
+    // to catch it and the method-invocation path never reaches `checkFullyQualifiedType`.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/BareClassMethodReceiver.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    assertEquals(
+        Set.of("workspace.com.gazelle.java.javaparser.generators.SamePackageHelper"),
+        data.usedTypes);
+  }
+
+  @Test
+  public void testStaticImportNestedClass() throws IOException {
+    // Static imports register only the parent class in `usedTypes` but don't
+    // put the nested class name into `currentFileImports`. So a bare reference to
+    // `Inner` as a type resolves via same-package fallback instead of the import.
+    List<? extends JavaFileObject> files =
+        List.of(
+            testFiles.get(
+                "/workspace/com/gazelle/java/javaparser/generators/StaticImportNestedClass.java"));
+    ParsedPackageData data = parser.parseClasses(files);
+
+    // Should contain the nested class FQN from the static import, not a
+    // same-package fallback like workspace.com.gazelle...Inner
+    assertEquals(Set.of("com.example.Outer", "com.example.Outer.Inner"), data.usedTypes);
+  }
+
+  @Test
+  public void parseClassesByPath(@TempDir Path tempDir) throws IOException {
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    ParsedPackageData data = parser.parseClasses(tempDir, List.of("Greeter.java"));
+
+    assertEquals(Set.of("demo"), data.packages);
+  }
+
+  @Test
+  public void parseClassesByPathClosesFileManager(@TempDir Path tempDir) throws IOException {
+    Path src = tempDir.resolve("Greeter.java");
+    Files.writeString(src, "package demo; public class Greeter {}");
+
+    JavaCompiler realCompiler = ToolProvider.getSystemJavaCompiler();
+    try (StandardJavaFileManager realFm = realCompiler.getStandardFileManager(null, null, null)) {
+      // delegatesTo gives us a recording proxy that forwards every call to realFm — unlike spy(),
+      // which fails on JavacFileManager because of its internal init state. We deliberately don't
+      // close observableFm from here: its close() call is what this test is asserting.
+      @SuppressWarnings("PMD.CloseResource")
+      StandardJavaFileManager observableFm =
+          mock(StandardJavaFileManager.class, withSettings().defaultAnswer(delegatesTo(realFm)));
+      JavaCompiler mockCompiler = mock(JavaCompiler.class);
+      when(mockCompiler.getStandardFileManager(any(), any(), any())).thenReturn(observableFm);
+      when(mockCompiler.getTask(any(), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              inv ->
+                  realCompiler.getTask(
+                      inv.getArgument(0),
+                      inv.getArgument(1),
+                      inv.getArgument(2),
+                      inv.getArgument(3),
+                      inv.getArgument(4),
+                      inv.getArgument(5)));
+
+      parser.parseClasses(mockCompiler, tempDir, List.of("Greeter.java"));
+
+      verify(observableFm).close();
+    }
   }
 
   private <T> TreeSet<T> treeSet(T... values) {
