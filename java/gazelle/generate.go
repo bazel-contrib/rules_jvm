@@ -11,8 +11,8 @@ import (
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/parser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -118,7 +118,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		sort.Strings(srcFilenamesRelativeToPackage)
 
 		var err error
-		javaPkg, err = l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
+		javaPkg, err = l.parser.ParsePackage(context.Background(), &parser.ParsePackageRequest{
 			Rel:   args.Rel,
 			Files: srcFilenamesRelativeToPackage,
 		})

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
-	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -302,11 +301,7 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	if jc.lang.parser == nil {
-		runner, err := javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
-		if err != nil {
-			jc.lang.logger.Fatal().Err(err).Msg("could not start javaparser")
-		}
-		jc.lang.parser = runner
+		jc.lang.parser = newParserRouter(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
 	}
 
 	if jc.lang.mavenResolver == nil {

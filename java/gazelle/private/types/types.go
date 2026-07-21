@@ -104,7 +104,45 @@ func ParseClassName(fullyQualified string) (*ClassName, error) {
 }
 
 func ClassNameLess(l, r ClassName) bool {
-	return l.FullyQualifiedClassName() < r.FullyQualifiedClassName()
+	for i := 0; ; i++ {
+		lb, lok := classNameFQNByteAt(l, i)
+		rb, rok := classNameFQNByteAt(r, i)
+		if !lok || !rok {
+			return !lok && rok
+		}
+		if lb != rb {
+			return lb < rb
+		}
+	}
+}
+
+func classNameFQNByteAt(c ClassName, index int) (byte, bool) {
+	if pkg := c.packageName.Name; pkg != "" {
+		if index < len(pkg) {
+			return pkg[index], true
+		}
+		if index == len(pkg) {
+			return '.', true
+		}
+		index -= len(pkg) + 1
+	}
+
+	if index < len(c.bareOuterClassName) {
+		return c.bareOuterClassName[index], true
+	}
+	index -= len(c.bareOuterClassName)
+
+	for _, inner := range c.innerClassNames {
+		if index == 0 {
+			return '.', true
+		}
+		index--
+		if index < len(inner) {
+			return inner[index], true
+		}
+		index -= len(inner)
+	}
+	return 0, false
 }
 
 type ResolveInput struct {

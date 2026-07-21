@@ -15,7 +15,7 @@ bazel_dep(name = "gazelle", version = "0.42.0", repo_name = "bazel_gazelle")
 bazel_dep(name = "protobuf", version = PROTOBUF_VERSION, repo_name = "com_google_protobuf")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_cc", version = "0.1.1")
-bazel_dep(name = "rules_go", version = "0.52.0")
+bazel_dep(name = "rules_go", version = "0.60.0")
 bazel_dep(name = "rules_java", version = "8.15.2")
 bazel_dep(name = "rules_jvm_external", version = "6.10")
 bazel_dep(name = "bazel_lib", version = "3.0.0")
@@ -289,7 +289,7 @@ use_repo(
 )
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.23.6")
+go_sdk.download(version = "1.25.0")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
@@ -301,6 +301,7 @@ use_repo(
     "com_github_google_go_cmp",
     "com_github_google_uuid",
     "com_github_hashicorp_golang_lru",
+    "com_github_odvcencio_gotreesitter",
     "com_github_rs_zerolog",
     "com_github_sergi_go_diff",
     "com_github_stretchr_testify",
