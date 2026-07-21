@@ -253,22 +253,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	allPackageNamesSlice := allPackageNames.SortedSlice()
-	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
-		for _, n := range allPackageNamesSlice {
-			if i.Name == n.Name {
-				return false
-			}
-		}
-		return true
+	nonLocalProductionJavaImports := productionJavaImports.Filter(func(p types.PackageName) bool {
+		return !allPackageNames.Contains(p)
 	})
 	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
-		for _, n := range allPackageNamesSlice {
-			if c.PackageName().Name == n.Name {
-				return false
-			}
-		}
-		return true
+		return !allPackageNames.Contains(c.PackageName())
+	})
+	nonLocalJavaExports = nonLocalJavaExports.Filter(func(p types.PackageName) bool {
+		return !allPackageNames.Contains(p)
+	})
+	nonLocalJavaExternalExportedClasses = nonLocalJavaExternalExportedClasses.Filter(func(c types.ClassName) bool {
+		return !allPackageNames.Contains(c.PackageName())
 	})
 
 	javaLibraryKind := "java_library"
@@ -365,7 +360,25 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), productionJavaFiles.SortedSlice(), resourcesDirectRef, resourcesRuntimeDep, allPackageNames, nonLocalProductionJavaImports, nonLocalProductionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nonLocalJavaExternalExportedClasses, annotationProcessorClasses, cfg.TestOnly(), javaLibraryKind, &res, cfg)
+		l.generateJavaLibrary(generateJavaLibraryArgs{
+			File:                    args.File,
+			Rel:                     args.Rel,
+			LibraryKind:             javaLibraryKind,
+			Result:                  &res,
+			Config:                  cfg,
+			Name:                    cfg.MapLibraryName(filepath.Base(args.Rel)),
+			Srcs:                    productionJavaFiles.SortedSlice(),
+			ResourcesDirectRef:      resourcesDirectRef,
+			ResourcesRuntimeDep:     resourcesRuntimeDep,
+			Packages:                allPackageNames,
+			Imports:                 nonLocalProductionJavaImports,
+			ImportedClasses:         nonLocalProductionJavaImportedClasses,
+			Exports:                 nonLocalJavaExports,
+			ExportedClasses:         nonLocalJavaExportedClasses,
+			ExternalExportedClasses: nonLocalJavaExternalExportedClasses,
+			AnnotationProcessors:    annotationProcessorClasses,
+			TestOnly:                cfg.TestOnly(),
+		})
 	}
 
 	if cfg.GenerateBinary() {
@@ -390,7 +403,22 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				srcs = append(srcs, tf.pathRelativeToBazelWorkspaceRoot)
 			}
 			// Test helper libraries typically don't have resources
-			l.generateJavaLibrary(args.File, args.Rel, cfg.MapLibraryName(filepath.Base(args.Rel)), srcs, "", "", packages, testJavaImports, testJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExportedClasses, nil, annotationProcessorClasses, true, javaLibraryKind, &res, cfg)
+			l.generateJavaLibrary(generateJavaLibraryArgs{
+				File:                 args.File,
+				Rel:                  args.Rel,
+				LibraryKind:          javaLibraryKind,
+				Result:               &res,
+				Config:               cfg,
+				Name:                 cfg.MapLibraryName(filepath.Base(args.Rel)),
+				Srcs:                 srcs,
+				Packages:             packages,
+				Imports:              testJavaImports,
+				ImportedClasses:      testJavaImportedClasses,
+				Exports:              nonLocalJavaExports,
+				ExportedClasses:      nonLocalJavaExportedClasses,
+				AnnotationProcessors: annotationProcessorClasses,
+				TestOnly:             true,
+			})
 		}
 	}
 
@@ -715,29 +743,59 @@ func accumulateJavaFile(cfg *javaconfig.Config, testJavaFiles, testHelperJavaFil
 	}
 }
 
-func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBazelWorkspace, name string, srcsRelativeToBazelWorkspace []string, resourcesDirectRef string, resourcesRuntimeDep string, packages, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], exports *sorted_set.SortedSet[types.PackageName], exportedClasses *sorted_set.SortedSet[types.ClassName], externalExportedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], testonly bool, javaLibraryRuleKind string, res *language.GenerateResult, cfg *javaconfig.Config) {
-	r := rule.NewRule(javaLibraryRuleKind, name)
+// generateJavaLibraryArgs describes a single java_library target to generate. It groups
+// the many per-library attributes that would otherwise be positional arguments,
+// several of which share a type and so are easy to transpose by mistake.
+type generateJavaLibraryArgs struct {
+	File        *rule.File
+	Rel         string
+	LibraryKind string
+	Result      *language.GenerateResult
+	Config      *javaconfig.Config
+	Name        string
+	// Srcs are paths relative to the Bazel workspace root; they are trimmed to be
+	// package-relative during generation.
+	Srcs []string
+	// ResourcesDirectRef references a pkg_files target as the resources attr (module mode).
+	ResourcesDirectRef string
+	// ResourcesRuntimeDep references a resources_lib target added to runtime_deps (package mode).
+	ResourcesRuntimeDep string
+	Packages            *sorted_set.SortedSet[types.PackageName]
+	Imports             *sorted_set.SortedSet[types.PackageName]
+	ImportedClasses     *sorted_set.SortedSet[types.ClassName]
+	Exports             *sorted_set.SortedSet[types.PackageName]
+	ExportedClasses     *sorted_set.SortedSet[types.ClassName]
+	// ExternalExportedClasses are classes from outside this rule named in its public
+	// API. They are advertised in the exports attr but deliberately not cached as
+	// classes this rule provides.
+	ExternalExportedClasses *sorted_set.SortedSet[types.ClassName]
+	AnnotationProcessors    *sorted_set.SortedSet[types.ClassName]
+	TestOnly                bool
+}
 
-	srcs := make([]string, 0, len(srcsRelativeToBazelWorkspace))
-	for _, src := range srcsRelativeToBazelWorkspace {
-		srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src), filepath.ToSlash(pathToPackageRelativeToBazelWorkspace+"/")))
+func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
+	r := rule.NewRule(args.LibraryKind, args.Name)
+
+	srcs := make([]string, 0, len(args.Srcs))
+	for _, src := range args.Srcs {
+		srcs = append(srcs, strings.TrimPrefix(filepath.ToSlash(src), filepath.ToSlash(args.Rel+"/")))
 	}
 	sort.Strings(srcs)
 
 	// Handle resources based on mode
-	if resourcesDirectRef != "" {
+	if args.ResourcesDirectRef != "" {
 		// Module mode: add resources directly to the library
-		r.SetAttr("resources", []string{resourcesDirectRef})
+		r.SetAttr("resources", []string{args.ResourcesDirectRef})
 	}
 
 	// This is so we would default ALL runtime_deps to "keep" mode
-	runtimeDeps := l.collectRuntimeDeps(javaLibraryRuleKind, name, file)
+	runtimeDeps := l.collectRuntimeDeps(args.LibraryKind, args.Name, args.File)
 
 	// Package mode: add resources_lib as runtime_deps
-	if resourcesRuntimeDep != "" {
-		parsedLabel, err := label.Parse(resourcesRuntimeDep)
+	if args.ResourcesRuntimeDep != "" {
+		parsedLabel, err := label.Parse(args.ResourcesRuntimeDep)
 		if err != nil {
-			l.logger.Error().Err(err).Str("label", resourcesRuntimeDep).Msg("Failed to parse resources runtime dep label")
+			l.logger.Error().Err(err).Str("label", args.ResourcesRuntimeDep).Msg("Failed to parse resources runtime dep label")
 		} else {
 			runtimeDeps.Add(parsedLabel)
 		}
@@ -748,57 +806,57 @@ func (l javaLang) generateJavaLibrary(file *rule.File, pathToPackageRelativeToBa
 	}
 
 	r.SetAttr("srcs", srcs)
-	if testonly {
+	if args.TestOnly {
 		r.SetAttr("testonly", true)
 	}
 	// Visibility is independent of testonly: a testonly library still needs to be visible to its
 	// (testonly) consumers in other packages -- e.g. a testFixtures source set depended on by tests.
 	r.SetAttr("visibility", []string{"//:__subpackages__"})
 
-	resolvablePackages := make([]types.ResolvableJavaPackage, 0, packages.Len())
-	for _, pkg := range packages.SortedSlice() {
-		resolvablePackages = append(resolvablePackages, *types.NewResolvableJavaPackage(pkg, testonly, false))
+	resolvablePackages := make([]types.ResolvableJavaPackage, 0, args.Packages.Len())
+	for _, pkg := range args.Packages.SortedSlice() {
+		resolvablePackages = append(resolvablePackages, *types.NewResolvableJavaPackage(pkg, args.TestOnly, false))
 	}
 	r.SetPrivateAttr(packagesKey, resolvablePackages)
-	if exportedClasses != nil {
-		classes := exportedClasses.SortedSlice()
+	if args.ExportedClasses != nil {
+		classes := args.ExportedClasses.SortedSlice()
 		r.SetPrivateAttr(classesKey, classes)
 		// Cache the classes for class-level resolution during the resolve phase
-		ruleLabel := label.New("", pathToPackageRelativeToBazelWorkspace, name)
+		ruleLabel := label.New("", args.Rel, args.Name)
 		l.classExportCache[ruleLabel.String()] = classExportInfo{
 			classes:  classes,
-			testonly: testonly,
+			testonly: args.TestOnly,
 		}
 	}
-	res.Gen = append(res.Gen, r)
+	args.Result.Gen = append(args.Result.Gen, r)
 
 	// ExportedClassNames additionally carries external classes named in this rule's
 	// public API (e.g. extension-function signatures) so the exports attr can be
 	// resolved at class granularity for split Maven packages. These are deliberately
 	// NOT in classExportCache/classesKey above: this rule does not define them, so it
 	// must not advertise itself as their provider.
-	exportedClassNames := exportedClasses
-	if externalExportedClasses != nil && externalExportedClasses.Len() > 0 {
+	exportedClassNames := args.ExportedClasses
+	if args.ExternalExportedClasses != nil && args.ExternalExportedClasses.Len() > 0 {
 		if exportedClassNames == nil {
-			exportedClassNames = externalExportedClasses
+			exportedClassNames = args.ExternalExportedClasses
 		} else {
-			exportedClassNames = exportedClasses.Clone()
-			exportedClassNames.AddAll(externalExportedClasses)
+			exportedClassNames = args.ExportedClasses.Clone()
+			exportedClassNames.AddAll(args.ExternalExportedClasses)
 		}
 	}
 
 	resolveInput := types.ResolveInput{
-		PackageNames:         packages,
-		ImportedPackageNames: imports,
-		ImportedClasses:      importedClasses,
-		ExportedPackageNames: exports,
+		PackageNames:         args.Packages,
+		ImportedPackageNames: args.Imports,
+		ImportedClasses:      args.ImportedClasses,
+		ExportedPackageNames: args.Exports,
 		ExportedClassNames:   exportedClassNames,
-		AnnotationProcessors: annotationProcessorClasses,
+		AnnotationProcessors: args.AnnotationProcessors,
 	}
-	res.Imports = append(res.Imports, resolveInput)
+	args.Result.Imports = append(args.Result.Imports, resolveInput)
 
-	if cfg.ResolveToJavaExports() {
-		l.javaExportIndex.RecordRuleWithResolveInput(file, r, resolveInput)
+	if args.Config.ResolveToJavaExports() {
+		l.javaExportIndex.RecordRuleWithResolveInput(args.File, r, resolveInput)
 	}
 }
 
