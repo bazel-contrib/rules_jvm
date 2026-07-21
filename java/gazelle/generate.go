@@ -253,22 +253,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	allPackageNamesSlice := allPackageNames.SortedSlice()
-	nonLocalProductionJavaImports := productionJavaImports.Filter(func(i types.PackageName) bool {
-		for _, n := range allPackageNamesSlice {
-			if i.Name == n.Name {
-				return false
-			}
-		}
-		return true
+	nonLocalProductionJavaImports := productionJavaImports.Filter(func(p types.PackageName) bool {
+		return !allPackageNames.Contains(p)
 	})
 	nonLocalProductionJavaImportedClasses := productionJavaImportedClasses.Filter(func(c types.ClassName) bool {
-		for _, n := range allPackageNamesSlice {
-			if c.PackageName().Name == n.Name {
-				return false
-			}
-		}
-		return true
+		return !allPackageNames.Contains(c.PackageName())
+	})
+	nonLocalJavaExports = nonLocalJavaExports.Filter(func(p types.PackageName) bool {
+		return !allPackageNames.Contains(p)
+	})
+	nonLocalJavaExternalExportedClasses = nonLocalJavaExternalExportedClasses.Filter(func(c types.ClassName) bool {
+		return !allPackageNames.Contains(c.PackageName())
 	})
 
 	javaLibraryKind := "java_library"
