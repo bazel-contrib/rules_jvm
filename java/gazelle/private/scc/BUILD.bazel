@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "scc",
+    srcs = ["scc.go"],
+    importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/scc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//java/gazelle/private/java",
+        "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
+    ],
+)
+
+go_test(
+    name = "scc_test",
+    srcs = ["scc_test.go"],
+    embed = [":scc"],
+    deps = [
+        "//java/gazelle/private/java",
+        "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
+    ],
+)

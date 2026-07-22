@@ -13,6 +13,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/scc"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -84,7 +85,12 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	isResourcesRoot := strings.HasSuffix(args.Rel, "/resources")
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
-	isModule := cfg.ModuleGranularity() == "module"
+	granularity := cfg.ModuleGranularity()
+	// "module" emits one coarse library for the whole subtree; "scc" emits the minimal set
+	// of fine-grained libraries, collapsing only import cycles and Kotlin internal coupling.
+	// Both aggregate every sub-package at the module root (cache, delete intermediate BUILDs,
+	// emit at the root); they differ only in how the production library/libraries are emitted.
+	aggregateAtRoot := granularity == "module" || granularity == "scc"
 
 	generateResources := cfg.GenerateResources()
 
@@ -102,7 +108,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			return res
 		}
 		if !isResourcesRoot {
-			if !isModule || !cfg.IsModuleRoot() {
+			if !aggregateAtRoot || !cfg.IsModuleRoot() {
 				return res
 			}
 		}
@@ -145,7 +151,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
-	if isModule {
+	if aggregateAtRoot {
 		if len(srcFilenamesRelativeToPackage) > 0 {
 			l.javaPackageCache[args.Rel] = javaPkg
 		}
@@ -194,7 +200,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	annotationProcessorClasses := sorted_set.NewSortedSetFn(nil, types.ClassNameLess)
 
-	if isModule {
+	if aggregateAtRoot {
 		for mRel, mJavaPkg := range l.javaPackageCache {
 			if !strings.HasPrefix(mRel, args.Rel) {
 				continue
@@ -323,7 +329,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			res.Imports = append(res.Imports, types.ResolveInput{})
 
 			// In package mode, also generate a java_library wrapper for the resources
-			if !isModule {
+			if !aggregateAtRoot {
 				resourceLib := rule.NewRule(javaLibraryKind, "resources_lib")
 				resourceLib.SetAttr("resources", []string{":resources"})
 				resourceLib.SetAttr("visibility", []string{"//:__subpackages__"})
@@ -349,7 +355,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
 				if _, err := os.Stat(fullResourcesPath); err == nil {
 					// Resources directory exists, add the reference
-					if isModule {
+					if aggregateAtRoot {
 						// Module mode: reference pkg_files directly as resources
 						resourcesDirectRef = "//" + resourcesPath + ":resources"
 					} else {
@@ -360,25 +366,36 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 
-		l.generateJavaLibrary(generateJavaLibraryArgs{
-			File:                    args.File,
-			Rel:                     args.Rel,
-			LibraryKind:             javaLibraryKind,
-			Result:                  &res,
-			Config:                  cfg,
-			Name:                    cfg.MapLibraryName(filepath.Base(args.Rel)),
-			Srcs:                    productionJavaFiles.SortedSlice(),
-			ResourcesDirectRef:      resourcesDirectRef,
-			ResourcesRuntimeDep:     resourcesRuntimeDep,
-			Packages:                allPackageNames,
-			Imports:                 nonLocalProductionJavaImports,
-			ImportedClasses:         nonLocalProductionJavaImportedClasses,
-			Exports:                 nonLocalJavaExports,
-			ExportedClasses:         nonLocalJavaExportedClasses,
-			ExternalExportedClasses: nonLocalJavaExternalExportedClasses,
-			AnnotationProcessors:    annotationProcessorClasses,
-			TestOnly:                cfg.TestOnly(),
-		})
+		if granularity == "scc" {
+			// SCC mode: the subtree is one Kotlin compilation unit, but `internal` is
+			// module-scoped and Bazel forbids target cycles, so we can't always emit one
+			// library per package. Collapse only the packages that must share a module
+			// (import cycles + internal coupling) into the minimal set of targets;
+			// everything else stays its own per-package library.
+			l.emitModuleProductionLibraries(args, cfg, likelyLocalClassNames, resourcesDirectRef, resourcesRuntimeDep, &res, log)
+		} else {
+			// "module" (one coarse library for the whole subtree) and "package" (this
+			// single package) both emit exactly one library here.
+			l.generateJavaLibrary(generateJavaLibraryArgs{
+				File:                    args.File,
+				Rel:                     args.Rel,
+				LibraryKind:             javaLibraryKind,
+				Result:                  &res,
+				Config:                  cfg,
+				Name:                    cfg.MapLibraryName(filepath.Base(args.Rel)),
+				Srcs:                    productionJavaFiles.SortedSlice(),
+				ResourcesDirectRef:      resourcesDirectRef,
+				ResourcesRuntimeDep:     resourcesRuntimeDep,
+				Packages:                allPackageNames,
+				Imports:                 nonLocalProductionJavaImports,
+				ImportedClasses:         nonLocalProductionJavaImportedClasses,
+				Exports:                 nonLocalJavaExports,
+				ExportedClasses:         nonLocalJavaExportedClasses,
+				ExternalExportedClasses: nonLocalJavaExternalExportedClasses,
+				AnnotationProcessors:    annotationProcessorClasses,
+				TestOnly:                cfg.TestOnly(),
+			})
+		}
 	}
 
 	if cfg.GenerateBinary() {
@@ -430,7 +447,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				separateJavaTestReasons := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, isModule, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 
 		case "suite":
@@ -439,7 +456,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				packageNames.Add(tf.pkg)
 			}
 
-			suiteName := cfg.MapTestSuiteName(filepath.Base(args.Rel), isModule)
+			suiteName := cfg.MapTestSuiteName(filepath.Base(args.Rel), aggregateAtRoot)
 
 			srcs := make([]string, 0, allTestRelatedSrcs.Len())
 			for _, src := range allTestRelatedSrcs.SortedSlice() {
@@ -474,7 +491,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperDep = ptr(testHelperLibname(suiteName))
 				}
 				separateJavaTestReasons := separateTestJavaFiles[src]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, isModule, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 		}
 	}
@@ -488,6 +505,102 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	return res
+}
+
+// emitModuleProductionLibraries emits one production library per SCC group of the
+// module's production packages. Each group is the minimal set of source directories
+// that must compile as a single target (import cycles for any JVM language, plus Kotlin
+// internal coupling -- see the scc package); every other package is its own singleton
+// group. Imports
+// satisfied by another group are left in place for the resolver to turn into `deps`
+// pointing at that group's label, which works because each group registers the packages
+// it owns.
+func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg *javaconfig.Config, likelyLocalClassNames *sorted_set.SortedSet[string], resourcesDirectRef, resourcesRuntimeDep string, res *language.GenerateResult, log zerolog.Logger) {
+	productionPackagesByDir := make(map[string]*java.Package)
+	for mRel, mJavaPkg := range l.javaPackageCache {
+		if !strings.HasPrefix(mRel, args.Rel) || mJavaPkg.TestPackage {
+			continue
+		}
+		if mJavaPkg.Files == nil || mJavaPkg.Files.Len() == 0 {
+			continue
+		}
+		productionPackagesByDir[mRel] = mJavaPkg
+	}
+
+	graph, err := scc.New(productionPackagesByDir)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not compute module collapse")
+	}
+
+	for _, group := range graph.Groups() {
+		groupFiles := sorted_set.NewSortedSet([]string{})
+		imports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+		importedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+		exports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
+		externalExportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+		// Own classes seed the provider registry (classExportCache/classesKey), so they
+		// are partitioned per group: each group advertises only the classes it defines,
+		// which keeps the associate lookup's single-provider invariant intact.
+		ownClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+		annotationProcessorClasses := sorted_set.NewSortedSetFn(nil, types.ClassNameLess)
+
+		// The module root has no sources of its own, so the rule kind is determined by
+		// the group's files rather than args.RegularFiles.
+		groupLibraryKind := "java_library"
+		for _, dir := range group.Dirs {
+			pkg := productionPackagesByDir[dir]
+			addNonLocalImportsAndExports(imports, importedClasses, exports, externalExportedClasses, pkg.ImportedClasses, pkg.ImportedPackagesWithoutSpecificClasses, pkg.ExportedClasses, pkg.Name, likelyLocalClassNames)
+			for _, f := range pkg.Files.SortedSlice() {
+				if strings.HasSuffix(f, ".kt") {
+					groupLibraryKind = "kt_jvm_library"
+				}
+				path := filepath.Join(dir, f)
+				groupFiles.Add(path)
+				jf := javaFile{pathRelativeToBazelWorkspaceRoot: path, pkg: pkg.Name}
+				ownClasses.Add(*jf.ClassName())
+			}
+			for _, annotationClass := range pkg.AllAnnotations().SortedSlice() {
+				annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
+			}
+		}
+
+		// Drop imports satisfied within this group; keep imports to other groups (the
+		// resolver maps them to that group's label) and to external/Maven packages.
+		nonLocalImports := imports.Filter(func(i types.PackageName) bool {
+			return !group.Packages.Contains(i)
+		})
+		nonLocalImportedClasses := importedClasses.Filter(func(c types.ClassName) bool {
+			// Keep a class for resolution if it belongs to another group/package, OR if this
+			// group owns the package but does not itself declare the class -- a split package
+			// (e.g. notification-builder's generated Campaigns living in a hand-written
+			// package of the same name). Such a class must cross-resolve to its real
+			// provider rather than be assumed local to this group.
+			return !group.Packages.Contains(c.PackageName()) || !ownClasses.Contains(c)
+		})
+
+		// NOTE: module resources are attached to every group, bundling them into each
+		// group's jar. Revisit (e.g. a shared resources target) if duplicate resources
+		// cause runtime problems.
+		l.generateJavaLibrary(generateJavaLibraryArgs{
+			File:                    args.File,
+			Rel:                     args.Rel,
+			LibraryKind:             groupLibraryKind,
+			Result:                  res,
+			Config:                  cfg,
+			Name:                    group.Name,
+			Srcs:                    groupFiles.SortedSlice(),
+			ResourcesDirectRef:      resourcesDirectRef,
+			ResourcesRuntimeDep:     resourcesRuntimeDep,
+			Packages:                group.Packages,
+			Imports:                 nonLocalImports,
+			ImportedClasses:         nonLocalImportedClasses,
+			Exports:                 exports,
+			ExportedClasses:         ownClasses,
+			ExternalExportedClasses: externalExportedClasses,
+			AnnotationProcessors:    annotationProcessorClasses,
+			TestOnly:                cfg.TestOnly(),
+		})
+	}
 }
 
 func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted_set.SortedSet[label.Label] {
@@ -760,6 +873,12 @@ type generateJavaLibraryArgs struct {
 
 func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 	r := rule.NewRule(args.LibraryKind, args.Name)
+
+	if args.LibraryKind == "kt_jvm_library" {
+		// Record this Kotlin library so the resolver can turn a depender's same-module dep
+		// on it into an `associates` (friend) edge, preserving module-wide `internal`.
+		l.kotlinLibraries[label.New("", args.Rel, args.Name).String()] = true
+	}
 
 	srcs := make([]string, 0, len(args.Srcs))
 	for _, src := range args.Srcs {

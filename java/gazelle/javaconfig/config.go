@@ -321,11 +321,13 @@ func (c Config) ModuleGranularity() string {
 }
 
 func (c *Config) SetModuleGranularity(granularity string) error {
-	if granularity != "module" && granularity != "package" {
-		return fmt.Errorf("%s: possible values are module/package", granularity)
+	if granularity != "module" && granularity != "package" && granularity != "scc" {
+		return fmt.Errorf("%s: possible values are module/package/scc", granularity)
 	}
 
-	if granularity == "module" {
+	// Both "module" (one coarse target) and "scc" (minimal fine-grained targets) aggregate
+	// the whole subtree at the topmost directory that enables them.
+	if granularity == "module" || granularity == "scc" {
 		if c.parent == nil || c.parent.moduleGranularity == "package" {
 			c.isModuleRoot = true
 		}

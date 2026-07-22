@@ -122,6 +122,23 @@ public class KtParserTest {
   }
 
   @Test
+  public void internalSymbolsTest() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("InternalSymbols.kt"));
+
+    // Only top-level internal declarations are recorded, keyed as an importer records them (the
+    // function/constant by package + simple name, not their `…Kt` JVM identity). Public, private,
+    // protected, and nested-internal declarations are excluded.
+    String pkg = "workspace.com.gazelle.kotlin.javaparser.generators";
+    assertEquals(
+        Set.of(
+            pkg + ".InternalClass",
+            pkg + ".InternalObject",
+            pkg + ".internalFunction",
+            pkg + ".INTERNAL_CONSTANT"),
+        data.internalTypes);
+  }
+
+  @Test
   public void helloTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("Hello.kt"));
 

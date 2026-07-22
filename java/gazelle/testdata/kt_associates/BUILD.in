@@ -1,0 +1,4 @@
+# gazelle:jvm_kotlin_enabled true
+# gazelle:java_test_mode file
+# gazelle:java_test_file_suffixes Test.java,Test.kt
+# gazelle:map_kind java_test kt_jvm_test @rules_kotlin//kotlin:jvm.bzl
