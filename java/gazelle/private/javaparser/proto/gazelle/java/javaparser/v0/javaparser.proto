@@ -53,6 +53,11 @@ message Package {
   // as an importer records them (e.g. "a.b.foo" for a top-level function). Used to detect
   // cross-package internal coupling, which forces dependers into the same Kotlin module.
   repeated string internal_classes = 7;
+
+  // Importable top-level declarations provided by the request's files. For Kotlin this includes
+  // classes/objects and top-level functions/properties keyed as an importer records them.
+  // Used to disambiguate split-package providers at class/symbol granularity.
+  repeated string declared_classes = 8;
 }
 
 message PerClassMetadata {

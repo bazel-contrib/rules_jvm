@@ -3,11 +3,10 @@ load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 java_test_suite(
     name = "lib",
     srcs = [
+        "HelperFunctions.kt",
         "LibTest.java",
         "TestHelper.java",
     ],
-    deps = [
-        "//src/main/com/example/lib",
-        "@maven//:junit_junit",
-    ],
+    associates = ["//src/main/com/example/lib"],
+    deps = ["@maven//:junit_junit"],
 )

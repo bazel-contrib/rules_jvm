@@ -130,6 +130,14 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		}
 		internalClasses.Add(*className)
 	}
+	declaredClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	for _, declared := range resp.GetDeclaredClasses() {
+		className, err := types.ParseClassName(declared)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse declared classes: %w", err)
+		}
+		declaredClasses.Add(*className)
+	}
 	importedPackages := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
 	for _, pkg := range resp.GetImportedPackagesWithoutSpecificClasses() {
 		importedPackages.Add(types.NewPackageName(pkg))
@@ -144,6 +152,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 		ImportedClasses:                        importedClasses,
 		ExportedClasses:                        exportedClasses,
 		InternalClasses:                        internalClasses,
+		DeclaredClasses:                        declaredClasses,
 		ImportedPackagesWithoutSpecificClasses: importedPackages,
 		Mains:                                  mains,
 		Files:                                  sorted_set.NewSortedSet(in.Files),

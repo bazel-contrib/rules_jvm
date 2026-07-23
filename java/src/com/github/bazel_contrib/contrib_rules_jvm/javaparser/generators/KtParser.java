@@ -284,6 +284,7 @@ public class KtParser {
       }
       packageData.perClassData.put(clazz.getFqName().toString(), new PerClassData());
       recordInternalType(clazz, clazz.getFqName());
+      recordDeclaredType(clazz, clazz.getFqName());
       super.visitClass(clazz);
       popState(clazz);
     }
@@ -299,6 +300,7 @@ public class KtParser {
 
       packageData.perClassData.put(object.getFqName().toString(), new PerClassData());
       recordInternalType(object, object.getFqName());
+      recordDeclaredType(object, object.getFqName());
 
       super.visitObjectDeclaration(object);
       popState(object);
@@ -319,6 +321,8 @@ public class KtParser {
       if (typeReference != null) {
         addExportedTypeIfNeeded(typeReference);
       }
+
+      recordDeclaredType(property, packageQualifiedName(property, property.getName()));
 
       // Check if this property has a delegate (uses 'by' keyword)
       if (property.hasDelegate()) {
@@ -368,6 +372,7 @@ public class KtParser {
       }
 
       recordInternalType(function, packageQualifiedName(function));
+      recordDeclaredType(function, packageQualifiedName(function, function.getName()));
 
       // Check if this is a componentN() function for destructuring
       boolean isComponentFunction =
@@ -963,6 +968,19 @@ public class KtParser {
      */
     private FqName packageQualifiedName(KtNamedDeclaration declaration) {
       String name = declaration.getName();
+      if (name == null) {
+        return null;
+      }
+      return declaration.getContainingKtFile().getPackageFqName().child(Name.identifier(name));
+    }
+
+    private void recordDeclaredType(KtElement declaration, FqName fqName) {
+      if (fqName != null && isTopLevel(declaration)) {
+        packageData.declaredTypes.add(fqName.toString());
+      }
+    }
+
+    private FqName packageQualifiedName(KtElement declaration, String name) {
       if (name == null) {
         return null;
       }

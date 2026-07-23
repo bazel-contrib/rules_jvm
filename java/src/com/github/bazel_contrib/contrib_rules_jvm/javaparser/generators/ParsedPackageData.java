@@ -25,6 +25,12 @@ class ParsedPackageData {
    */
   final Set<String> internalTypes = new TreeSet<>();
 
+  /**
+   * Importable top-level declarations provided by this package. Kotlin top-level functions and
+   * properties are keyed as an importer records them, not by their JVM file-facade class.
+   */
+  final Set<String> declaredTypes = new TreeSet<>();
+
   /** The short name (no package) of any classes that provide a public static main function. */
   final Set<String> mainClasses = new TreeSet<>();
 
@@ -42,6 +48,7 @@ class ParsedPackageData {
     usedPackagesWithoutSpecificTypes.addAll(other.usedPackagesWithoutSpecificTypes);
     exportedTypes.addAll(other.exportedTypes);
     internalTypes.addAll(other.internalTypes);
+    declaredTypes.addAll(other.declaredTypes);
     mainClasses.addAll(other.mainClasses);
     for (Map.Entry<String, PerClassData> classData : other.perClassData.entrySet()) {
       PerClassData existing = perClassData.get(classData.getKey());
