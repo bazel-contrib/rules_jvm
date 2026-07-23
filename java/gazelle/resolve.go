@@ -242,6 +242,12 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 	}
 
 	for _, imp := range requiredPackageNames.SortedSlice() {
+		// rules_kotlin supplies the Kotlin standard library implicitly, but Java rules do
+		// not. Only suppress kotlin.* dependencies for targets that contain Kotlin sources.
+		if ruleHasKotlinSources(r) && kotlin.IsStdlib(imp) {
+			continue
+		}
+
 		var pkgClasses []string
 		for _, cls := range classesByPackage[imp] {
 			pkgClasses = append(pkgClasses, cls.BareOuterClassName())
@@ -512,9 +518,6 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 	}()
 
 	if java.IsStdlib(imp) {
-		return label.NoLabel, false
-	}
-	if kotlin.IsStdlib(imp) {
 		return label.NoLabel, false
 	}
 

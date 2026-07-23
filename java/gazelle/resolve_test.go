@@ -186,6 +186,28 @@ java_library(
     deps = ["@maven//:com_google_guava_guava"],
 )`,
 		},
+		"java-kotlin-stdlib": {
+			old: buildFile{
+				rel: "",
+				content: `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "myproject",
+    srcs = ["App.java"],
+    _imported_packages = ["kotlin.random"],
+    _packages = ["com.example"],
+    visibility = ["//:__subpackages__"],
+)`,
+			},
+			want: `load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "myproject",
+    srcs = ["App.java"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@maven//:org_jetbrains_kotlin_kotlin_stdlib"],
+)`,
+		},
 		"kotlin": {
 			old: buildFile{
 				rel: "",
@@ -420,6 +442,7 @@ func NewTestMavenResolver() *TestMavenResolver {
 	return &TestMavenResolver{
 		data: map[types.PackageName]label.Label{
 			types.NewPackageName("com.google.common.primitives"): label.New("maven", "", "com_google_guava_guava"),
+			types.NewPackageName("kotlin.random"):                label.New("maven", "", "org_jetbrains_kotlin_kotlin_stdlib"),
 			types.NewPackageName("org.junit"):                    label.New("maven", "", "junit_junit"),
 		},
 	}
