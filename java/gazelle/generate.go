@@ -44,6 +44,35 @@ func javaFileLess(l, r javaFile) bool {
 	return l.pathRelativeToBazelWorkspaceRoot < r.pathRelativeToBazelWorkspaceRoot
 }
 
+func addAnnotationProcessorClassesAndExtraImports(
+	cfg *javaconfig.Config,
+	javaPkg *java.Package,
+	annotationProcessorClasses *sorted_set.SortedSet[types.ClassName],
+	productionJavaImports *sorted_set.SortedSet[types.PackageName],
+	productionJavaImportedClasses *sorted_set.SortedSet[types.ClassName],
+	testJavaImports *sorted_set.SortedSet[types.PackageName],
+	testJavaImportedClasses *sorted_set.SortedSet[types.ClassName],
+) {
+	targetJavaImports := productionJavaImports
+	targetJavaImportedClasses := productionJavaImportedClasses
+	if javaPkg.TestPackage {
+		targetJavaImports = testJavaImports
+		targetJavaImportedClasses = testJavaImportedClasses
+	}
+
+	for _, annotationClass := range javaPkg.AllAnnotations().SortedSlice() {
+		annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
+		extraImports := cfg.GetAnnotationProcessorExtraImports(annotationClass)
+		if extraImports == nil {
+			continue
+		}
+		for _, extraImport := range extraImports.SortedSlice() {
+			targetJavaImports.Add(extraImport.PackageName())
+			targetJavaImportedClasses.Add(extraImport)
+		}
+	}
+}
+
 type separateJavaTestReasons struct {
 	attributes map[string]bzl.Expr
 	wrapper    string
@@ -227,9 +256,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					accumulateJavaFile(cfg, testJavaFiles, testHelperJavaFiles, separateTestJavaFiles, file, mJavaPkg.PerClassMetadata, log)
 				}
 			}
-			for _, annotationClass := range mJavaPkg.AllAnnotations().SortedSlice() {
-				annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
-			}
+			addAnnotationProcessorClassesAndExtraImports(
+				cfg,
+				mJavaPkg,
+				annotationProcessorClasses,
+				productionJavaImports,
+				productionJavaImportedClasses,
+				testJavaImports,
+				testJavaImportedClasses,
+			)
 		}
 	} else {
 		allPackageNames.Add(javaPkg.Name)
@@ -254,9 +289,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				nonLocalJavaExportedClasses.Add(*jf.ClassName())
 			}
 		}
-		for _, annotationClass := range javaPkg.AllAnnotations().SortedSlice() {
-			annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
-		}
+		addAnnotationProcessorClassesAndExtraImports(
+			cfg,
+			javaPkg,
+			annotationProcessorClasses,
+			productionJavaImports,
+			productionJavaImportedClasses,
+			testJavaImports,
+			testJavaImportedClasses,
+		)
 	}
 
 	nonLocalProductionJavaImports := productionJavaImports.Filter(func(p types.PackageName) bool {

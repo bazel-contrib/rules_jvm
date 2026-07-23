@@ -64,6 +64,11 @@ const (
 	// specific annotations.
 	JavaAnnotationProcessorPlugin = "java_annotation_processor_plugin"
 
+	// JavaAnnotationProcessorExtraImports tells the code generator about extra imports that should be added
+	// when specific annotations are detected in source code. This is useful when annotation processors
+	// generate code that imports classes not present in the original source.
+	JavaAnnotationProcessorExtraImports = "java_annotation_processor_extra_imports"
+
 	// JavaResolveToJavaExports tells the code generator to favour resolving dependencies to java_exports where possible.
 	// If enabled, generated libraries will try to depend on java_exports targets that export a given package, instead of the underlying library.
 	// This allows monorepos to closely match a traditional Gradle/Maven model where subprojects are published in jars.
@@ -128,6 +133,10 @@ func (c *Config) NewChild() *Config {
 	for key, value := range c.annotationProcessorFullQualifiedClassToPluginClass {
 		annotationProcessorFullQualifiedClassToPluginClass[key] = value.Clone()
 	}
+	annotationProcessorExtraImports := make(map[string]*sorted_set.SortedSet[types.ClassName])
+	for key, value := range c.annotationProcessorExtraImports {
+		annotationProcessorExtraImports[key] = value.Clone()
+	}
 	return &Config{
 		parent:                 c,
 		extensionEnabled:       c.extensionEnabled,
@@ -149,6 +158,7 @@ func (c *Config) NewChild() *Config {
 		excludedArtifacts:      clonedExcludedArtifacts,
 		mavenRepositoryName:    c.mavenRepositoryName,
 		annotationProcessorFullQualifiedClassToPluginClass: annotationProcessorFullQualifiedClassToPluginClass,
+		annotationProcessorExtraImports:                    annotationProcessorExtraImports,
 		libraryNamingConvention:                            c.libraryNamingConvention,
 		testSuiteNamingConvention:                          c.testSuiteNamingConvention,
 		testOnly:                                           c.testOnly,
@@ -188,6 +198,7 @@ type Config struct {
 	annotationToWrapper                                map[string]string
 	mavenRepositoryName                                string
 	annotationProcessorFullQualifiedClassToPluginClass map[string]*sorted_set.SortedSet[types.ClassName]
+	annotationProcessorExtraImports                    map[string]*sorted_set.SortedSet[types.ClassName]
 	sourcesetRoot                                      string
 	stripResourcesPrefix                               string
 	libraryNamingConvention                            string
@@ -222,11 +233,12 @@ func New(repoRoot string) *Config {
 		annotationToWrapper:    make(map[string]string),
 		mavenRepositoryName:    "maven",
 		annotationProcessorFullQualifiedClassToPluginClass: make(map[string]*sorted_set.SortedSet[types.ClassName]),
-		sourcesetRoot:             "",
-		stripResourcesPrefix:      "",
-		libraryNamingConvention:   "{dirname}",
-		testSuiteNamingConvention: "{dirname}",
-		testOnly:                  false,
+		annotationProcessorExtraImports:                    make(map[string]*sorted_set.SortedSet[types.ClassName]),
+		sourcesetRoot:                                      "",
+		stripResourcesPrefix:                               "",
+		libraryNamingConvention:                            "{dirname}",
+		testSuiteNamingConvention:                          "{dirname}",
+		testOnly:                                           false,
 	}
 }
 
@@ -431,6 +443,18 @@ func (c *Config) AddAnnotationProcessorPlugin(annotationClass types.ClassName, p
 		c.annotationProcessorFullQualifiedClassToPluginClass[fullyQualifiedAnnotationClass] = sorted_set.NewSortedSetFn[types.ClassName](nil, types.ClassNameLess)
 	}
 	c.annotationProcessorFullQualifiedClassToPluginClass[fullyQualifiedAnnotationClass].Add(processorClass)
+}
+
+func (c *Config) GetAnnotationProcessorExtraImports(annotationClass types.ClassName) *sorted_set.SortedSet[types.ClassName] {
+	return c.annotationProcessorExtraImports[annotationClass.FullyQualifiedClassName()]
+}
+
+func (c *Config) AddAnnotationProcessorExtraImport(annotationClass types.ClassName, extraImport types.ClassName) {
+	fullyQualifiedAnnotationClass := annotationClass.FullyQualifiedClassName()
+	if _, ok := c.annotationProcessorExtraImports[fullyQualifiedAnnotationClass]; !ok {
+		c.annotationProcessorExtraImports[fullyQualifiedAnnotationClass] = sorted_set.NewSortedSetFn[types.ClassName](nil, types.ClassNameLess)
+	}
+	c.annotationProcessorExtraImports[fullyQualifiedAnnotationClass].Add(extraImport)
 }
 
 func (c *Config) ResolveToJavaExports() bool {

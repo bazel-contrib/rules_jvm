@@ -118,6 +118,8 @@ The following directives specific to the Java extension are recognized:
 |---------------------------------------------------|------------------------------------------|
 | java_annotation_processor_plugin                  | none                                     |
 | Tells the code generator about specific java_plugin targets needed to process specific annotations. |
+| java_annotation_processor_extra_imports           | none                                     |
+| Tells the code generator about extra imports to add when specific annotations are detected. Useful when annotation processors generate code that imports classes not present in the source. Format: `# gazelle:java_annotation_processor_extra_imports com.example.Annotation com.example.ExtraImport` |
 | java_exclude_artifact                             | none                                     |
 | Tells the resolver to disregard a given maven artifact. Used to resolve duplicate artifacts  |
 | java_extension                                    | enabled                                  |
