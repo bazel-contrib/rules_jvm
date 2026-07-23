@@ -1,0 +1,10 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+# gazelle:java_testonly true
+
+java_library(
+    name = "thing",
+    testonly = True,
+    srcs = ["ThingFixture.java"],
+    visibility = ["//:__subpackages__"],
+)

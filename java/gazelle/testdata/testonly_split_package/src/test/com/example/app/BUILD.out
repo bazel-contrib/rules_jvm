@@ -1,0 +1,13 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+java_test_suite(
+    name = "app",
+    srcs = ["AppTest.java"],
+    deps = [
+        "//src/main/com/example/lib",
+        "//src/main/com/example/thing",
+        "//src/test/com/example/lib:lib-test-lib",
+        "//src/testfixtures/com/example/thing",
+        "@maven//:junit_junit",
+    ],
+)

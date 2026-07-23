@@ -479,6 +479,21 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperJavaFiles.Len() > 0,
 					&res,
 				)
+				// Cache the helper classes under the suite's "<suite>-test-lib" label (the helper
+				// library the macro emits). The resolver consults this so it only depends on the
+				// helper lib for classes it actually declares -- a class the production provider
+				// doesn't declare may be a main top-level function, not a test helper.
+				if testHelperJavaFiles.Len() > 0 {
+					helperClasses := make([]types.ClassName, 0, testHelperJavaFiles.Len())
+					for _, tf := range testHelperJavaFiles.SortedSlice() {
+						helperClasses = append(helperClasses, *tf.ClassName())
+					}
+					helperLabel := label.New("", args.Rel, testHelperLibname(suiteName))
+					l.classExportCache[helperLabel.String()] = classExportInfo{
+						classes:  helperClasses,
+						testonly: true,
+					}
+				}
 			}
 
 			sortedSeparateTestJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
