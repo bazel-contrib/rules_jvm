@@ -125,8 +125,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 		var err error
 		javaPkg, err = l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
-			Rel:   args.Rel,
-			Files: srcFilenamesRelativeToPackage,
+			Rel:        args.Rel,
+			Files:      srcFilenamesRelativeToPackage,
+			ParserMode: cfg.JavaParserMode(),
 		})
 		if err != nil {
 			log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")

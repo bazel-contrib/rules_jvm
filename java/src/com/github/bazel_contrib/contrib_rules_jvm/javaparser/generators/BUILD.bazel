@@ -6,6 +6,7 @@ java_library(
         "ClassNames.java",
         "ClasspathParser.java",
         "GrpcServer.java",
+        "HybridClasspathParser.java",
         "JavaIdentifier.java",
         "KtParser.java",
         "LifecycleService.java",
@@ -13,9 +14,13 @@ java_library(
         "ParsedPackageData.java",
         "PerClassData.java",
         "TimeoutHandler.java",
+        "TurbineClasspathParser.java",
         "TypeNameResolver.java",
     ],
-    visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__"],
+    visibility = [
+        "//java/benchmark:__pkg__",
+        "//java/test/com/github/bazel_contrib/contrib_rules_jvm/javaparser:__subpackages__",
+    ],
     runtime_deps = [
         "@contrib_rules_jvm_deps//:io_grpc_grpc_netty",  #keep
         "@contrib_rules_jvm_deps//:org_slf4j_slf4j_simple",  #keep
@@ -25,6 +30,7 @@ java_library(
         "@contrib_rules_jvm_deps//:com_google_code_findbugs_jsr305",
         "@contrib_rules_jvm_deps//:com_google_errorprone_error_prone_annotations",
         "@contrib_rules_jvm_deps//:com_google_guava_guava",
+        "@contrib_rules_jvm_deps//:com_google_turbine_turbine",
         "@contrib_rules_jvm_deps//:commons_cli_commons_cli",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_api",
         "@contrib_rules_jvm_deps//:io_grpc_grpc_services",

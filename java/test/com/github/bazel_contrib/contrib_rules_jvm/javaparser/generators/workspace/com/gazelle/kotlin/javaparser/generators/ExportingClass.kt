@@ -1,6 +1,7 @@
 package workspace.com.gazelle.kotlin.javaparser.generators
 
 import example.external.FinalProperty
+import example.external.GenericReturnArg
 import example.external.InternalReturn
 import example.external.ParameterizedReturn
 import example.external.PrivateReturn
@@ -35,6 +36,10 @@ class ExportingClass {
   fun getVoid(): Unit {}
 
   fun getParameterizedType(): ParameterizedReturn<String>? {
+    return null
+  }
+
+  fun getParameterizedArg(): ParameterizedReturn<GenericReturnArg>? {
     return null
   }
 }

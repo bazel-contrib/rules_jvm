@@ -83,6 +83,7 @@ func (jc *Configurer) KnownDirectives() []string {
 		javaconfig.JavaTestMode,
 		javaconfig.JvmKotlinEnabled,
 		javaconfig.JavaTestOnly,
+		javaconfig.JavaParserMode,
 		javaconfig.MavenIndexFile,
 	}
 }
@@ -296,6 +297,11 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			case javaconfig.JavaTestSuiteNamingConvention:
 				if err := cfg.SetTestSuiteNamingConvention(d.Value); err != nil {
 					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.JavaTestSuiteNamingConvention)
+				}
+
+			case javaconfig.JavaParserMode:
+				if err := cfg.SetJavaParserMode(d.Value); err != nil {
+					jc.lang.logger.Fatal().Err(err).Msgf("invalid value for directive %q", javaconfig.JavaParserMode)
 				}
 			}
 		}

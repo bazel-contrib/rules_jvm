@@ -149,3 +149,27 @@ func TestGenerateProtoInheritsToChild(t *testing.T) {
 		t.Fatalf("child did not inherit generateProto=false from parent; got true")
 	}
 }
+
+func TestJavaParserModeDefaultsToJavac(t *testing.T) {
+	cfg := javaconfig.New("/tmp")
+	if got := cfg.JavaParserMode(); got != "javac" {
+		t.Fatalf("JavaParserMode() = %q, want %q", got, "javac")
+	}
+}
+
+func TestJavaParserModeInheritsToChild(t *testing.T) {
+	parent := javaconfig.New("/tmp")
+	parent.SetJavaParserMode("turbine")
+
+	child := parent.NewChild()
+	if got := child.JavaParserMode(); got != "turbine" {
+		t.Fatalf("child JavaParserMode() = %q, want %q", got, "turbine")
+	}
+}
+
+func TestJavaParserModeRejectsInvalidValue(t *testing.T) {
+	cfg := javaconfig.New("/tmp")
+	if err := cfg.SetJavaParserMode("invalid"); err == nil {
+		t.Fatal("expected error for invalid parser mode")
+	}
+}

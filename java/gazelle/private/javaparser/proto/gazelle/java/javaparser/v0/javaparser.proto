@@ -20,6 +20,12 @@ message ParsePackageRequest {
 
   // List of Java or Kotlin files in the relative directory.
   repeated string files = 3;
+
+  // Parser to use for Java files. One of "javac" (default) or "turbine".
+  // "turbine" uses Turbine's header-only parser for a ~50x speedup, with an
+  // automatic per-file fallback to javac for files containing unresolved
+  // .class literals.
+  string parser_mode = 4;
 }
 
 // A Java package metadata.

@@ -111,6 +111,12 @@ const (
 	// Defaults to "" (unset), which preserves the current behavior (dirname in package mode,
 	// dirname + "-tests" in module mode).
 	JavaTestSuiteNamingConvention = "java_test_suite_naming_convention"
+
+	// JavaParserMode selects the Java parser used during the Generate phase.
+	// Can be either "javac" (default) or "turbine". Setting "turbine" enables
+	// Turbine's header-only parser (~50x faster), with automatic per-file
+	// fallback to javac for files that require it. Inherited by child packages.
+	JavaParserMode = "java_parser"
 )
 
 // Configs is an extension of map[string]*Config. It provides finding methods
@@ -152,6 +158,7 @@ func (c *Config) NewChild() *Config {
 		libraryNamingConvention:                            c.libraryNamingConvention,
 		testSuiteNamingConvention:                          c.testSuiteNamingConvention,
 		testOnly:                                           c.testOnly,
+		javaParserMode:                                     c.javaParserMode,
 	}
 }
 
@@ -193,6 +200,7 @@ type Config struct {
 	libraryNamingConvention                            string
 	testSuiteNamingConvention                          string
 	testOnly                                           bool
+	javaParserMode                                     string
 }
 
 type LoadInfo struct {
@@ -227,6 +235,7 @@ func New(repoRoot string) *Config {
 		libraryNamingConvention:   "{dirname}",
 		testSuiteNamingConvention: "{dirname}",
 		testOnly:                  false,
+		javaParserMode:            "javac",
 	}
 }
 
@@ -498,6 +507,18 @@ func (c *Config) MapTestSuiteName(dirname string, isModule bool) string {
 		convention = "{dirname}-tests"
 	}
 	return strings.ReplaceAll(convention, "{dirname}", dirname)
+}
+
+func (c *Config) JavaParserMode() string {
+	return c.javaParserMode
+}
+
+func (c *Config) SetJavaParserMode(mode string) error {
+	if mode != "javac" && mode != "turbine" {
+		return fmt.Errorf("%s: possible values are javac/turbine", mode)
+	}
+	c.javaParserMode = mode
+	return nil
 }
 
 func equalStringSlices(l, r []string) bool {

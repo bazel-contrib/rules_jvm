@@ -44,8 +44,9 @@ func (r *Runner) ServerManager() *servermanager.ServerManager {
 }
 
 type ParsePackageRequest struct {
-	Rel   string
-	Files []string
+	Rel        string
+	Files      []string
+	ParserMode string
 }
 
 func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*java.Package, error) {
@@ -56,7 +57,7 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 			Msg("parse package done")
 	}(time.Now())
 
-	resp, err := r.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files})
+	resp, err := r.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files, ParserMode: in.ParserMode})
 	if err != nil {
 		if grpcErr, ok := status.FromError(err); ok {
 			// gRPC is an implementation detail of the javaparser layer, and shouldn't be relied on by higher layers.

@@ -1,6 +1,8 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators.workspace.com.gazelle.java.javaparser.generators;
 
 import example.external.PackageReturn;
+import example.external.ParameterizedArgReturn;
+import example.external.ParameterizedOuterReturn;
 import example.external.PrivateReturn;
 import example.external.ProtectedReturn;
 import example.external.PublicReturn;
@@ -19,6 +21,10 @@ public class ExportingClass {
   }
 
   public PublicReturn getPublic() {
+    return null;
+  }
+
+  public ParameterizedOuterReturn<ParameterizedArgReturn> getParameterized() {
     return null;
   }
 }

@@ -145,8 +145,12 @@ public class GrpcServer {
 
       if (!javaFiles.isEmpty()) {
         try {
-          ClasspathParser parser = new ClasspathParser();
-          ParsedPackageData javaData = parser.parseClasses(directory, javaFiles);
+          ParsedPackageData javaData;
+          if ("turbine".equals(request.getParserMode())) {
+            javaData = new HybridClasspathParser().parseClasses(directory, javaFiles);
+          } else {
+            javaData = new ClasspathParser().parseClasses(directory, javaFiles);
+          }
           data.merge(javaData);
         } catch (IOException exception) {
           // If we fail to process a directory, which can happen with the module level processing
