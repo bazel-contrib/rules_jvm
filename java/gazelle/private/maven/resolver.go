@@ -249,6 +249,12 @@ func (r *resolver) Resolve(pkg types.PackageName, excludedArtifacts map[string]s
 func (r *resolver) ResolveClass(className types.ClassName, excludedArtifacts map[string]struct{}, mavenRepositoryName string) (label.Label, error) {
 	artifact, found := r.classIndex[className.FullyQualifiedClassName()]
 	if !found {
+		// rules_jvm_external intentionally indexes only top-level classes. A named nested
+		// class is compiled into the same artifact as its outer class, so use the indexed
+		// outer class as its owner when the full source-level name has no entry.
+		artifact, found = r.classIndex[className.FullyQualifiedOuterClassName()]
+	}
+	if !found {
 		return label.NoLabel, nil
 	}
 
