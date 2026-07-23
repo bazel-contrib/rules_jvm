@@ -74,6 +74,8 @@ public class KtParserTest {
     assertEquals(Set.of("workspace.com.gazelle.kotlin.javaparser.generators"), data.packages);
     assertEquals(Set.of("MainKt"), data.mainClasses);
     assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.main"), data.declaredTypes);
+    assertEquals(
         Set.of("workspace.com.gazelle.kotlin.javaparser.generators.MainKt"),
         data.perClassData.keySet());
   }
@@ -89,6 +91,9 @@ public class KtParserTest {
             "workspace.com.gazelle.kotlin.javaparser.generators.MainInClass",
             "workspace.com.gazelle.kotlin.javaparser.generators.MainInClass.Companion"),
         data.perClassData.keySet());
+    assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.MainInClass"),
+        data.declaredTypes);
   }
 
   @Test
@@ -149,6 +154,8 @@ public class KtParserTest {
             "com.gazelle.java.javaparser.generators.HelloProto",
             "com.google.common.primitives.Ints"),
         data.usedTypes);
+    assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.Hello"), data.declaredTypes);
     assertEquals(Set.of(), data.usedPackagesWithoutSpecificTypes);
     assertEquals(Set.of(), data.exportedTypes);
     assertEquals(Set.of(), data.mainClasses);
@@ -164,6 +171,9 @@ public class KtParserTest {
     assertEquals(
         Set.of("workspace.com.gazelle.kotlin.javaparser.generators.ConstantKt"),
         data.perClassData.keySet());
+    assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.SOME_CONSTANT"),
+        data.declaredTypes);
   }
 
   @Test
@@ -392,6 +402,22 @@ public class KtParserTest {
     assertTrue(
         data.exportedTypes.contains("com.google.gson.JsonArray"),
         "Should detect JsonArray from extension function: " + data.exportedTypes);
+    assertTrue(
+        data.declaredTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.parseAsJson"),
+        "Should declare parseAsJson: " + data.declaredTypes);
+    assertTrue(
+        data.declaredTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.parseAsJsonArray"),
+        "Should declare parseAsJsonArray: " + data.declaredTypes);
+    assertTrue(
+        data.declaredTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.processWithHelper"),
+        "Should declare processWithHelper: " + data.declaredTypes);
+    assertTrue(
+        data.declaredTypes.contains(
+            "workspace.com.gazelle.kotlin.javaparser.generators.regularFunction"),
+        "Should declare regularFunction: " + data.declaredTypes);
   }
 
   @Test

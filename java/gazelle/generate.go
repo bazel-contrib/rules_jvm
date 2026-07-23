@@ -194,6 +194,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	// Files which are used by non-test classes in test java packages.
 	testHelperJavaFiles := sorted_set.NewSortedSetFn([]javaFile{}, javaFileLess)
+	testHelperDeclaredClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
+	testFileClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
 
 	// All java packages present in this bazel package.
 	allPackageNames := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
@@ -209,6 +211,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 			if !mJavaPkg.TestPackage {
 				addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExternalExportedClasses, mJavaPkg.ImportedClasses, mJavaPkg.ImportedPackagesWithoutSpecificClasses, mJavaPkg.ExportedClasses, mJavaPkg.Name, likelyLocalClassNames)
+				nonLocalJavaExportedClasses.AddAll(mJavaPkg.DeclaredClasses)
 				for _, f := range mJavaPkg.Files.SortedSlice() {
 					productionJavaFiles.Add(filepath.Join(mRel, f))
 					jf := javaFile{pathRelativeToBazelWorkspaceRoot: filepath.Join(mRel, f), pkg: mJavaPkg.Name}
@@ -225,7 +228,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 						pkg:                              mJavaPkg.Name,
 					}
 					accumulateJavaFile(cfg, testJavaFiles, testHelperJavaFiles, separateTestJavaFiles, file, mJavaPkg.PerClassMetadata, log)
+					if cfg.IsJavaTestFile(filepath.Base(path)) {
+						testFileClasses.Add(*file.ClassName())
+					}
 				}
+				testHelperDeclaredClasses.AddAll(mJavaPkg.DeclaredClasses)
 			}
 			for _, annotationClass := range mJavaPkg.AllAnnotations().SortedSlice() {
 				annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
@@ -238,6 +245,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			addNonLocalImportsAndExports(testJavaImports, testJavaImportedClasses, nil, nil, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
 		} else {
 			addNonLocalImportsAndExports(productionJavaImports, productionJavaImportedClasses, nonLocalJavaExports, nonLocalJavaExternalExportedClasses, javaPkg.ImportedClasses, javaPkg.ImportedPackagesWithoutSpecificClasses, javaPkg.ExportedClasses, javaPkg.Name, likelyLocalClassNames)
+			nonLocalJavaExportedClasses.AddAll(javaPkg.DeclaredClasses)
 		}
 		allMains.AddAll(javaPkg.Mains)
 		for _, f := range srcFilenamesRelativeToPackage {
@@ -248,11 +256,17 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					pkg:                              javaPkg.Name,
 				}
 				accumulateJavaFile(cfg, testJavaFiles, testHelperJavaFiles, separateTestJavaFiles, file, javaPkg.PerClassMetadata, log)
+				if cfg.IsJavaTestFile(filepath.Base(path)) {
+					testFileClasses.Add(*file.ClassName())
+				}
 			} else {
 				productionJavaFiles.Add(path)
 				jf := javaFile{pathRelativeToBazelWorkspaceRoot: path, pkg: javaPkg.Name}
 				nonLocalJavaExportedClasses.Add(*jf.ClassName())
 			}
+		}
+		if javaPkg.TestPackage {
+			testHelperDeclaredClasses.AddAll(javaPkg.DeclaredClasses)
 		}
 		for _, annotationClass := range javaPkg.AllAnnotations().SortedSlice() {
 			annotationProcessorClasses.AddAll(cfg.GetAnnotationProcessorPluginClasses(annotationClass))
@@ -406,6 +420,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// as well as the existing java imports of tests.
 	testJavaImportsWithHelpers := testJavaImports.Clone()
 	testJavaImportedClassesWithHelpers := testJavaImportedClasses.Clone()
+	testHelperDeclaredClasses = testHelperDeclaredClasses.Filter(func(c types.ClassName) bool {
+		return !testFileClasses.Contains(c)
+	})
 
 	if testHelperJavaFiles.Len() > 0 {
 		// Suites generate their own helper library.
@@ -432,7 +449,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				Imports:              testJavaImports,
 				ImportedClasses:      testJavaImportedClasses,
 				Exports:              nonLocalJavaExports,
-				ExportedClasses:      nonLocalJavaExportedClasses,
+				ExportedClasses:      testHelperDeclaredClasses,
 				AnnotationProcessors: annotationProcessorClasses,
 				TestOnly:             true,
 			})
@@ -484,13 +501,14 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				// helper lib for classes it actually declares -- a class the production provider
 				// doesn't declare may be a main top-level function, not a test helper.
 				if testHelperJavaFiles.Len() > 0 {
-					helperClasses := make([]types.ClassName, 0, testHelperJavaFiles.Len())
+					helperClassSet := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
 					for _, tf := range testHelperJavaFiles.SortedSlice() {
-						helperClasses = append(helperClasses, *tf.ClassName())
+						helperClassSet.Add(*tf.ClassName())
 					}
+					helperClassSet.AddAll(testHelperDeclaredClasses)
 					helperLabel := label.New("", args.Rel, testHelperLibname(suiteName))
 					l.classExportCache[helperLabel.String()] = classExportInfo{
-						classes:  helperClasses,
+						classes:  helperClassSet.SortedSlice(),
 						testonly: true,
 					}
 				}

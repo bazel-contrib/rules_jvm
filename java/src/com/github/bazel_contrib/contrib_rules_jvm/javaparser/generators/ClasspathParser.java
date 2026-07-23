@@ -313,6 +313,9 @@ public class ClasspathParser {
 
     @Override
     public Void visitClass(ClassTree t, Void v) {
+      if (stack.isEmpty() && !t.getSimpleName().toString().isEmpty()) {
+        data.declaredTypes.add(qualifiedTopLevelName(t.getSimpleName().toString()));
+      }
       stack.addLast(t);
       for (com.sun.source.tree.TypeParameterTree typeParam : t.getTypeParameters()) {
         typeParameterNames.add(typeParam.getName().toString());
@@ -557,6 +560,13 @@ public class ClasspathParser {
         return null;
       }
       return Joiner.on('.').join(parts);
+    }
+
+    private String qualifiedTopLevelName(String simpleName) {
+      if (currentPackage == null || currentPackage.isEmpty()) {
+        return simpleName;
+      }
+      return currentPackage + "." + simpleName;
     }
 
     @Nullable

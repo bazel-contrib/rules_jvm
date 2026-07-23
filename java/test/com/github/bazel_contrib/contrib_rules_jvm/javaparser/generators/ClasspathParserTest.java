@@ -530,6 +530,7 @@ public class ClasspathParserTest {
     ParsedPackageData data = parser.parseClasses(tempDir, List.of("Greeter.java"));
 
     assertEquals(Set.of("demo"), data.packages);
+    assertEquals(Set.of("demo.Greeter"), data.declaredTypes);
   }
 
   @Test
