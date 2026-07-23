@@ -320,6 +320,13 @@ func (c Config) ModuleGranularity() string {
 	return c.moduleGranularity
 }
 
+func (c Config) ParentModuleGranularity() string {
+	if c.parent == nil {
+		return ""
+	}
+	return c.parent.moduleGranularity
+}
+
 func (c *Config) SetModuleGranularity(granularity string) error {
 	if granularity != "module" && granularity != "package" && granularity != "scc" {
 		return fmt.Errorf("%s: possible values are module/package/scc", granularity)
