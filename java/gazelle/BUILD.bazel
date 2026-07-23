@@ -59,6 +59,7 @@ go_test(
         "configure_test.go",
         "generate_test.go",
         "lang_test.go",
+        "resolve_split_test.go",
         "resolve_test.go",
     ],
     embed = [":gazelle"],

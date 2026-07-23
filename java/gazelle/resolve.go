@@ -366,6 +366,9 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 				if l == label.NoLabel {
 					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
 				}
+				if l == label.NoLabel && isTestRule {
+					l = jr.resolveTestSuiteHelperClass(c, imp, className, ix, from)
+				}
 				if l != label.NoLabel {
 					labels.Add(simplifyLabel(c.RepoName, l, from))
 					resolvedAny = true
