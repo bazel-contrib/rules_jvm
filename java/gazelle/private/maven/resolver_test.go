@@ -77,6 +77,10 @@ func TestResolverClassifier(t *testing.T) {
 	// Tiebreak: a class listed in BOTH the plain and the test-fixtures jar
 	// resolves to the plain label
 	assertResolvesClass(t, r, none, "com.example.fixtures.SharedHelper", "@maven//:com_example_lib")
+	// rules_jvm_external omits nested classes from its index. Resolve a nested
+	// source-level name through its indexed outer class instead.
+	assertResolvesClass(t, r, none, "com.example.fixtures.Widget.Nested",
+		"@maven//:com_example_lib")
 }
 
 func assertResolvesClass(t *testing.T, r Resolver, excludeArtifacts map[string]struct{}, className, wantLabelStr string) {
