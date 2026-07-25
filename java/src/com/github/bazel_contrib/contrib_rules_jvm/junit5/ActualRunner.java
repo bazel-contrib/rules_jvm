@@ -26,22 +26,19 @@ import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherConstants;
 import org.junit.platform.launcher.TagFilter;
+import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 
 public class ActualRunner implements RunsTest {
 
+  public static final String REPORT_TYPE_LEGACY = "legacy";
+  public static final String REPORT_TYPE_OPEN = "open";
+
   @Override
   public boolean run(String testClassName) {
-    String out = System.getenv("XML_OUTPUT_FILE");
-    Path xmlOut;
-    try {
-      xmlOut = out != null ? Paths.get(out) : Files.createTempFile("test", ".xml");
-      Files.createDirectories(xmlOut.getParent());
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    Path xmlOut = getTestXmlFile();
 
     try (BazelJUnitOutputListener bazelJUnitXml = new BazelJUnitOutputListener(xmlOut)) {
       Runtime.getRuntime()
@@ -54,11 +51,9 @@ public class ActualRunner implements RunsTest {
       CommandLineSummary summary = new CommandLineSummary();
       FailFastExtension failFastExtension = new FailFastExtension();
 
-      LauncherConfig config =
-          LauncherConfig.builder()
+      LauncherConfig.Builder configBuilder = LauncherConfig.builder()
               .addTestExecutionListeners(bazelJUnitXml, summary, failFastExtension)
-              .addPostDiscoveryFilters(TestSharding.makeShardFilter())
-              .build();
+              .addPostDiscoveryFilters(TestSharding.makeShardFilter());
 
       final Class<?> testClass;
       try {
@@ -86,6 +81,8 @@ public class ActualRunner implements RunsTest {
               .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
               .configurationParameter(
                   Constants.EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME, "true");
+
+      configureReportGenerators(request, configBuilder);
 
       String filter = System.getenv("TESTBRIDGE_TEST_ONLY");
       request.filters(new PatternFilter(filter));
@@ -117,7 +114,7 @@ public class ActualRunner implements RunsTest {
 
       File exitFile = getExitFile();
 
-      Launcher launcher = LauncherFactory.create(config);
+      Launcher launcher = LauncherFactory.create(configBuilder.build());
       launcher.execute(request.build());
 
       deleteExitFile(exitFile);
@@ -127,6 +124,45 @@ public class ActualRunner implements RunsTest {
       }
 
       return summary.getFailureCount() == 0;
+    }
+  }
+
+  private static void configureReportGenerators(LauncherDiscoveryRequestBuilder request, LauncherConfig.Builder configBuilder) {
+    String reportGenerator = System.getProperty("JUNIT5_REPORT_GENERATOR");
+
+    if (reportGenerator != null) {
+      Path undeclaredOutDir = getUndeclaredOutputDirectory();
+
+      switch (reportGenerator) {
+        case REPORT_TYPE_LEGACY:
+          try {
+            Class<?> clazz = Class.forName("org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener");
+            configBuilder.addTestExecutionListeners((TestExecutionListener) clazz.getConstructor(Path.class, PrintWriter.class)
+                    .newInstance(undeclaredOutDir, new PrintWriter(System.out)));
+            request.configurationParameter("junit.platform.reporting.output.dir", undeclaredOutDir.toString());
+          } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Legacy Test Reporting is only available in JUnit >= 5.4" + reportGenerator, e);
+          }
+          break;
+        case REPORT_TYPE_OPEN:
+          try {
+            Class<?> clazz = Class.forName("org.junit.platform.reporting.open.xml.OpenTestReportGeneratingListener");
+            configBuilder.addTestExecutionListeners((TestExecutionListener) clazz.getConstructor().newInstance());
+            request.configurationParameter("junit.platform.reporting.open.xml.enabled", "true");
+            request.configurationParameter("junit.platform.reporting.output.dir", undeclaredOutDir.toString());
+          } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Open Test Reporting is only available in JUnit >= 5.9" + reportGenerator, e);
+          }
+          break;
+        default:
+          // We assume report_generator is a classname
+          try {
+            Class<?> clazz = Class.forName(reportGenerator);
+            configBuilder.addTestExecutionListeners((TestExecutionListener) clazz.getConstructor(Path.class).newInstance(undeclaredOutDir));
+          } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to create report generator class: " + reportGenerator, e);
+          }
+      }
     }
   }
 
@@ -149,6 +185,30 @@ public class ActualRunner implements RunsTest {
       }
     }
     return false;
+  }
+
+  private static Path getUndeclaredOutputDirectory() {
+    String dirStr = System.getenv("TEST_UNDECLARED_OUTPUTS_DIR");
+    Path dirPath;
+    try {
+      dirPath = dirStr != null ? Paths.get(dirStr) : Files.createTempDirectory("test.outputs");
+      Files.createDirectories(dirPath);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return dirPath;
+  }
+
+  private static Path getTestXmlFile() {
+    String fileStr = System.getenv("XML_OUTPUT_FILE");
+    Path filePath;
+    try {
+      filePath = fileStr != null ? Paths.get(fileStr) : Files.createTempFile("test", ".xml");
+      Files.createDirectories(filePath.getParent());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return filePath;
   }
 
   private File getExitFile() {
