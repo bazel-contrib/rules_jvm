@@ -43,11 +43,16 @@ public class ActualRunner implements RunsTest {
       throw new UncheckedIOException(e);
     }
 
-    try (BazelJUnitOutputListener bazelJUnitXml = new BazelJUnitOutputListener(xmlOut)) {
+    OutputCapture outputCapture = new OutputCapture();
+    outputCapture.start();
+
+    try (BazelJUnitOutputListener bazelJUnitXml =
+        new BazelJUnitOutputListener(xmlOut, outputCapture)) {
       Runtime.getRuntime()
           .addShutdownHook(
               new Thread(
                   () -> {
+                    outputCapture.stop();
                     bazelJUnitXml.closeForInterrupt();
                   }));
 
@@ -120,6 +125,8 @@ public class ActualRunner implements RunsTest {
       Launcher launcher = LauncherFactory.create(config);
       launcher.execute(request.build());
 
+      outputCapture.stop();
+
       deleteExitFile(exitFile);
 
       try (PrintWriter writer = new PrintWriter(System.out)) {
@@ -169,11 +176,7 @@ public class ActualRunner implements RunsTest {
 
   private void deleteExitFile(File exitFile) {
     if (exitFile != null) {
-      try {
-        exitFile.delete();
-      } catch (Throwable t) {
-        // Ignore.
-      }
+      exitFile.delete();
     }
   }
 }
