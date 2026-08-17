@@ -3,7 +3,6 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.escapeIllegalCharacters;
 import static com.github.bazel_contrib.contrib_rules_jvm.junit5.SafeXml.writeTextElement;
 
-import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Duration;
@@ -11,20 +10,20 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Locale;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.junit.platform.launcher.TestPlan;
 
 class TestSuiteXmlRenderer {
 
-  // Resolved once and time-bounded: InetAddress.getLocalHost() consults the system resolver,
-  // and on a host with an unresponsive resolver (and a hostname absent from /etc/hosts) the
-  // native lookup can block indefinitely. This is called while rendering results of completed
-  // tests, so an unbounded lookup hangs the JVM after the tests have already passed. The
-  // hostname is cosmetic report metadata; it must never be able to hang the run.
-  private static final String HOSTNAME = resolveHostname();
+  // InetAddress.getLocalHost() consults the system resolver, and on a host with an unresponsive
+  // resolver (and a hostname absent from /etc/hosts) the native lookup can block indefinitely,
+  // hanging the JVM after the tests have already passed. Time-bounding the lookup from this
+  // static initializer doesn't work either: a lookup thread started inside <clinit> blocks on
+  // this class's initialization lock before it can run the lookup (JLS 12.4.2), so a bounded
+  // wait always runs to its full timeout. The hostname is cosmetic report metadata, so skip
+  // the resolver entirely.
+  private static final String HOSTNAME = fallbackHostname();
 
   private final TestCaseXmlRenderer testRenderer;
 
@@ -94,22 +93,6 @@ class TestSuiteXmlRenderer {
 
   private String getHostname() {
     return HOSTNAME;
-  }
-
-  private static String resolveHostname() {
-    FutureTask<String> lookup = new FutureTask<>(() -> InetAddress.getLocalHost().getHostName());
-    Thread resolver = new Thread(lookup, "junit5-xml-hostname-resolver");
-    // A daemon thread so that a lookup which never returns cannot keep the JVM alive.
-    resolver.setDaemon(true);
-    resolver.start();
-    try {
-      return lookup.get(5, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return fallbackHostname();
-    } catch (Exception e) {
-      return fallbackHostname();
-    }
   }
 
   private static String fallbackHostname() {
