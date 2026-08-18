@@ -171,6 +171,11 @@ var kotlinLibraryKind = rule.KindInfo{
 	},
 }
 
+var pkgFilesKind = rule.KindInfo{
+	NonEmptyAttrs:  map[string]bool{"srcs": true},
+	MergeableAttrs: map[string]bool{"srcs": true},
+}
+
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	kinds := map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
@@ -182,6 +187,7 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 		"java_proto_library": kindWithoutRuntimeDeps,
 		"java_grpc_library":  kindWithoutRuntimeDeps,
 		"kt_jvm_library":     kotlinLibraryKind,
+		"pkg_files":          pkgFilesKind,
 	}
 
 	c := l.Configurer.(*Configurer)

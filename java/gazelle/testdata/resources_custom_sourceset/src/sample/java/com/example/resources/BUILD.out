@@ -3,10 +3,7 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
 pkg_files(
     name = "resources",
-    srcs = [
-        "config.xml",
-        "obsolete.properties",
-    ],
+    srcs = ["tracked.txt"],
     strip_prefix = "",
 )
 
