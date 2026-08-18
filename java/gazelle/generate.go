@@ -112,7 +112,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
 	}
 
-	isResourcesRoot := strings.HasSuffix(args.Rel, "/resources")
+	isResourcesRoot := cfg.SourcesetRoot() != "" && args.Rel == path.Join(cfg.SourcesetRoot(), "resources")
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
 	granularity := cfg.ModuleGranularity()
 	// "module" emits one coarse library for the whole subtree; "scc" emits the minimal set
@@ -390,6 +390,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				resourceLib.SetAttr("visibility", []string{"//:__subpackages__"})
 				res.Gen = append(res.Gen, resourceLib)
 				res.Imports = append(res.Imports, types.ResolveInput{})
+			}
+		} else {
+			res.Empty = append(res.Empty, rule.NewRule("pkg_files", "resources"))
+			if !aggregateAtRoot {
+				res.Empty = append(res.Empty, rule.NewRule(javaLibraryKind, "resources_lib"))
 			}
 		}
 	} else if productionJavaFiles.Len() > 0 {
