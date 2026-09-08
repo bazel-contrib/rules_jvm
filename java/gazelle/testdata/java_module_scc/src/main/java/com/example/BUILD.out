@@ -3,6 +3,13 @@ load("@rules_java//java:defs.bzl", "java_library")
 # gazelle:java_module_granularity scc
 # gazelle:jvm_kotlin_enabled false
 
+# keep
+java_library(
+    name = "custom",
+    srcs = ["solo/Solo.java"],
+    visibility = ["//visibility:private"],
+)
+
 java_library(
     name = "a",
     srcs = [

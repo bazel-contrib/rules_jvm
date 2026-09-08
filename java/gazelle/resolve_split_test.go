@@ -108,6 +108,64 @@ java_library(
 	}
 }
 
+// TestInRepoClassLevelSplitPackageWithinOwnedPackage covers an SCC group that
+// references a class supplied by another in-repository target in a Java package
+// the group itself owns. The retained class must resolve through the class index.
+func TestInRepoClassLevelSplitPackageWithinOwnedPackage(t *testing.T) {
+	c, langs, _ := testConfig(t)
+	mrslv, exts := InitTestResolversAndExtensions(langs)
+	ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+	rc := testRemoteCache(nil)
+
+	var jLang *javaLang
+	for _, lang := range langs {
+		if jl, ok := lang.(*javaLang); ok {
+			jLang = jl
+			break
+		}
+	}
+	if jLang == nil {
+		t.Fatal("javaLang not found in test config")
+	}
+
+	javaPackage := types.NewPackageName("com.example.foo")
+	providerContent := `java_library(
+    name = "foo",
+    _packages = ["com.example.foo"],
+)
+`
+	providerFile, err := rule.LoadData(filepath.Join("foo", "BUILD.bazel"), "foo", []byte(providerContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	providerRule := providerFile.Rules[0]
+	setPackagesPrivateAttr(providerRule)
+	providerLabel := label.New("", "foo", "foo")
+	jLang.classExportCache[providerLabel.String()] = classExportInfo{
+		classes:  []types.ClassName{types.NewClassName(javaPackage, "HandWritten")},
+		testonly: false,
+	}
+	ix.AddRule(c, providerRule, providerFile)
+	ix.Finish()
+
+	importerRule := rule.NewRule("java_library", "app")
+	resolveInput := types.ResolveInput{
+		PackageNames:         testPackageNames(javaPackage),
+		ImportedPackageNames: testPackageNames(),
+		ImportedClasses:      testClassNames(types.NewClassName(javaPackage, "HandWritten")),
+		ExportedPackageNames: testPackageNames(),
+		ExportedClassNames:   testClassNames(),
+		AnnotationProcessors: testClassNames(),
+	}
+
+	mrslv.Resolver(importerRule, "").Resolve(c, ix, rc, importerRule, resolveInput, label.New("", "", "app"))
+
+	got := importerRule.AttrStrings("deps")
+	if len(got) != 1 || got[0] != "//foo" {
+		t.Errorf("deps mismatch: got %v, want [//foo]", got)
+	}
+}
+
 func testPackageNames(values ...types.PackageName) *sorted_set.SortedSet[types.PackageName] {
 	return sorted_set.NewSortedSetFn(values, types.PackageNameLess)
 }

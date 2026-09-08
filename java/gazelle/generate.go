@@ -427,6 +427,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// library per package. Collapse only the packages that must share a module
 			// (import cycles + internal coupling) into the minimal set of targets;
 			// everything else stays its own per-package library.
+			markExistingSCCLibrariesForDeletion(args.File, &res)
 			l.emitModuleProductionLibraries(args, cfg, likelyLocalClassNames, resourcesDirectRef, resourcesRuntimeDep, &res, log)
 		} else {
 			// "module" (one coarse library for the whole subtree) and "package" (this
@@ -579,6 +580,22 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	return res
+}
+
+func markExistingSCCLibrariesForDeletion(file *rule.File, res *language.GenerateResult) {
+	if file == nil {
+		return
+	}
+
+	for _, existing := range file.Rules {
+		if existing.Kind() != "java_library" && existing.Kind() != "kt_jvm_library" {
+			continue
+		}
+		if len(existing.AttrStrings("srcs")) == 0 {
+			continue
+		}
+		res.Empty = append(res.Empty, rule.NewRule(existing.Kind(), existing.Name()))
+	}
 }
 
 // emitModuleProductionLibraries emits one production library per SCC group of the
