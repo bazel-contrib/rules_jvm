@@ -97,6 +97,13 @@ class TestSuiteXmlRenderer {
   }
 
   private static String resolveHostname() {
+    String envHostname = System.getenv("HOSTNAME");
+    if (envHostname != null && !envHostname.isEmpty()) {
+      // HOSTNAME env var takes precedence over resolver.
+      // Allows not stalling for 5s on machines where the resolver isn't answering.
+      return envHostname;
+    }
+
     FutureTask<String> lookup = new FutureTask<>(() -> InetAddress.getLocalHost().getHostName());
     Thread resolver = new Thread(lookup, "junit5-xml-hostname-resolver");
     // A daemon thread so that a lookup which never returns cannot keep the JVM alive.
@@ -106,14 +113,9 @@ class TestSuiteXmlRenderer {
       return lookup.get(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return fallbackHostname();
+      return "localhost";
     } catch (Exception e) {
-      return fallbackHostname();
+      return "localhost";
     }
-  }
-
-  private static String fallbackHostname() {
-    String envHostname = System.getenv("HOSTNAME");
-    return envHostname == null || envHostname.isEmpty() ? "localhost" : envHostname;
   }
 }
