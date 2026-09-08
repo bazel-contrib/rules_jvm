@@ -16,6 +16,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/rs/zerolog"
 )
 
@@ -266,10 +267,46 @@ func (l javaLang) Fix(c *config.Config, f *rule.File) {
 	packageConfig := c.Exts[languageName].(javaconfig.Configs)[f.Pkg]
 	if packageConfig != nil && packageConfig.ResolveToJavaExports() {
 		for _, r := range f.Rules {
-			if r.Kind() == "java_export" {
+			if isJavaExportBoundary(c, r) {
 				l.javaExportIndex.RecordJavaExport(r, f)
 			}
 		}
+	}
+}
+
+func isJavaExportBoundary(c *config.Config, r *rule.Rule) bool {
+	if isKindOrMappedKind(c, r.Kind(), "java_export") {
+		return true
+	}
+	return hasNoSources(r) && isKindOrMappedKind(c, r.Kind(), "kt_jvm_export")
+}
+
+func hasNoSources(r *rule.Rule) bool {
+	srcs := r.Attr("srcs")
+	if srcs == nil {
+		return true
+	}
+	list, ok := srcs.(*bzl.ListExpr)
+	return ok && len(list.List) == 0
+}
+
+func isKindOrMappedKind(c *config.Config, kind, baseKind string) bool {
+	mappedBaseKind := mappedKind(c, baseKind)
+	return mappedBaseKind != "" && mappedKind(c, kind) == mappedBaseKind
+}
+
+func mappedKind(c *config.Config, kind string) string {
+	seen := map[string]bool{kind: true}
+	for {
+		replacement, ok := c.KindMap[kind]
+		if !ok || replacement.KindName == kind {
+			return kind
+		}
+		if seen[replacement.KindName] {
+			return ""
+		}
+		kind = replacement.KindName
+		seen[kind] = true
 	}
 }
 
