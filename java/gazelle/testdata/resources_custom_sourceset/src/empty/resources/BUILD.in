@@ -1,12 +1,11 @@
+# gazelle:java_generate_resources true
+
 load("@rules_java//java:defs.bzl", "java_library")
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
 pkg_files(
     name = "resources",
-    srcs = [
-        "config.xml",
-        "obsolete.properties",
-    ],
+    srcs = ["removed.txt"],
     strip_prefix = "",
 )
 
