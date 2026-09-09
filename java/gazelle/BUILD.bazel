@@ -75,6 +75,7 @@ go_test(
     timeout = "short",
     srcs = [
         "configure_test.go",
+        "export_boundary_api_test.go",
         "generate_test.go",
         "lang_test.go",
         "resolve_split_test.go",
