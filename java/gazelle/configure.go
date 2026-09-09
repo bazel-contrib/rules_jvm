@@ -44,6 +44,7 @@ func (jc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Conf
 }
 
 func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+	installJavaExportResolver(c, jc.lang.Resolver.(*Resolver))
 	cfgs := jc.initRootConfig(c)
 	for annotation, kv := range jc.annotationToAttribute {
 		for k, v := range kv {

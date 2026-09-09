@@ -52,11 +52,30 @@ go_test(
 )
 
 go_test(
+    name = "export_boundary_api_test",
+    size = "small",
+    srcs = ["export_boundary_api_test.go"],
+    deps = [
+        ":gazelle",
+        "//java/gazelle/javaconfig",
+        "@bazel_gazelle//config",
+        "@bazel_gazelle//label",
+        "@bazel_gazelle//language",
+        "@bazel_gazelle//language/proto",
+        "@bazel_gazelle//resolve",
+        "@bazel_gazelle//rule",
+        "@bazel_gazelle//testtools",
+        "@com_github_bazelbuild_buildtools//build",
+    ],
+)
+
+go_test(
     name = "gazelle_test",
     size = "medium",
     timeout = "short",
     srcs = [
         "configure_test.go",
+        "export_boundary_api_test.go",
         "generate_test.go",
         "lang_test.go",
         "resolve_split_test.go",

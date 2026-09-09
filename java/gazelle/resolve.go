@@ -23,6 +23,34 @@ import (
 
 const languageName = "java"
 
+const javaExportResolverKey = "github.com/bazel-contrib/rules_jvm/java/gazelle.javaExportResolver"
+
+type javaExportResolverService struct {
+	resolver *Resolver
+}
+
+func installJavaExportResolver(c *config.Config, resolver *Resolver) {
+	c.Exts[javaExportResolverKey] = &javaExportResolverService{resolver: resolver}
+}
+
+// ResolveToJavaExport resolves candidates to the unique Java export boundary that covers them.
+// It must be called during Gazelle's dependency resolution phase, after DoneGeneratingRules.
+func ResolveToJavaExport(c *config.Config, candidates []resolve.FindResult, from label.Label) []resolve.FindResult {
+	service, ok := c.Exts[javaExportResolverKey].(*javaExportResolverService)
+	if !ok {
+		return candidates
+	}
+	configs, ok := c.Exts[languageName].(javaconfig.Configs)
+	if !ok {
+		return candidates
+	}
+	packageConfig := configs[from.Pkg]
+	if packageConfig == nil || !packageConfig.ResolveToJavaExports() {
+		return candidates
+	}
+	return service.resolver.tryResolvingToJavaExport(candidates, from)
+}
+
 // Resolver satisfies the resolve.Resolver interface. It's the
 // language-specific resolver extension.
 //
