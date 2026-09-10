@@ -23,7 +23,7 @@ contrib_rules_jvm_gazelle_setup()
 In the top level `BUILD.bazel` file, setup Gazelle to use gazelle-languages binary:
 
 ```starlark
-load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
+load("@gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
 
 # gazelle:prefix github.com/your/project
 gazelle(

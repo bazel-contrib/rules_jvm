@@ -8,8 +8,8 @@ go_library(
     deps = [
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
-        "@bazel_gazelle//label",
-        "@bazel_gazelle//rule",
         "@com_github_rs_zerolog//:zerolog",
+        "@gazelle//label",
+        "@gazelle//rule",
     ],
 )

@@ -1,6 +1,6 @@
 diff -ruN a/api/BUILD.bazel b/api/BUILD.bazel
---- a/api/BUILD.bazel	2026-01-16 15:19:23
-+++ b/api/BUILD.bazel	2026-01-16 15:19:32
+--- a/api/BUILD.bazel	2026-02-03 06:25:30
++++ b/api/BUILD.bazel	2026-09-10 12:37:52
 @@ -9,9 +9,9 @@
      ]),
      visibility = ["//visibility:public"],
@@ -16,14 +16,14 @@ diff -ruN a/api/BUILD.bazel b/api/BUILD.bazel
      ],
  )
 diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
---- a/compiler/BUILD.bazel	2026-01-16 15:19:24
-+++ b/compiler/BUILD.bazel	2026-01-16 15:19:57
+--- a/compiler/BUILD.bazel	2026-02-03 06:25:30
++++ b/compiler/BUILD.bazel	2026-09-10 12:37:52
 @@ -1,22 +1,75 @@
 -load("@rules_cc//cc:defs.bzl", "cc_binary")
  load("@rules_java//java:defs.bzl", "java_library")
  load("@rules_jvm_external//:defs.bzl", "artifact")
  load("//:java_grpc_library.bzl", "java_rpc_toolchain")
-
+ 
 -# This should not generally be referenced. Users should use java_grpc_library
 -cc_binary(
 -    name = "grpc_java_plugin",
@@ -49,7 +49,7 @@ diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 +        "@platforms//cpu:aarch64",
      ],
  )
-
+ 
 +config_setting(
 +    name = "macos_x86_64",
 +    constraint_values = [
@@ -117,7 +117,7 @@ diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 +        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
-
+ 
 @@ -36,8 +89,8 @@
          "//api",
          "//protobuf-lite",
@@ -128,10 +128,18 @@ diff -ruN a/compiler/BUILD.bazel b/compiler/BUILD.bazel
 +        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
-
+ 
 diff -ruN a/java_grpc_library.bzl b/java_grpc_library.bzl
---- a/java_grpc_library.bzl	2026-01-16 15:19:24
-+++ b/java_grpc_library.bzl	2026-01-16 15:19:57
+--- a/java_grpc_library.bzl	2026-02-03 06:25:30
++++ b/java_grpc_library.bzl	2026-09-10 12:37:52
+@@ -1,6 +1,6 @@
+ """Build rule for java_grpc_library."""
+ 
+-load("@com_google_protobuf//bazel/common:proto_info.bzl", "ProtoInfo")
++load("@protobuf//bazel/common:proto_info.bzl", "ProtoInfo")
+ load("@rules_java//java:defs.bzl", "JavaInfo", "JavaPluginInfo", "java_common")
+ 
+ _JavaRpcToolchainInfo = provider(
 @@ -41,7 +41,7 @@
          "plugin_arg": attr.string(),
          "_protoc": attr.label(
@@ -142,8 +150,8 @@ diff -ruN a/java_grpc_library.bzl b/java_grpc_library.bzl
          ),
          "java_plugins": attr.label_list(
 diff -ruN a/netty/BUILD.bazel b/netty/BUILD.bazel
---- a/netty/BUILD.bazel	2026-01-16 15:19:23
-+++ b/netty/BUILD.bazel	2026-01-16 15:19:32
+--- a/netty/BUILD.bazel	2026-02-03 06:25:30
++++ b/netty/BUILD.bazel	2026-09-10 12:37:52
 @@ -13,22 +13,22 @@
      deps = [
          "//api",
@@ -182,10 +190,10 @@ diff -ruN a/netty/BUILD.bazel b/netty/BUILD.bazel
 +        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
      ],
  )
-
+ 
 diff -ruN a/protobuf/BUILD.bazel b/protobuf/BUILD.bazel
---- a/protobuf/BUILD.bazel	2026-01-16 15:19:24
-+++ b/protobuf/BUILD.bazel	2026-01-16 15:20:11
+--- a/protobuf/BUILD.bazel	2026-02-03 06:25:30
++++ b/protobuf/BUILD.bazel	2026-09-10 12:37:52
 @@ -10,10 +10,10 @@
      deps = [
          "//api",
@@ -203,8 +211,8 @@ diff -ruN a/protobuf/BUILD.bazel b/protobuf/BUILD.bazel
      ],
  )
 diff -ruN a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
---- a/protobuf-lite/BUILD.bazel	2026-01-16 15:19:24
-+++ b/protobuf-lite/BUILD.bazel	2026-01-16 15:19:43
+--- a/protobuf-lite/BUILD.bazel	2026-02-03 06:25:30
++++ b/protobuf-lite/BUILD.bazel	2026-09-10 12:37:52
 @@ -9,12 +9,10 @@
      visibility = ["//visibility:public"],
      deps = [
@@ -220,11 +228,11 @@ diff -ruN a/protobuf-lite/BUILD.bazel b/protobuf-lite/BUILD.bazel
 +        artifact("com.google.protobuf:protobuf-java", repository_name = "contrib_rules_jvm_deps"),
 +    ],
  )
-
+ 
  # This config is not fully-reliable. If it breaks, it is probably because you
 diff -ruN a/stub/BUILD.bazel b/stub/BUILD.bazel
---- a/stub/BUILD.bazel	2026-01-16 15:19:23
-+++ b/stub/BUILD.bazel	2026-01-16 15:19:32
+--- a/stub/BUILD.bazel	2026-02-03 06:25:30
++++ b/stub/BUILD.bazel	2026-09-10 12:37:52
 @@ -10,9 +10,17 @@
      deps = [
          "//api",
@@ -238,7 +246,7 @@ diff -ruN a/stub/BUILD.bazel b/stub/BUILD.bazel
 +        artifact("com.google.guava:guava", repository_name = "contrib_rules_jvm_deps"),
 +        artifact("org.codehaus.mojo:animal-sniffer-annotations", repository_name = "contrib_rules_jvm_deps"),
      ],
- )
++)
 +
 +# Backwards compatibility shim for @Generated annotation
 +java_library(
@@ -246,4 +254,4 @@ diff -ruN a/stub/BUILD.bazel b/stub/BUILD.bazel
 +    neverlink = 1,  # @Generated is source-retention
 +    visibility = ["//visibility:public"],
 +    exports = [artifact("org.apache.tomcat:annotations-api", repository_name = "contrib_rules_jvm_deps")],
-+)
+ )
