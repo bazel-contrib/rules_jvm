@@ -4,5 +4,5 @@ bzl_library(
     name = "repositories",
     srcs = ["repositories.bzl"],
     visibility = ["//visibility:public"],
-    deps = ["@bazel_gazelle//:deps"],
+    deps = ["@gazelle//:deps"],
 )
