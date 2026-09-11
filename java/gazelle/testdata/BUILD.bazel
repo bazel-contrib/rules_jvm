@@ -46,7 +46,10 @@ SKIPPED_ON_WINDOWS = [
 # bzlmod test that keeps an empty WORKSPACE around) only produces one target.
 TEST_CASE_DIRS = sorted({
     marker_file.rsplit("/", 1)[0]: None
-    for marker_file in glob(["**/WORKSPACE", "**/MODULE.bazel"])
+    for marker_file in glob([
+        "**/WORKSPACE",
+        "**/MODULE.bazel",
+    ])
 }.keys())
 
 [
