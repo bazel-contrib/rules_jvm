@@ -23,7 +23,7 @@ gazelle_embedded_javaparser(
 )
 
 # Each of these tests has the following structure:
-# * A WORKSPACE file.
+# * A MODULE.bazel or a WORKSPACE file marks the directory as a test case.
 # * Optionally an `expectedStdErr.txt`, an `expectedStdOut.txt`, and an `expectedExitCode.txt`. If a test fails, it will offer you a command line to run to generate them.
 # * Some input files.
 # * A BUILD.out file for each expected generated BUILD.bazel file.
@@ -41,9 +41,20 @@ SKIPPED_ON_WINDOWS = [
     "module_granularity_with_sources",
 ]
 
+# A directory is a test case if it contains a MODULE.bazel or a WORKSPACE file.
+# We de-duplicate by directory so a test case that ships both markers (e.g. a
+# bzlmod test that keeps an empty WORKSPACE around) only produces one target.
+TEST_CASE_DIRS = sorted({
+    marker_file.rsplit("/", 1)[0]: None
+    for marker_file in glob([
+        "**/WORKSPACE",
+        "**/MODULE.bazel",
+    ])
+}.keys())
+
 [
     gazelle_generation_test(
-        name = file[0:-len("/WORKSPACE")],
+        name = test_dir,
         env = {
             "GAZELLE_JAVA_LOG_CALLER": "false",
             "GAZELLE_JAVA_LOG_FORMAT": "json",
@@ -51,17 +62,15 @@ SKIPPED_ON_WINDOWS = [
         },
         gazelle_binary = ":gazelle",
         gazelle_timeout_seconds = 60,
-        tags = ["skip-windows"] if file[0:-len("/WORKSPACE")] in SKIPPED_ON_WINDOWS else [],
-        test_data = glob(
-            include = [file[0:-len("/WORKSPACE")] + "/**"],
-        ),
+        tags = ["skip-windows"] if test_dir in SKIPPED_ON_WINDOWS else [],
+        test_data = glob([test_dir + "/**"]),
     )
-    for file in glob(["**/WORKSPACE"])
+    for test_dir in TEST_CASE_DIRS
 ]
 
 [
     gazelle_generation_test(
-        name = file[0:-len("/WORKSPACE")] + "e",  # Windows path limits means that we need to keep these names short. Regrettably, "_embedded" is too long of a suffix, and so is "_e"
+        name = test_dir + "e",  # Windows path limits means that we need to keep these names short. Regrettably, "_embedded" is too long of a suffix, and so is "_e"
         env = {
             "GAZELLE_JAVA_LOG_CALLER": "false",
             "GAZELLE_JAVA_LOG_FORMAT": "json",
@@ -70,11 +79,7 @@ SKIPPED_ON_WINDOWS = [
         gazelle_binary = ":gazelle_embedded_javaparser",
         gazelle_timeout_seconds = 60,
         tags = ["skip-windows"],
-        test_data = glob(
-            include = [
-                file[0:-len("/WORKSPACE")] + "/**",
-            ],
-        ),
+        test_data = glob([test_dir + "/**"]),
     )
-    for file in glob(["**/WORKSPACE"])
+    for test_dir in TEST_CASE_DIRS
 ]
