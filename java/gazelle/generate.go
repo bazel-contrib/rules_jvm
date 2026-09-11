@@ -749,12 +749,27 @@ func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog
 	}
 	sort.Strings(protoRuleNames)
 
+	// When the proto language deletes a proto_library (because its .proto
+	// sources were removed), it reports the now-empty rule in args.OtherEmpty.
+	// We must emit matching empty java rules so that the java_proto_library,
+	// java_grpc_library, and java_library targets we previously generated for
+	// it are deleted as well, rather than being left dangling.
+	for _, r := range args.OtherEmpty {
+		if r.Kind() != "proto_library" {
+			continue
+		}
+		jplName, jglName, jlName := protoJavaRuleNames(r.Name())
+		res.Empty = append(res.Empty,
+			rule.NewRule("java_proto_library", jplName),
+			rule.NewRule("java_grpc_library", jglName),
+			rule.NewRule("java_library", jlName),
+		)
+	}
+
 	for _, protoRuleName := range protoRuleNames {
 		protoPackage := protoPackages[protoRuleName]
 
-		jplName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_proto"
-		jglName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_grpc"
-		jlName := strings.TrimSuffix(protoRuleName, "_proto") + "_java_library"
+		jplName, jglName, jlName := protoJavaRuleNames(protoRuleName)
 
 		rjpl := rule.NewRule("java_proto_library", jplName)
 		rjpl.SetAttr("deps", []string{":" + protoRuleName})
@@ -824,6 +839,14 @@ func generateProtoLibraries(l *javaLang, args language.GenerateArgs, log zerolog
 			PackageNames: sorted_set.NewSortedSetFn([]types.PackageName{packageName}, types.PackageNameLess),
 		})
 	}
+}
+
+// protoJavaRuleNames returns the names of the java_proto_library,
+// java_grpc_library, and java_library rules that this extension generates for a
+// given proto_library rule name.
+func protoJavaRuleNames(protoRuleName string) (jplName, jglName, jlName string) {
+	base := strings.TrimSuffix(protoRuleName, "_proto")
+	return base + "_java_proto", base + "_java_grpc", base + "_java_library"
 }
 
 // protoOuterClassName returns the outer class name for a proto file.
