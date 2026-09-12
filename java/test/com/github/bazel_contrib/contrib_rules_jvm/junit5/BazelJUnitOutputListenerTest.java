@@ -458,6 +458,40 @@ public class BazelJUnitOutputListenerTest {
     assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name()]", testName);
   }
 
+  @Test
+  void testFallbackStdoutUsedWhenPrimaryNull() {
+    TestData test = new TestData(identifier);
+    test.setFallbackStdOut("fallback output");
+
+    assertEquals("fallback output", test.getStdOut());
+  }
+
+  @Test
+  void testPrimaryStdoutPreferredOverFallback() {
+    TestData test = new TestData(identifier);
+    test.addReportEntry(ReportEntry.from(STDOUT_REPORT_ENTRY_KEY, "primary output"));
+    test.setFallbackStdOut("fallback output");
+
+    assertEquals("primary output", test.getStdOut());
+  }
+
+  @Test
+  void testFallbackStderrUsedWhenPrimaryNull() {
+    TestData test = new TestData(identifier);
+    test.setFallbackStdErr("fallback error");
+
+    assertEquals("fallback error", test.getStdErr());
+  }
+
+  @Test
+  void testPrimaryStderrPreferredOverFallback() {
+    TestData test = new TestData(identifier);
+    test.addReportEntry(ReportEntry.from(STDERR_REPORT_ENTRY_KEY, "primary error"));
+    test.setFallbackStdErr("fallback error");
+
+    assertEquals("primary error", test.getStdErr());
+  }
+
   private Document generateTestXml(TestPlan testPlan, TestData testCase) {
     return generateDocument(xml -> new TestCaseXmlRenderer(testPlan).toXml(xml, testCase));
   }

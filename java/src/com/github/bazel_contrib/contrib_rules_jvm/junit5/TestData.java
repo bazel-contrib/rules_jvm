@@ -22,6 +22,8 @@ class TestData {
   private String reason;
   private TestExecutionResult result;
   private boolean dynamic;
+  private String fallbackStdOut;
+  private String fallbackStdErr;
 
   TestData(TestIdentifier id) {
     this.id = id;
@@ -124,7 +126,7 @@ class TestData {
         .map(EntryDetails::getStdOut)
         .filter(Objects::nonNull)
         .findFirst()
-        .orElse(null);
+        .orElse(fallbackStdOut);
   }
 
   public String getStdErr() {
@@ -132,7 +134,7 @@ class TestData {
         .map(EntryDetails::getStdErr)
         .filter(Objects::nonNull)
         .findFirst()
-        .orElse(null);
+        .orElse(fallbackStdErr);
   }
 
   public TestData setDynamic(boolean isDynamic) {
@@ -142,6 +144,18 @@ class TestData {
 
   public boolean isDynamic() {
     return dynamic;
+  }
+
+  /** Set fallback stdout for tests interrupted before JUnit Platform capture is published. */
+  public TestData setFallbackStdOut(String stdout) {
+    this.fallbackStdOut = stdout;
+    return this;
+  }
+
+  /** Set fallback stderr for tests interrupted before JUnit Platform capture is published. */
+  public TestData setFallbackStdErr(String stderr) {
+    this.fallbackStdErr = stderr;
+    return this;
   }
 
   public Instant getStarted() {
