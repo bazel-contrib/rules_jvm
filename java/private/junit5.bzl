@@ -20,7 +20,7 @@ def junit5_vintage_deps(repository_name = DEFAULT_REPOSITORY_NAME):
         artifact("org.junit.vintage:junit-vintage-engine", repository_name),
     ]
 
-def junit5_jvm_flags(jvm_flags, include_tags = [], exclude_tags = [], include_engines = [], exclude_engines = []):
+def junit5_jvm_flags(jvm_flags, include_tags = [], exclude_tags = [], include_engines = [], exclude_engines = [], report_generator = None):
     if include_tags:
         jvm_flags = jvm_flags + ["-DJUNIT5_INCLUDE_TAGS=" + ",".join(include_tags)]
 
@@ -32,6 +32,9 @@ def junit5_jvm_flags(jvm_flags, include_tags = [], exclude_tags = [], include_en
 
     if exclude_engines:
         jvm_flags = jvm_flags + ["-DJUNIT5_EXCLUDE_ENGINES=%s" % ",".join(exclude_engines)]
+
+    if report_generator:
+        jvm_flags = jvm_flags + ["-DJUNIT5_REPORT_GENERATOR=%s" % report_generator]
 
     return jvm_flags
 
@@ -53,6 +56,8 @@ def java_junit5_test(
         exclude_tags = [],
         include_engines = [],
         exclude_engines = [],
+        report_generator = None,
+        report_generator_deps = [],
         **kwargs):
     """Run junit5 tests using Bazel.
 
@@ -88,13 +93,17 @@ def java_junit5_test(
       exclude_tags: Junit tag expressions to exclude execution of tagged tests.
       include_engines: A list of JUnit Platform test engine IDs to include.
       exclude_engines: A list of JUnit Platform test engine IDs to exclude.
+      report_generator: The name of an additional report generator to use.
+        Can be 'legacy', 'open' or a class name.
+      report_generator_deps: A list of labels to add to the runtime dependencies
+        of the test, typically containing the report generator class.
     """
     if test_class:
         clazz = test_class
     else:
         clazz = get_package_name(package_prefixes) + name
 
-    jvm_flags = junit5_jvm_flags(jvm_flags, include_tags, exclude_tags, include_engines, exclude_engines)
+    jvm_flags = junit5_jvm_flags(jvm_flags, include_tags, exclude_tags, include_engines, exclude_engines, report_generator)
 
     # Add the agent to prevent `System.exit` from being called
     jvm_flags = ["-javaagent:$(location %s)=$(location %s)" % (_SYSTEM_EXIT_AGENT, _SYSTEM_EXIT_AGENT)] + jvm_flags
@@ -105,7 +114,7 @@ def java_junit5_test(
         name = name,
         main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.JUnit5Runner",
         test_class = clazz,
-        runtime_deps = runtime_deps + JUNIT5_RUNTIME_DEPS,
+        runtime_deps = runtime_deps + JUNIT5_RUNTIME_DEPS + report_generator_deps,
         jvm_flags = jvm_flags,
         data = data,
         **kwargs
