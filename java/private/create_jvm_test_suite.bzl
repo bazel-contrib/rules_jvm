@@ -89,6 +89,9 @@ def create_jvm_test_suite(
         )
         if not _contains_label(deps or [], lib_dep_label):
             deps = deps + [lib_dep_label]
+        if "resources" in library_attrs:
+            # Prevent duplicate resources from appearing in classpath
+            kwargs.pop("resources")
 
     tests = []
 
@@ -100,7 +103,6 @@ def create_jvm_test_suite(
         visibility = ["//visibility:private"],
         tags = tags,
         testonly = True,
-        **library_attrs
     )
     runtime_deps_lib_name = "%s-test-runtime-deps-lib" % name
     define_library(
@@ -109,7 +111,6 @@ def create_jvm_test_suite(
         visibility = ["//visibility:private"],
         tags = tags,
         testonly = True,
-        **library_attrs
     )
 
     # Get any deps referenced in make vars
