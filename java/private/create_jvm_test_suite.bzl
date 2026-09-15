@@ -17,6 +17,19 @@ _LIBRARY_ATTRS = [
     "resources",
 ]
 
+_ADDITIVE_TEST_OVERRIDE_ATTRS = [
+    "data",
+    "env_inherit",
+    "jvm_flags",
+    "tags",
+]
+
+_TEST_OVERRIDE_ATTRS = _ADDITIVE_TEST_OVERRIDE_ATTRS + [
+    "env",
+    "shard_count",
+    "size",
+]
+
 def create_jvm_test_suite(
         name,
         srcs,
@@ -32,6 +45,8 @@ def create_jvm_test_suite(
         size = None,
         package_prefixes = [],
         test_suffixes_excludes = [],
+        additional_library_srcs = [],
+        test_overrides = {},
         **kwargs):
     """Generate a test suite for rules that "feel" like `java_test`.
 
@@ -61,27 +76,36 @@ def create_jvm_test_suite(
       runtime_deps: The list of runtime deps to use when running tests.
       tags: Tags to use for generated targets.
       size: Bazel test size
+      additional_library_srcs: Additional sources to compile into the shared test
+        library. Sources also present in `srcs` remain eligible to generate tests.
+      test_overrides: A dict keyed by test source. Values may override `size` and
+        `shard_count`; extend `data`, `env_inherit`, `jvm_flags`, and `tags`; or
+        merge `env`, with per-test values taking precedence.
     """
 
     # First, grab any interesting attrs
     library_attrs = {attr: kwargs[attr] for attr in library_attributes if attr in kwargs}
 
     test_srcs = [src for src in srcs if _is_test(src, test_suffixes, test_suffixes_excludes)]
-    nontest_srcs = [src for src in srcs if not _is_test(src, test_suffixes, test_suffixes_excludes)]
+    library_srcs = collections.uniq(
+        [src for src in srcs if src not in test_srcs] + additional_library_srcs,
+    )
+    for src in test_overrides:
+        if src not in test_srcs:
+            fail("test_overrides entry '{}' is not a generated test source".format(src))
 
-    if nontest_srcs:
+    if library_srcs:
         lib_dep_name = "%s-test-lib" % name
         lib_dep_label = ":%s" % lib_dep_name
         deps_for_library = [dep for dep in deps or [] if _absolutify(dep) != _absolutify(lib_dep_label)]
 
         # Build a shared test library to use for everything. If we don't do this,
         # each rule needs to compile all sources, and that seems grossly inefficient.
-        # Only include the non-test sources since we don't want all tests to re-run
-        # when only one test source changes.
+        # Test sources are excluded by default so changing one test does not rebuild every test.
         define_library(
             name = lib_dep_name,
             deps = deps_for_library,
-            srcs = nontest_srcs,
+            srcs = library_srcs,
             testonly = True,
             visibility = visibility,
             tags = tags,
@@ -112,41 +136,30 @@ def create_jvm_test_suite(
         **library_attrs
     )
 
-    # Get any deps referenced in make vars
-    make_var_fields = (kwargs.get("jvm_flags", []) +
-                       kwargs.get("javacopts", []) +
-                       kwargs.get("args", []) +
-                       kwargs.get("env", {}).values())
-
-    # Handle select() in deps or make_var_fields - select is not iterable, so skip make_var extraction
-    can_extract_make_vars = (
-        type(deps) == "list" and
-        type(runtime_deps) == "list" and
-        type(make_var_fields) == "list"
-    )
-    if can_extract_make_vars:
-        make_var_deps = collections.uniq([dep for dep in deps for flag in make_var_fields if dep in flag])
-        make_var_runtime_deps = collections.uniq([dep for dep in runtime_deps for flag in make_var_fields if dep in flag])
-    else:
-        make_var_deps = []
-        make_var_runtime_deps = []
+    common_make_var_deps = _make_var_deps(deps, runtime_deps, kwargs)
 
     for src in test_srcs:
         suffix = src.rfind(".")
         test_name = src[:suffix]
         test_class = get_class_name(package, src, package_prefixes)
 
-        test_name = define_test(
-            name = test_name,
-            size = size,
-            srcs = [src],
-            test_class = test_class,
-            deps = [":" + deps_lib_name] + make_var_deps,
-            tags = tags,
-            runtime_deps = [":" + runtime_deps_lib_name] + make_var_runtime_deps,
-            visibility = ["//visibility:private"],
-            **kwargs
-        )
+        test_attrs = dict(kwargs)
+        test_attrs.update({
+            "name": test_name,
+            "size": size,
+            "srcs": [src],
+            "test_class": test_class,
+            "tags": tags,
+            "visibility": ["//visibility:private"],
+        })
+        overrides = test_overrides.get(src, {})
+        test_attrs = _apply_test_overrides(test_attrs, overrides)
+
+        make_var_deps = _make_var_deps(deps, runtime_deps, test_attrs) if overrides else common_make_var_deps
+        test_attrs["deps"] = [":" + deps_lib_name] + make_var_deps[0]
+        test_attrs["runtime_deps"] = [":" + runtime_deps_lib_name] + make_var_deps[1]
+
+        test_name = define_test(**test_attrs)
         tests.append(test_name)
 
     native.test_suite(
@@ -155,6 +168,36 @@ def create_jvm_test_suite(
         tags = ["manual"] + tags,
         visibility = visibility,
     )
+
+def _apply_test_overrides(test_attrs, overrides):
+    result = dict(test_attrs)
+    for attr_name, value in overrides.items():
+        if attr_name not in _TEST_OVERRIDE_ATTRS:
+            fail("unsupported test override attribute '{}'".format(attr_name))
+        if attr_name in _ADDITIVE_TEST_OVERRIDE_ATTRS:
+            result[attr_name] = result.get(attr_name, []) + value
+        elif attr_name == "env":
+            result["env"] = result.get("env", {}) | value
+        else:
+            result[attr_name] = value
+    return result
+
+def _make_var_deps(deps, runtime_deps, test_attrs):
+    make_var_fields = []
+    for attr_name in ["jvm_flags", "javacopts", "args"]:
+        value = test_attrs.get(attr_name, [])
+        if type(value) != "list":
+            return [], []
+        make_var_fields.extend(value)
+
+    env = test_attrs.get("env", {})
+    if type(env) != "dict" or type(deps) != "list" or type(runtime_deps) != "list":
+        return [], []
+    make_var_fields.extend(env.values())
+
+    make_var_deps = collections.uniq([dep for dep in deps for flag in make_var_fields if dep in flag])
+    make_var_runtime_deps = collections.uniq([dep for dep in runtime_deps for flag in make_var_fields if dep in flag])
+    return make_var_deps, make_var_runtime_deps
 
 def _contains_label(haystack_str_list, needle):
     absolute_needle = _absolutify(needle)
