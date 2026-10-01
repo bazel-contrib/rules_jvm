@@ -309,7 +309,7 @@ public class KtParser {
     @Override
     public void visitProperty(KtProperty property) {
       pushState(property);
-      if (property.isLocal() || !isVisible()) {
+      if (property.isLocal() || isObjectLiteralMember(property) || !isVisible()) {
         super.visitProperty(property);
         popState(property);
         return;
@@ -365,7 +365,7 @@ public class KtParser {
     @Override
     public void visitNamedFunction(KtNamedFunction function) {
       pushState(function);
-      if (function.isLocal() || !isVisible()) {
+      if (function.isLocal() || isObjectLiteralMember(function) || !isVisible()) {
         super.visitNamedFunction(function);
         popState(function);
         return;
@@ -1087,6 +1087,15 @@ public class KtParser {
 
       // Return as-is for now (could be a local class or unresolved type)
       return typeText;
+    }
+
+    private boolean isObjectLiteralMember(KtNamedDeclaration declaration) {
+      if (!(declaration.getParent() instanceof KtClassBody)) {
+        return false;
+      }
+      KtClassBody body = (KtClassBody) declaration.getParent();
+      return body.getParent() instanceof KtObjectDeclaration
+          && ((KtObjectDeclaration) body.getParent()).isObjectLiteral();
     }
 
     private FqName getFunctionFqName(KtNamedFunction function) {
