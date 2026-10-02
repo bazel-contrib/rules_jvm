@@ -92,6 +92,15 @@ public class CommandLineSummary implements TestExecutionListener {
     return failures.size();
   }
 
+  /**
+   * Returns the number of discovered leaf tests (not containers). Used to detect test classes
+   * that were run but matched zero actual tests, e.g. due to a test_class typo or a tag filter
+   * that excludes everything.
+   */
+  public long getTestCount() {
+    return testPlan == null ? 0 : testPlan.countTestIdentifiers(TestIdentifier::isTest);
+  }
+
   private static class Failure {
     private TestExecutionResult result;
 
