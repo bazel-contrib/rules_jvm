@@ -130,7 +130,8 @@ public class ActualRunner implements RunsTest {
       if (shouldFailForNoTests(summary, failIfNoTestsEnabled)) {
         System.err.printf(
             "ERROR: %s matched zero tests. This usually means a wrong test_class, a typo in"
-                + " TESTBRIDGE_TEST_ONLY, or a tag filter that excludes everything.%n",
+                + " TESTBRIDGE_TEST_ONLY, or a tag filter that excludes everything. If this is"
+                + " intentional, disable JUNIT5_FAIL_IF_NO_TESTS.%n",
             testClassName);
         return false;
       }
