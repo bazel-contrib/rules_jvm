@@ -405,7 +405,8 @@ Adds linting tests to Bazel's own `java_test`
 <pre>
 load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 
-java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
+java_test_suite(<a href="#java_test_suite-name">name</a>, <a href="#java_test_suite-srcs">srcs</a>, <a href="#java_test_suite-runner">runner</a>, <a href="#java_test_suite-test_suffixes">test_suffixes</a>, <a href="#java_test_suite-package">package</a>, <a href="#java_test_suite-deps">deps</a>, <a href="#java_test_suite-runtime_deps">runtime_deps</a>, <a href="#java_test_suite-size">size</a>,
+                <a href="#java_test_suite-additional_library_srcs">additional_library_srcs</a>, <a href="#java_test_suite-test_overrides">test_overrides</a>, <a href="#java_test_suite-kwargs">kwargs</a>)
 </pre>
 
 Create a suite of java tests from `*Test.java` files.
@@ -423,6 +424,25 @@ The generated `java_test` targets will be named after the test file:
 In addition, a `test_suite` will be created, named using the `name`
 attribute to allow all the tests to be run in one go.
 
+Individual tests can override selected attributes:
+
+```starlark
+java_test_suite(
+    name = "tests",
+    srcs = glob(["*Test.java"]),
+    size = "small",
+    tags = ["unit"],
+    test_overrides = {
+        "DatabaseTest.java": {
+            "env": {"DATABASE": "integration"},
+            "shard_count": 4,
+            "size": "large",
+            "tags": ["requires-database"],
+        },
+    },
+)
+```
+
 
 **PARAMETERS**
 
@@ -437,6 +457,8 @@ attribute to allow all the tests to be run in one go.
 | <a id="java_test_suite-deps"></a>deps |  A list of `java_*` dependencies.   |  `None` |
 | <a id="java_test_suite-runtime_deps"></a>runtime_deps |  A list of `java_*` dependencies needed at runtime.   |  `[]` |
 | <a id="java_test_suite-size"></a>size |  The size of the test, passed to `java_test`   |  `None` |
+| <a id="java_test_suite-additional_library_srcs"></a>additional_library_srcs |  Additional sources to compile into the shared test library. Sources also present in `srcs` remain eligible to generate tests.   |  `[]` |
+| <a id="java_test_suite-test_overrides"></a>test_overrides |  A dict keyed by test source. Values may override `size` and `shard_count`; extend `data`, `env_inherit`, `jvm_flags`, and `tags`; or merge `env`, with per-test values taking precedence.   |  `{}` |
 | <a id="java_test_suite-kwargs"></a>kwargs |  <p align="center"> - </p>   |  none |
 
 
