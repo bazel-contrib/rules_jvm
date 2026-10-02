@@ -126,6 +126,17 @@ public class ActualRunner implements RunsTest {
         summary.writeTo(writer);
       }
 
+      if (summary.getFailureCount() == 0
+          && summary.getTestCount() == 0
+          && !Boolean.getBoolean("JUNIT5_ALLOW_EMPTY_TEST_RESULTS")) {
+        System.err.printf(
+            "ERROR: %s matched zero tests. This usually means a wrong test_class, a typo in"
+                + " TESTBRIDGE_TEST_ONLY, or a tag filter that excludes everything. If this is"
+                + " intentional, set the JUNIT5_ALLOW_EMPTY_TEST_RESULTS system property.%n",
+            testClassName);
+        return false;
+      }
+
       return summary.getFailureCount() == 0;
     }
   }
