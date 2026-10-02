@@ -127,6 +127,35 @@ public class KtParserTest {
   }
 
   @Test
+  public void anonymousObjectFunctionsKeepUsedTypesWithoutExportingMembers() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("AnonymousObjectFunctions.kt"));
+
+    assertTrue(data.usedTypes.contains("com.example.Receiver"));
+    assertTrue(data.usedTypes.contains("com.example.Argument"));
+    assertTrue(data.usedTypes.contains("com.example.Result"));
+    assertTrue(data.usedTypes.contains("com.example.BodyDependency"));
+    assertEquals(Set.of(), data.exportedTypes);
+    assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.FunctionContainer"),
+        data.declaredTypes);
+    assertEquals(data.declaredTypes, data.perClassData.keySet());
+  }
+
+  @Test
+  public void anonymousObjectPropertiesKeepUsedTypesWithoutExportingMembers() throws IOException {
+    ParsedPackageData data = parser.parseClasses(getPathsWithNames("AnonymousObjectProperties.kt"));
+
+    assertTrue(data.usedTypes.contains("com.example.PropertyType"));
+    assertTrue(data.usedTypes.contains("com.example.MutablePropertyType"));
+    assertTrue(data.usedTypes.contains("com.example.DelegatedPropertyType"));
+    assertEquals(Set.of(), data.exportedTypes);
+    assertEquals(
+        Set.of("workspace.com.gazelle.kotlin.javaparser.generators.PropertyContainer"),
+        data.declaredTypes);
+    assertEquals(data.declaredTypes, data.perClassData.keySet());
+  }
+
+  @Test
   public void internalSymbolsTest() throws IOException {
     ParsedPackageData data = parser.parseClasses(getPathsWithNames("InternalSymbols.kt"));
 
