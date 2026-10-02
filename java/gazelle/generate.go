@@ -576,6 +576,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 	}
 
+	copyExistingKeptStringListAttrs(args.Config, args.File, res.Gen, "visibility", "associates")
+
 	for i := 0; i < len(res.Gen); i++ {
 		log.Debug().Fields(map[string]interface{}{
 			"idx":     i,
