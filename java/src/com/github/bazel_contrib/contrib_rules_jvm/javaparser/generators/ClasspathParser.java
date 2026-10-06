@@ -493,13 +493,6 @@ public class ClasspathParser {
       return super.visitVariable(node, unused);
     }
 
-    private Set<String> excludedSamePackageNames() {
-      Set<String> excluded = new TreeSet<>(JAVA_LANG_TYPES);
-      excluded.addAll(locallyDefinedClassNames);
-      excluded.addAll(typeParameterNames);
-      return excluded;
-    }
-
     @Nullable
     private Set<String> checkFullyQualifiedType(Tree identifier) {
       if (identifier == null) {
@@ -513,7 +506,9 @@ public class ClasspathParser {
                 identifier.toString(),
                 currentFileImports,
                 currentPackage,
-                excludedSamePackageNames());
+                JAVA_LANG_TYPES,
+                locallyDefinedClassNames,
+                typeParameterNames);
         if (resolved.isPresent()) {
           data.usedTypes.add(resolved.get());
           types.add(resolved.get());
