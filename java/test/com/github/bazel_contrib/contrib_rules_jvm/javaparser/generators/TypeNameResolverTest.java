@@ -49,6 +49,35 @@ class TypeNameResolverTest {
   }
 
   @Test
+  void anyExcludedSetSuppressesSamePackageFallback() {
+    assertEquals(
+        Optional.empty(),
+        TypeNameResolver.resolve(
+            "LocalType",
+            Map.of(),
+            "com.example",
+            Set.of(),
+            Set.of("LocalType"),
+            Set.of()));
+    assertEquals(
+        Optional.empty(),
+        TypeNameResolver.resolve(
+            "TypeParameter",
+            Map.of(),
+            "com.example",
+            Set.of(),
+            Set.of(),
+            Set.of("TypeParameter")));
+  }
+
+  @Test
+  void noExcludedSetsAllowsSamePackageFallback() {
+    assertEquals(
+        Optional.of("com.example.Helper"),
+        TypeNameResolver.resolve("Helper", Map.of(), "com.example"));
+  }
+
+  @Test
   void nullCurrentPackageDisablesFallback() {
     assertEquals(Optional.empty(), TypeNameResolver.resolve("Helper", Map.of(), null, Set.of()));
   }
