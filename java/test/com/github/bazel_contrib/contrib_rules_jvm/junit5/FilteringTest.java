@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -292,6 +295,11 @@ public class FilteringTest {
     @Override
     public int size() {
       return 0;
+    }
+
+    @Override
+    public Set<String> keySet() {
+      return Collections.emptySet();
     }
   }
 
