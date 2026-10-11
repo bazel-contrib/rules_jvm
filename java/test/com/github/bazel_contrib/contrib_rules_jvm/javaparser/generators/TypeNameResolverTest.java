@@ -53,21 +53,11 @@ class TypeNameResolverTest {
     assertEquals(
         Optional.empty(),
         TypeNameResolver.resolve(
-            "LocalType",
-            Map.of(),
-            "com.example",
-            Set.of(),
-            Set.of("LocalType"),
-            Set.of()));
+            "LocalType", Map.of(), "com.example", Set.of(), Set.of("LocalType"), Set.of()));
     assertEquals(
         Optional.empty(),
         TypeNameResolver.resolve(
-            "TypeParameter",
-            Map.of(),
-            "com.example",
-            Set.of(),
-            Set.of(),
-            Set.of("TypeParameter")));
+            "TypeParameter", Map.of(), "com.example", Set.of(), Set.of(), Set.of("TypeParameter")));
   }
 
   @Test
