@@ -154,8 +154,7 @@ public class ClasspathParser {
   private static final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
   // The classpath is explicitly unset as the default behaviour is to inherit java.class.path.
   // We don't need any of that for parsing Java files.
-  private static final List<String> OPTIONS =
-      List.of("-proc:none", "-classpath", "");
+  private static final List<String> OPTIONS = List.of("-proc:none", "-classpath", "");
 
   public ClasspathParser() {
     // Doesn't need to do anything currently
