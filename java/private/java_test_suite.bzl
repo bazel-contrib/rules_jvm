@@ -45,6 +45,8 @@ def java_test_suite(
         deps = None,
         runtime_deps = [],
         size = None,
+        additional_library_srcs = [],
+        test_overrides = {},
         **kwargs):
     """Create a suite of java tests from `*Test.java` files.
 
@@ -61,6 +63,25 @@ def java_test_suite(
     In addition, a `test_suite` will be created, named using the `name`
     attribute to allow all the tests to be run in one go.
 
+    Individual tests can override selected attributes:
+
+    ```starlark
+    java_test_suite(
+        name = "tests",
+        srcs = glob(["*Test.java"]),
+        size = "small",
+        tags = ["unit"],
+        test_overrides = {
+            "DatabaseTest.java": {
+                "env": {"DATABASE": "integration"},
+                "shard_count": 4,
+                "size": "large",
+                "tags": ["requires-database"],
+            },
+        },
+    )
+    ```
+
     Args:
       name: A unique name for this rule. Will be used to generate a `test_suite`
       srcs: Source files to create test rules for.
@@ -72,6 +93,11 @@ def java_test_suite(
       size: The size of the test, passed to `java_test`
       test_suffixes: The file name suffix used to identify if a file
         contains a test class.
+      additional_library_srcs: Additional sources to compile into the shared test
+        library. Sources also present in `srcs` remain eligible to generate tests.
+      test_overrides: A dict keyed by test source. Values may override `size`
+        and `shard_count`; extend `data`, `env_inherit`, `jvm_flags`, and
+        `tags`; or merge `env`, with per-test values taking precedence.
     """
     create_jvm_test_suite(
         name,
@@ -84,5 +110,7 @@ def java_test_suite(
         deps = deps,
         runtime_deps = runtime_deps,
         size = size,
+        additional_library_srcs = additional_library_srcs,
+        test_overrides = test_overrides,
         **kwargs
     )

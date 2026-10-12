@@ -1,0 +1,61 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//java:defs.bzl", "java_library", "java_test_suite")
+load(":test_suite_overrides_test.bzl", "test_suite_overrides_test_suite")
+
+java_library(
+    name = "make-var-dep",
+    srcs = ["MakeVarDep.java"],
+)
+
+java_test_suite(
+    name = "fixture",
+    size = "small",
+    srcs = [
+        "DefaultTest.java",
+        "OverriddenTest.java",
+        "SharedTest.java",
+    ],
+    additional_library_srcs = [
+        "Helper.java",
+        "SharedTest.java",
+    ],
+    data = ["Helper.java"],
+    env = {
+        "SHARED": "suite",
+        "SUITE_ONLY": "suite",
+    },
+    env_inherit = ["SUITE_ENV"],
+    jvm_flags = ["-Dsuite=true"],
+    tags = ["suite-tag"],
+    test_overrides = {
+        "OverriddenTest.java": {
+            "data": ["DefaultTest.java"],
+            "env": {
+                "DEP": "$(location :make-var-dep)",
+                "SHARED": "test",
+                "TEST_ONLY": "test",
+            },
+            "env_inherit": ["TEST_ENV"],
+            "jvm_flags": [
+                "-Dtest=true",
+            ],
+            "shard_count": 2,
+            "size": "large",
+            "tags": ["test-tag"],
+        },
+        "SharedTest.java": {
+            "env": select({
+                "//conditions:default": {
+                    "SELECTED": "test",
+                    "SHARED": "test",
+                },
+            }),
+        },
+    },
+    deps = [
+        ":make-var-dep",
+        artifact("junit:junit", "contrib_rules_jvm_tests"),
+    ],
+)
+
+test_suite_overrides_test_suite(name = "test_suite_overrides_tests")
