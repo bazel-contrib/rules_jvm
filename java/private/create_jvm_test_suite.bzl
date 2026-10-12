@@ -183,6 +183,7 @@ def _apply_test_overrides(test_attrs, overrides):
     return result
 
 def _make_var_deps(deps, runtime_deps, test_attrs):
+    # select() values are not iterable, so return empty lists when an input is configurable.
     make_var_fields = []
     for attr_name in ["jvm_flags", "javacopts", "args"]:
         value = test_attrs.get(attr_name, [])
