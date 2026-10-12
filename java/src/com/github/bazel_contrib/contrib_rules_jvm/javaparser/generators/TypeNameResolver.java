@@ -18,15 +18,16 @@ final class TypeNameResolver {
    * @param typeName a name such as {@code Foo}, {@code Outer.Inner}, or {@code com.example.Foo}
    * @param imports map from simple name (or alias) to fully-qualified name
    * @param currentPackage the file's own package; null or empty disables the same-package fallback
-   * @param excluded names that should NOT trigger the same-package fallback (e.g. java.lang
+   * @param excludedSets names that should NOT trigger the same-package fallback (e.g. java.lang
    *     built-ins, locally-defined classes, type parameters)
    * @return the resolved fully-qualified name, or empty if no policy applies
    */
+  @SafeVarargs
   static Optional<String> resolve(
       String typeName,
       Map<String, String> imports,
       @Nullable String currentPackage,
-      Set<String> excluded) {
+      Set<String>... excludedSets) {
     if (typeName == null || typeName.isEmpty()) {
       return Optional.empty();
     }
@@ -42,8 +43,10 @@ final class TypeNameResolver {
       // Already FQN-shaped; trust it.
       return Optional.of(typeName);
     }
-    if (excluded.contains(typeName)) {
-      return Optional.empty();
+    for (Set<String> excluded : excludedSets) {
+      if (excluded.contains(typeName)) {
+        return Optional.empty();
+      }
     }
     if (currentPackage == null || currentPackage.isEmpty()) {
       return Optional.empty();
