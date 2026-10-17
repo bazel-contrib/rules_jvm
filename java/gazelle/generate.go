@@ -185,7 +185,9 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			l.javaPackageCache[args.Rel] = javaPkg
 		}
 
-		if !cfg.IsModuleRoot() {
+		// Resources roots keep their own BUILD file: the module library references
+		// their pkg_files target rather than aggregating the files.
+		if !cfg.IsModuleRoot() && !isResourcesRoot {
 			log.Debug().Msg("module // sub directory, returning early")
 			if args.File != nil {
 				// In module mode, there should be no intermediate build files.

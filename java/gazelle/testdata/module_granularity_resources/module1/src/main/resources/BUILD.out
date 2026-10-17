@@ -1,0 +1,10 @@
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
+pkg_files(
+    name = "resources",
+    srcs = [
+        "META-INF/app.properties",
+        "top.properties",
+    ],
+    strip_prefix = "",
+)
