@@ -20,6 +20,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/rs/zerolog"
 )
@@ -127,15 +128,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// java_generate_resources == false: Disable resources logic
 		isResourcesRoot = false
 		isResourcesSubdir = false
-	}
-
-	if isResourcesRoot || isResourcesSubdir {
-		for _, f := range args.RegularFiles {
-			if f == "BUILD" || f == "BUILD.bazel" || filepath.Ext(f) == ".java" {
-				continue
-			}
-			l.resourceFiles[args.Rel] = append(l.resourceFiles[args.Rel], f)
-		}
 	}
 
 	var javaPkg *java.Package
@@ -349,16 +341,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	// Check if this is a resources root directory and generate a pkg_files target
 	if isResourcesRoot && len(srcFilenamesRelativeToPackage) == 0 {
-		// Collect the resource files the walk found in this directory and all subdirectories
-		var allResourceFiles []string
-		for dir, files := range l.resourceFiles {
-			if !isUnderRel(dir, args.Rel) {
-				continue
-			}
-			for _, f := range files {
-				allResourceFiles = append(allResourceFiles, strings.TrimPrefix(path.Join(dir, f), args.Rel+"/"))
-			}
-		}
+		// Collect resource files recursively from this directory and all subdirectories
+		allResourceFiles := collectResourceFiles(args.Rel, "")
 
 		if len(allResourceFiles) > 0 {
 			// Sort the files for deterministic output
@@ -392,7 +376,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				res.Imports = append(res.Imports, types.ResolveInput{})
 			}
 		} else {
-			l.emptyResourcesRoots[args.Rel] = true
 			res.Empty = append(res.Empty, rule.NewRule("pkg_files", "resources"))
 			if !aggregateAtRoot {
 				res.Empty = append(res.Empty, rule.NewRule(javaLibraryKind, "resources_lib"))
@@ -998,10 +981,8 @@ func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig
 	for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
 		resourcesPath := path.Join(sourcesetRoot, "resources")
 
-		// Check if the resources directory actually exists. An existing one with no files
-		// gets no pkg_files; the resolver drops the reference once that is known.
-		fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
-		if _, err := os.Stat(fullResourcesPath); err != nil {
+		// Only resources directories with files get a pkg_files target to reference.
+		if len(collectResourceFiles(resourcesPath, "")) == 0 {
 			continue
 		}
 		if aggregateAtRoot {
@@ -1285,6 +1266,26 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
+}
+
+// collectResourceFiles returns the resource files beneath the resources directory root,
+// relative to it, as listed by the walk: files hidden by `# gazelle:exclude` or
+// .bazelignore are left out. sub is the subdirectory of root being collected.
+func collectResourceFiles(root, sub string) []string {
+	info, err := walk.GetDirInfo(path.Join(root, sub))
+	if err != nil {
+		return nil
+	}
+	var files []string
+	for _, f := range info.RegularFiles {
+		if f != "BUILD" && f != "BUILD.bazel" && filepath.Ext(f) != ".java" {
+			files = append(files, path.Join(sub, f))
+		}
+	}
+	for _, d := range info.Subdirs {
+		files = append(files, collectResourceFiles(root, path.Join(sub, d))...)
+	}
+	return files
 }
 
 // isUnderRel reports whether the slash-separated rel is root or a directory beneath it.

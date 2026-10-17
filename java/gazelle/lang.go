@@ -48,16 +48,6 @@ type javaLang struct {
 	// `associates` (Kotlin friends), so module-wide `internal` survives the fine-grained split.
 	kotlinLibraries map[string]bool
 
-	// resourceFiles maps each visited directory under a resources root to the resource
-	// files gazelle found in it, so the root's pkg_files sees the same (exclude- and
-	// .bazelignore-filtered) files as the walk. Subdirectories are visited before the root.
-	resourceFiles map[string][]string
-
-	// emptyResourcesRoots holds the resources roots that got no pkg_files because they
-	// have no files. The resolver drops references to them, which generation adds before
-	// knowing, as sibling java directories are visited before their resources root.
-	emptyResourcesRoots map[string]bool
-
 	// hasHadErrors triggers the extension to fail at destroy time.
 	//
 	// this is used to return != 0 when some errors during the generation were
@@ -100,9 +90,6 @@ func NewLanguage() language.Language {
 		javaExportIndex:  java_export_index.NewJavaExportIndex(languageName, logger),
 		classExportCache: make(map[string]classExportInfo),
 		kotlinLibraries:  make(map[string]bool),
-
-		resourceFiles:       make(map[string][]string),
-		emptyResourcesRoots: make(map[string]bool),
 	}
 
 	l.logger = l.logger.Hook(shutdownServerOnFatalLogHook{
