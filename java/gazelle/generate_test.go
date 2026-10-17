@@ -160,7 +160,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, nil, tc.wrapper, nil, &res)
+			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, nil, nil, "", tc.wrapper, nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -253,7 +253,7 @@ func TestSuite(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTestSuite(nil, "blah", []string{src}, stringsToPackageNames([]string{pkg}), "maven", stringsToPackageNames(tc.importedPackages), nil, nil, nil, false, &res)
+			l.generateJavaTestSuite(nil, "blah", []string{src}, stringsToPackageNames([]string{pkg}), "maven", stringsToPackageNames(tc.importedPackages), nil, nil, nil, false, nil, "", &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 

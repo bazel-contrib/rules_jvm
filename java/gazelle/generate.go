@@ -334,6 +334,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		javaLibraryKind = "kt_jvm_library"
 	}
 
+	// Production code and tests each get their own sourceset's resources.
+	resourcesDirectRefs, resourcesRuntimeDep := l.sourcesetResources(args, cfgs, cfg, aggregateAtRoot, false)
+	testResourcesDirectRefs, testResourcesRuntimeDep := l.sourcesetResources(args, cfgs, cfg, aggregateAtRoot, true)
+
 	// Check if this is a resources root directory and generate a pkg_files target
 	if isResourcesRoot && len(srcFilenamesRelativeToPackage) == 0 {
 		// Collect resource files recursively from this directory and all subdirectories
@@ -405,49 +409,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 	} else if productionJavaFiles.Len() > 0 {
-		var resourcesDirectRefs []string // For module mode: direct references to pkg_files
-		var resourcesRuntimeDep string   // For package mode: runtime_dep on resources_lib
-
-		// The sourceset root is the parent of both java and resources directories
-		// For example, if sourceset root is "src/sample", then:
-		// - Java files are in "src/sample/java/..."
-		// - Resources are in "src/sample/resources"
-		sourcesetRoots := sorted_set.NewSortedSet([]string{})
-		if cfg.SourcesetRoot() != "" {
-			sourcesetRoots.Add(cfg.SourcesetRoot())
-		}
-		if aggregateAtRoot {
-			// A module root usually sits above its sourcesets (e.g. module/src/main),
-			// so collect the sourceset of every production package aggregated into it.
-			for mRel, mJavaPkg := range l.javaPackageCache {
-				if mJavaPkg.TestPackage || !strings.HasPrefix(mRel, args.Rel) {
-					continue
-				}
-				if mCfg, ok := cfgs[mRel]; ok && mCfg.SourcesetRoot() != "" {
-					sourcesetRoots.Add(mCfg.SourcesetRoot())
-				}
-			}
-		}
-
-		if generateResources {
-			for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
-				resourcesPath := path.Join(sourcesetRoot, "resources")
-
-				// Check if the resources directory actually exists
-				fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
-				if _, err := os.Stat(fullResourcesPath); err != nil {
-					continue
-				}
-				if aggregateAtRoot {
-					// Module mode: reference pkg_files directly as resources
-					resourcesDirectRefs = append(resourcesDirectRefs, "//"+resourcesPath+":resources")
-				} else {
-					// Package mode: reference resources_lib as runtime_deps
-					resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
-				}
-			}
-		}
-
 		if granularity == "scc" {
 			// SCC mode: the subtree is one Kotlin compilation unit, but `internal` is
 			// module-scoped and Bazel forbids target cycles, so we can't always emit one
@@ -533,7 +494,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		case "file":
 			for _, tf := range testJavaFiles.SortedSlice() {
 				separateJavaTestReasons := separateTestJavaFiles[tf]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, nil, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), tf, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, nil, testResourcesDirectRefs, testResourcesRuntimeDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 
 		case "suite":
@@ -563,6 +524,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					annotationProcessorClasses,
 					cfg.GetCustomJavaTestFileSuffixes(),
 					testHelperJavaFiles.Len() > 0,
+					testResourcesDirectRefs,
+					testResourcesRuntimeDep,
 					&res,
 				)
 				// Cache the helper classes under the suite's "<suite>-test-lib" label (the helper
@@ -593,7 +556,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					testHelperDep = ptr(testHelperLibname(suiteName))
 				}
 				separateJavaTestReasons := separateTestJavaFiles[src]
-				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, testHelperDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
+				l.generateJavaTest(args.File, args.Rel, cfg.MavenRepositoryName(), src, aggregateAtRoot, testJavaImportsWithHelpers, testJavaImportedClassesWithHelpers, annotationProcessorClasses, testHelperDep, testResourcesDirectRefs, testResourcesRuntimeDep, separateJavaTestReasons.wrapper, separateJavaTestReasons.attributes, &res)
 			}
 		}
 	}
@@ -1012,6 +975,71 @@ type generateJavaLibraryArgs struct {
 	TestOnly                bool
 }
 
+// sourcesetResources finds the resources of the sourceset(s) holding this package's
+// production code, or its tests when tests is true: pkg_files labels for the resources
+// attr in module mode, or a resources_lib label for runtime_deps in package mode.
+func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig.Configs, cfg *javaconfig.Config, aggregateAtRoot, tests bool) (directRefs []string, runtimeDep string) {
+	if !cfg.GenerateResources() {
+		return nil, ""
+	}
+
+	// The sourceset root is the parent of both java and resources directories
+	// For example, if sourceset root is "src/sample", then:
+	// - Java files are in "src/sample/java/..."
+	// - Resources are in "src/sample/resources"
+	sourcesetRoots := sorted_set.NewSortedSet([]string{})
+	if !aggregateAtRoot {
+		if cfg.SourcesetRoot() != "" {
+			sourcesetRoots.Add(cfg.SourcesetRoot())
+		}
+	} else {
+		// A module root usually sits above its sourcesets (e.g. module/src/main),
+		// so collect the sourceset of every package aggregated into it.
+		for mRel, mJavaPkg := range l.javaPackageCache {
+			if mJavaPkg.TestPackage != tests || !strings.HasPrefix(mRel, args.Rel) {
+				continue
+			}
+			if mCfg, ok := cfgs[mRel]; ok && mCfg.SourcesetRoot() != "" {
+				sourcesetRoots.Add(mCfg.SourcesetRoot())
+			}
+		}
+	}
+
+	for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
+		resourcesPath := path.Join(sourcesetRoot, "resources")
+
+		// Check if the resources directory actually exists
+		fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
+		if _, err := os.Stat(fullResourcesPath); err != nil {
+			continue
+		}
+		if aggregateAtRoot {
+			// Module mode: reference pkg_files directly as resources
+			directRefs = append(directRefs, "//"+resourcesPath+":resources")
+		} else {
+			// Package mode: reference resources_lib as runtime_deps
+			runtimeDep = "//" + resourcesPath + ":resources_lib"
+		}
+	}
+	return directRefs, runtimeDep
+}
+
+// addResources attaches a sourceset's resources to r: directly as the resources attr
+// (module mode), or as a runtime_dep on the resources_lib wrapper (package mode).
+func (l javaLang) addResources(r *rule.Rule, runtimeDeps *sorted_set.SortedSet[label.Label], directRefs []string, runtimeDep string) {
+	if len(directRefs) > 0 {
+		r.SetAttr("resources", directRefs)
+	}
+	if runtimeDep != "" {
+		parsedLabel, err := label.Parse(runtimeDep)
+		if err != nil {
+			l.logger.Error().Err(err).Str("label", runtimeDep).Msg("Failed to parse resources runtime dep label")
+		} else {
+			runtimeDeps.Add(parsedLabel)
+		}
+	}
+}
+
 func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 	r := rule.NewRule(args.LibraryKind, args.Name)
 
@@ -1027,24 +1055,9 @@ func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 	}
 	sort.Strings(srcs)
 
-	// Handle resources based on mode
-	if len(args.ResourcesDirectRefs) > 0 {
-		// Module mode: add resources directly to the library
-		r.SetAttr("resources", args.ResourcesDirectRefs)
-	}
-
 	// This is so we would default ALL runtime_deps to "keep" mode
 	runtimeDeps := l.collectRuntimeDeps(args.LibraryKind, args.Name, args.File)
-
-	// Package mode: add resources_lib as runtime_deps
-	if args.ResourcesRuntimeDep != "" {
-		parsedLabel, err := label.Parse(args.ResourcesRuntimeDep)
-		if err != nil {
-			l.logger.Error().Err(err).Str("label", args.ResourcesRuntimeDep).Msg("Failed to parse resources runtime dep label")
-		} else {
-			runtimeDeps.Add(parsedLabel)
-		}
-	}
+	l.addResources(r, runtimeDeps, args.ResourcesDirectRefs, args.ResourcesRuntimeDep)
 
 	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -1145,7 +1158,7 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
 	})
 }
 
-func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, resourcesDirectRefs []string, resourcesRuntimeDep string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
 	className := f.ClassName()
 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
 	var testName string
@@ -1190,6 +1203,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		r.SetAttr("deps", []string{*depOnTestHelpers})
 	}
 
+	l.addResources(r, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
@@ -1234,7 +1248,7 @@ var junit5RuntimeDeps = []string{
 	"org.junit.platform:junit-platform-reporting",
 }
 
-func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], customTestSuffixes *[]string, hasHelpers bool, res *language.GenerateResult) {
+func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []string, packageNames *sorted_set.SortedSet[types.PackageName], mavenRepositoryName string, imports *sorted_set.SortedSet[types.PackageName], importedClasses *sorted_set.SortedSet[types.ClassName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], customTestSuffixes *[]string, hasHelpers bool, resourcesDirectRefs []string, resourcesRuntimeDep string, res *language.GenerateResult) {
 	const ruleKind = "java_test_suite"
 	r := rule.NewRule(ruleKind, name)
 	r.SetAttr("srcs", srcs)
@@ -1261,6 +1275,7 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	// but we don't currently wire up the resolver to do this.
 	// We probably should.
 	// In the mean time, hard-code some labels.
+	l.addResources(r, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
 	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
