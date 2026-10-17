@@ -1,11 +1,11 @@
 github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829 h1:xnu1MpGNjnEooJ8lWa3YiU3330zMZISReAosjpZpLzg=
 github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829/go.mod h1:FmFEhIzCEWoI0WuuZDSWCu25zCNW/X4Czla0ls/HSrs=
-github.com/bazelbuild/bazel-gazelle v0.42.0 h1:BpkUzE3H2l6buJYFTKgzVMecJimQgWwYud25qVIx0SQ=
-github.com/bazelbuild/bazel-gazelle v0.42.0/go.mod h1:SRCc60YGZ27y+BqLzQ+nMh249+FyZz7YtX/V2ng+/z4=
+github.com/bazelbuild/bazel-gazelle v0.45.0 h1:ZfbDRyNppw0Sd42lXVX7ybar63MJofb58Yvl4SvbtYY=
+github.com/bazelbuild/bazel-gazelle v0.45.0/go.mod h1:XdBdWhrTc5x50CKzKXOcwrZWdLuX58IX1KcSaWPtEGo=
 github.com/bazelbuild/buildtools v0.0.0-20250204160707-ad48c76ab9b5 h1:ls2GvHSkr+EXNZBBGVrPewx3nc54YBHCHd6v4BOlz9g=
 github.com/bazelbuild/buildtools v0.0.0-20250204160707-ad48c76ab9b5/go.mod h1:PLNUetjLa77TCCziPsz0EI8a6CUxgC+1jgmWv0H25tg=
-github.com/bazelbuild/rules_go v0.52.0 h1:+ozpngVAW67pCAwfhepaXSSrG3yHcj8K9hNAxSYBno4=
-github.com/bazelbuild/rules_go v0.52.0/go.mod h1:M+YrupNArA7OiTlv++rFUgQ6Sm+ZXbQ5HPUj0cGa0us=
+github.com/bazelbuild/rules_go v0.53.0 h1:u160DT+RRb+Xb2aSO4piN8xhs4aZvWz2UDXCq48F4ao=
+github.com/bazelbuild/rules_go v0.53.0/go.mod h1:xB1jfsYHWlnZyPPxzlOSst4q2ZAwS251Mp9Iw6TPuBc=
 github.com/bmatcuk/doublestar/v4 v4.7.1 h1:fdDeAqgT47acgwd9bd9HxJRDmc9UAmPpc+2m0CXv75Q=
 github.com/bmatcuk/doublestar/v4 v4.7.1/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
