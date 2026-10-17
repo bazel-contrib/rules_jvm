@@ -395,3 +395,20 @@ func TestProtoOuterClassName(t *testing.T) {
 		})
 	}
 }
+
+func TestIsUnderRel(t *testing.T) {
+	for _, tc := range []struct {
+		rel, root string
+		want      bool
+	}{
+		{"api", "api", true},
+		{"api/src/main/java", "api", true},
+		{"api-client/src/main/java", "api", false},
+		{"apiary", "api", false},
+		{"anything", "", true},
+	} {
+		if got := isUnderRel(tc.rel, tc.root); got != tc.want {
+			t.Errorf("isUnderRel(%q, %q) = %v, want %v", tc.rel, tc.root, got, tc.want)
+		}
+	}
+}

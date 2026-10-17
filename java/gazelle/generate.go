@@ -3,6 +3,7 @@ package gazelle
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -235,7 +236,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	if aggregateAtRoot {
 		for mRel, mJavaPkg := range l.javaPackageCache {
-			if !strings.HasPrefix(mRel, args.Rel) {
+			if !isUnderRel(mRel, args.Rel) {
 				continue
 			}
 			allPackageNames.Add(mJavaPkg.Name)
@@ -599,7 +600,7 @@ func markExistingSCCLibrariesForDeletion(file *rule.File, res *language.Generate
 func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg *javaconfig.Config, likelyLocalClassNames *sorted_set.SortedSet[string], resourcesDirectRefs []string, resourcesRuntimeDep string, res *language.GenerateResult, log zerolog.Logger) {
 	productionPackagesByDir := make(map[string]*java.Package)
 	for mRel, mJavaPkg := range l.javaPackageCache {
-		if !strings.HasPrefix(mRel, args.Rel) || mJavaPkg.TestPackage {
+		if !isUnderRel(mRel, args.Rel) || mJavaPkg.TestPackage {
 			continue
 		}
 		if mJavaPkg.Files == nil || mJavaPkg.Files.Len() == 0 {
@@ -996,7 +997,7 @@ func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig
 		// A module root usually sits above its sourcesets (e.g. module/src/main),
 		// so collect the sourceset of every package aggregated into it.
 		for mRel, mJavaPkg := range l.javaPackageCache {
-			if mJavaPkg.TestPackage != tests || !strings.HasPrefix(mRel, args.Rel) {
+			if mJavaPkg.TestPackage != tests || !isUnderRel(mRel, args.Rel) {
 				continue
 			}
 			if mCfg, ok := cfgs[mRel]; ok && mCfg.SourcesetRoot() != "" {
@@ -1008,9 +1009,8 @@ func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig
 	for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
 		resourcesPath := path.Join(sourcesetRoot, "resources")
 
-		// Check if the resources directory actually exists
-		fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
-		if _, err := os.Stat(fullResourcesPath); err != nil {
+		// Only resources directories with files get a pkg_files target to reference.
+		if !hasResourceFiles(filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))) {
 			continue
 		}
 		if aggregateAtRoot {
@@ -1294,6 +1294,30 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 		AnnotationProcessors: annotationProcessorClasses,
 	}
 	res.Imports = append(res.Imports, resolveInput)
+}
+
+// isUnderRel reports whether the slash-separated rel is root or a directory beneath it.
+// A plain prefix check would let module "api" claim the sibling "api-client".
+func isUnderRel(rel, root string) bool {
+	return root == "" || rel == root || strings.HasPrefix(rel, root+"/")
+}
+
+// hasResourceFiles reports whether dir contains a file that collectResourceFilesRecursively
+// would put in a resources pkg_files target.
+func hasResourceFiles(dir string) bool {
+	found := false
+	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || found {
+			return filepath.SkipAll
+		}
+		name := d.Name()
+		if !d.IsDir() && name != "BUILD" && name != "BUILD.bazel" && filepath.Ext(name) != ".java" {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // collectResourceFilesRecursively walks through subdirectories and collects resource files
