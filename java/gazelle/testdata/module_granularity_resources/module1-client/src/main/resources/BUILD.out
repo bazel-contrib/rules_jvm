@@ -1,8 +1,0 @@
-load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
-
-pkg_files(
-    name = "resources",
-    srcs = ["client.properties"],
-    strip_prefix = "",
-    visibility = ["//:__subpackages__"],
-)

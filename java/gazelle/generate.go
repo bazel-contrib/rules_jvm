@@ -356,7 +356,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				continue
 			}
 			for _, f := range files {
-				allResourceFiles = append(allResourceFiles, path.Join(strings.TrimPrefix(strings.TrimPrefix(dir, args.Rel), "/"), f))
+				allResourceFiles = append(allResourceFiles, strings.TrimPrefix(path.Join(dir, f), args.Rel+"/"))
 			}
 		}
 
