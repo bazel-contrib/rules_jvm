@@ -126,8 +126,30 @@ public class ActualRunner implements RunsTest {
         summary.writeTo(writer);
       }
 
+      boolean failIfNoTestsEnabled = Boolean.parseBoolean(System.getenv("JUNIT5_FAIL_IF_NO_TESTS"));
+      if (shouldFailForNoTests(summary, failIfNoTestsEnabled)) {
+        System.err.printf(
+            "ERROR: %s matched zero tests. This usually means a wrong test_class, a typo in"
+                + " TESTBRIDGE_TEST_ONLY, or a tag filter that excludes everything. If this is"
+                + " intentional, disable JUNIT5_FAIL_IF_NO_TESTS.%n",
+            testClassName);
+        return false;
+      }
+
       return summary.getFailureCount() == 0;
     }
+  }
+
+  /**
+   * Mirrors the polarity of JUnit's own {@code ConsoleLauncher --fail-if-no-tests} option:
+   * disabled unless explicitly requested, so that enabling this check is an opt-in, non-breaking
+   * change for existing callers. A real failure (e.g. a crash during test class construction)
+   * always takes precedence over the generic "matched zero tests" message.
+   */
+  static boolean shouldFailForNoTests(CommandLineSummary summary, boolean failIfNoTestsEnabled) {
+    return summary.getFailureCount() == 0
+        && summary.getTestCount() == 0
+        && failIfNoTestsEnabled;
   }
 
   /**
