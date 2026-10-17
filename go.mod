@@ -6,9 +6,9 @@ toolchain go1.22.12
 
 require (
 	github.com/aristanetworks/goarista v0.0.0-20220328143245-64c8d3945829
-	github.com/bazelbuild/bazel-gazelle v0.42.0
+	github.com/bazelbuild/bazel-gazelle v0.45.0
 	github.com/bazelbuild/buildtools v0.0.0-20250204160707-ad48c76ab9b5
-	github.com/bazelbuild/rules_go v0.52.0
+	github.com/bazelbuild/rules_go v0.53.0
 	github.com/google/btree v1.1.3
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
@@ -30,7 +30,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
