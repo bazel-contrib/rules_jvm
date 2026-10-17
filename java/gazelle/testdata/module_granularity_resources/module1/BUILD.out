@@ -1,3 +1,4 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
 load("@rules_java//java:defs.bzl", "java_library")
 
 # gazelle:java_module_granularity module
@@ -5,5 +6,12 @@ load("@rules_java//java:defs.bzl", "java_library")
 java_library(
     name = "module1",
     srcs = ["src/main/java/com/example/App.java"],
+    resources = ["//module1/src/main/resources"],
     visibility = ["//:__subpackages__"],
+)
+
+java_test_suite(
+    name = "module1-tests",
+    srcs = ["src/test/java/com/example/AppTest.java"],
+    deps = [":module1"],
 )

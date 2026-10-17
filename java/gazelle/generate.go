@@ -382,6 +382,11 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// already relative to that directory, so no stripping is needed.
 			r.SetAttr("strip_prefix", "")
 
+			// In module mode, the module library in another package references this directly.
+			if aggregateAtRoot {
+				r.SetAttr("visibility", []string{"//:__subpackages__"})
+			}
+
 			res.Gen = append(res.Gen, r)
 			res.Imports = append(res.Imports, types.ResolveInput{})
 
@@ -400,30 +405,45 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			}
 		}
 	} else if productionJavaFiles.Len() > 0 {
-		var resourcesDirectRef string  // For module mode: direct reference to pkg_files
-		var resourcesRuntimeDep string // For package mode: runtime_dep on resources_lib
+		var resourcesDirectRefs []string // For module mode: direct references to pkg_files
+		var resourcesRuntimeDep string   // For package mode: runtime_dep on resources_lib
 
+		// The sourceset root is the parent of both java and resources directories
+		// For example, if sourceset root is "src/sample", then:
+		// - Java files are in "src/sample/java/..."
+		// - Resources are in "src/sample/resources"
+		sourcesetRoots := sorted_set.NewSortedSet([]string{})
 		if cfg.SourcesetRoot() != "" {
-			// We have a sourceset root configured
-			// The sourceset root is the parent of both java and resources directories
-			// For example, if sourceset root is "src/sample", then:
-			// - Java files are in "src/sample/java/..."
-			// - Resources are in "src/sample/resources"
+			sourcesetRoots.Add(cfg.SourcesetRoot())
+		}
+		if aggregateAtRoot {
+			// A module root usually sits above its sourcesets (e.g. module/src/main),
+			// so collect the sourceset of every production package aggregated into it.
+			for mRel, mJavaPkg := range l.javaPackageCache {
+				if mJavaPkg.TestPackage || !strings.HasPrefix(mRel, args.Rel) {
+					continue
+				}
+				if mCfg, ok := cfgs[mRel]; ok && mCfg.SourcesetRoot() != "" {
+					sourcesetRoots.Add(mCfg.SourcesetRoot())
+				}
+			}
+		}
 
-			if generateResources {
-				resourcesPath := path.Join(cfg.SourcesetRoot(), "resources")
+		if generateResources {
+			for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
+				resourcesPath := path.Join(sourcesetRoot, "resources")
 
 				// Check if the resources directory actually exists
 				fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
-				if _, err := os.Stat(fullResourcesPath); err == nil {
-					// Resources directory exists, add the reference
-					if aggregateAtRoot {
-						// Module mode: reference pkg_files directly as resources
-						resourcesDirectRef = "//" + resourcesPath + ":resources"
-					} else {
-						// Package mode: reference resources_lib as runtime_deps
-						resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
-					}
+				if _, err := os.Stat(fullResourcesPath); err != nil {
+					continue
+				}
+				if aggregateAtRoot {
+					// Module mode: reference pkg_files directly as resources
+					resourcesDirectRefs = append(resourcesDirectRefs, "//"+resourcesPath+":resources")
+				} else {
+					// Package mode: reference resources_lib as runtime_deps
+					resourcesRuntimeDep = "//" + resourcesPath + ":resources_lib"
 				}
 			}
 		}
@@ -435,7 +455,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			// (import cycles + internal coupling) into the minimal set of targets;
 			// everything else stays its own per-package library.
 			markExistingSCCLibrariesForDeletion(args.File, &res)
-			l.emitModuleProductionLibraries(args, cfg, likelyLocalClassNames, resourcesDirectRef, resourcesRuntimeDep, &res, log)
+			l.emitModuleProductionLibraries(args, cfg, likelyLocalClassNames, resourcesDirectRefs, resourcesRuntimeDep, &res, log)
 		} else {
 			// "module" (one coarse library for the whole subtree) and "package" (this
 			// single package) both emit exactly one library here.
@@ -447,7 +467,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				Config:                  cfg,
 				Name:                    cfg.MapLibraryName(filepath.Base(args.Rel)),
 				Srcs:                    productionJavaFiles.SortedSlice(),
-				ResourcesDirectRef:      resourcesDirectRef,
+				ResourcesDirectRefs:     resourcesDirectRefs,
 				ResourcesRuntimeDep:     resourcesRuntimeDep,
 				Packages:                allPackageNames,
 				Imports:                 nonLocalProductionJavaImports,
@@ -613,7 +633,7 @@ func markExistingSCCLibrariesForDeletion(file *rule.File, res *language.Generate
 // satisfied by another group are left in place for the resolver to turn into `deps`
 // pointing at that group's label, which works because each group registers the packages
 // it owns.
-func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg *javaconfig.Config, likelyLocalClassNames *sorted_set.SortedSet[string], resourcesDirectRef, resourcesRuntimeDep string, res *language.GenerateResult, log zerolog.Logger) {
+func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg *javaconfig.Config, likelyLocalClassNames *sorted_set.SortedSet[string], resourcesDirectRefs []string, resourcesRuntimeDep string, res *language.GenerateResult, log zerolog.Logger) {
 	productionPackagesByDir := make(map[string]*java.Package)
 	for mRel, mJavaPkg := range l.javaPackageCache {
 		if !strings.HasPrefix(mRel, args.Rel) || mJavaPkg.TestPackage {
@@ -687,7 +707,7 @@ func (l javaLang) emitModuleProductionLibraries(args language.GenerateArgs, cfg 
 			Config:                  cfg,
 			Name:                    group.Name,
 			Srcs:                    groupFiles.SortedSlice(),
-			ResourcesDirectRef:      resourcesDirectRef,
+			ResourcesDirectRefs:     resourcesDirectRefs,
 			ResourcesRuntimeDep:     resourcesRuntimeDep,
 			Packages:                group.Packages,
 			Imports:                 nonLocalImports,
@@ -975,8 +995,8 @@ type generateJavaLibraryArgs struct {
 	// Srcs are paths relative to the Bazel workspace root; they are trimmed to be
 	// package-relative during generation.
 	Srcs []string
-	// ResourcesDirectRef references a pkg_files target as the resources attr (module mode).
-	ResourcesDirectRef string
+	// ResourcesDirectRefs reference pkg_files targets as the resources attr (module mode).
+	ResourcesDirectRefs []string
 	// ResourcesRuntimeDep references a resources_lib target added to runtime_deps (package mode).
 	ResourcesRuntimeDep string
 	Packages            *sorted_set.SortedSet[types.PackageName]
@@ -1008,9 +1028,9 @@ func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 	sort.Strings(srcs)
 
 	// Handle resources based on mode
-	if args.ResourcesDirectRef != "" {
+	if len(args.ResourcesDirectRefs) > 0 {
 		// Module mode: add resources directly to the library
-		r.SetAttr("resources", []string{args.ResourcesDirectRef})
+		r.SetAttr("resources", args.ResourcesDirectRefs)
 	}
 
 	// This is so we would default ALL runtime_deps to "keep" mode

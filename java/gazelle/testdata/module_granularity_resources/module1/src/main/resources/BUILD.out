@@ -7,4 +7,5 @@ pkg_files(
         "top.properties",
     ],
     strip_prefix = "",
+    visibility = ["//:__subpackages__"],
 )
