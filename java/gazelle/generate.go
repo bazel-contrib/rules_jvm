@@ -3,7 +3,6 @@ package gazelle
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -128,6 +127,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// java_generate_resources == false: Disable resources logic
 		isResourcesRoot = false
 		isResourcesSubdir = false
+	}
+
+	if isResourcesRoot || isResourcesSubdir {
+		for _, f := range args.RegularFiles {
+			if f == "BUILD" || f == "BUILD.bazel" || filepath.Ext(f) == ".java" {
+				continue
+			}
+			l.resourceFiles[args.Rel] = append(l.resourceFiles[args.Rel], f)
+		}
 	}
 
 	var javaPkg *java.Package
@@ -341,35 +349,15 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	// Check if this is a resources root directory and generate a pkg_files target
 	if isResourcesRoot && len(srcFilenamesRelativeToPackage) == 0 {
-		// Collect resource files recursively from this directory and all subdirectories
+		// Collect the resource files the walk found in this directory and all subdirectories
 		var allResourceFiles []string
-
-		collectResourceFiles := func(files []string, dirPrefix string) []string {
-			var resourceFiles []string
-			for _, f := range files {
-				base := filepath.Base(f)
-				// Skip Java files, BUILD files, and common non-resource files
-				if base == "BUILD" || base == "BUILD.bazel" { // files from our tests
-					continue
-				}
-				if dirPrefix != "" {
-					resourceFiles = append(resourceFiles, path.Join(dirPrefix, f))
-				} else {
-					resourceFiles = append(resourceFiles, f)
-				}
-			}
-			return resourceFiles
-		}
-
-		allResourceFiles = append(allResourceFiles, collectResourceFiles(args.RegularFiles, "")...)
-
-		for _, subdir := range args.Subdirs {
-			// Skip BUILD directories
-			if subdir == "BUILD" || subdir == "BUILD.bazel" {
+		for dir, files := range l.resourceFiles {
+			if !isUnderRel(dir, args.Rel) {
 				continue
 			}
-			subdirFiles := collectResourceFilesRecursively(args, subdir)
-			allResourceFiles = append(allResourceFiles, subdirFiles...)
+			for _, f := range files {
+				allResourceFiles = append(allResourceFiles, path.Join(strings.TrimPrefix(strings.TrimPrefix(dir, args.Rel), "/"), f))
+			}
 		}
 
 		if len(allResourceFiles) > 0 {
@@ -404,6 +392,7 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				res.Imports = append(res.Imports, types.ResolveInput{})
 			}
 		} else {
+			l.emptyResourcesRoots[args.Rel] = true
 			res.Empty = append(res.Empty, rule.NewRule("pkg_files", "resources"))
 			if !aggregateAtRoot {
 				res.Empty = append(res.Empty, rule.NewRule(javaLibraryKind, "resources_lib"))
@@ -1009,8 +998,10 @@ func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig
 	for _, sourcesetRoot := range sourcesetRoots.SortedSlice() {
 		resourcesPath := path.Join(sourcesetRoot, "resources")
 
-		// Only resources directories with files get a pkg_files target to reference.
-		if !hasResourceFiles(filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))) {
+		// Check if the resources directory actually exists. An existing one with no files
+		// gets no pkg_files; the resolver drops the reference once that is known.
+		fullResourcesPath := filepath.Join(args.Config.RepoRoot, filepath.FromSlash(resourcesPath))
+		if _, err := os.Stat(fullResourcesPath); err != nil {
 			continue
 		}
 		if aggregateAtRoot {
@@ -1300,61 +1291,6 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 // A plain prefix check would let module "api" claim the sibling "api-client".
 func isUnderRel(rel, root string) bool {
 	return root == "" || rel == root || strings.HasPrefix(rel, root+"/")
-}
-
-// hasResourceFiles reports whether dir contains a file that collectResourceFilesRecursively
-// would put in a resources pkg_files target.
-func hasResourceFiles(dir string) bool {
-	found := false
-	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || found {
-			return filepath.SkipAll
-		}
-		name := d.Name()
-		if !d.IsDir() && name != "BUILD" && name != "BUILD.bazel" && filepath.Ext(name) != ".java" {
-			found = true
-			return filepath.SkipAll
-		}
-		return nil
-	})
-	return found
-}
-
-// collectResourceFilesRecursively walks through subdirectories and collects resource files
-func collectResourceFilesRecursively(args language.GenerateArgs, subdirPath string) []string {
-	var resourceFiles []string
-
-	// Read the subdirectory using os.ReadDir
-	fullPath := filepath.Join(args.Dir, subdirPath)
-	entries, err := os.ReadDir(fullPath)
-	if err != nil {
-		// If we can't read the directory, skip it
-		return resourceFiles
-	}
-
-	for _, entry := range entries {
-		name := entry.Name()
-
-		// Skip BUILD files and other non-resource files
-		if name == "BUILD" || name == "BUILD.bazel" {
-			continue
-		}
-
-		entryPath := path.Join(subdirPath, name)
-
-		if entry.IsDir() {
-			subFiles := collectResourceFilesRecursively(args, entryPath)
-			resourceFiles = append(resourceFiles, subFiles...)
-		} else {
-			// Check if this is a resource file
-			ext := filepath.Ext(name)
-			if ext != ".java" {
-				resourceFiles = append(resourceFiles, entryPath)
-			}
-		}
-	}
-
-	return resourceFiles
 }
 
 func filterStrSlice(elts []string, f func(string) bool) []string {

@@ -1,5 +1,7 @@
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
+# gazelle:exclude META-INF/excluded.txt
+
 pkg_files(
     name = "resources",
     srcs = ["stale.properties"],

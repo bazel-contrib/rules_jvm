@@ -93,7 +93,7 @@ We are also aware of the following limitations. This list is not exhaustive, and
 
 ## Resources
 
-A sourceset's `resources` directory (e.g. `src/main/resources` or `src/test/resources`, next to its `java` directory) gets a `pkg_files` target named `resources` covering every file beneath it. Directories with no files get no target. Generated libraries depend on the resources of their own sourceset, and tests (`java_test` and `java_test_suite`) depend on the resources of theirs:
+A sourceset's `resources` directory (e.g. `src/main/resources` or `src/test/resources`, next to its `java` directory) gets a `pkg_files` target named `resources` covering every file beneath it, except files hidden by `# gazelle:exclude` or `.bazelignore`. Directories with no remaining files get no target, and nothing references them. Generated libraries depend on the resources of their own sourceset, and tests (`java_test` and `java_test_suite`) depend on the resources of theirs:
 
 - With `package` granularity, the resources directory also gets a `resources_lib` `java_library` wrapping the `pkg_files`, which each library or test adds to its `runtime_deps`.
 - With `module` or `scc` granularity, the module's library and tests reference the `pkg_files` directly in their `resources` attribute: the library gets the resources of the module's production sourcesets, and the tests get those of its test sourcesets.

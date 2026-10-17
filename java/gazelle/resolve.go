@@ -165,12 +165,37 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		}
 	}
 
+	jr.dropEmptyResources(r)
+
 	jr.populateAttr(c, packageConfig, r, "deps", resolveInput.ImportedPackageNames, resolveInput.ImportedClasses, ix, isTestRule, from, resolveInput.PackageNames)
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, resolveInput.ExportedClassNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populateAssociatesAttr(c, ix, resolveInput, r, isTestRule, from)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
+}
+
+// dropEmptyResources removes references to resources roots that turned out to have no
+// files, and so no pkg_files or resources_lib target.
+func (jr *Resolver) dropEmptyResources(r *rule.Rule) {
+	for _, attr := range []string{"resources", "runtime_deps"} {
+		values := r.AttrStrings(attr)
+		kept := make([]string, 0, len(values))
+		for _, v := range values {
+			l, err := label.Parse(v)
+			if err == nil && l.Repo == "" && jr.lang.emptyResourcesRoots[l.Pkg] && (l.Name == "resources" || l.Name == "resources_lib") {
+				continue
+			}
+			kept = append(kept, v)
+		}
+		if len(kept) == len(values) {
+			continue
+		}
+		r.DelAttr(attr)
+		if len(kept) > 0 {
+			r.SetAttr(attr, kept)
+		}
+	}
 }
 
 // populateAssociatesAttr makes a Kotlin test target a friend (associate) of the production
