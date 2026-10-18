@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import javax.xml.stream.XMLStreamException;
@@ -104,7 +105,7 @@ class TestSuiteXmlRenderer {
       return envHostname;
     }
 
-    FutureTask<String> lookup = new FutureTask<>(() -> InetAddress.getLocalHost().getHostName());
+    FutureTask<String> lookup = new FutureTask<>(new LocalHostnameLookup());
     Thread resolver = new Thread(lookup, "junit5-xml-hostname-resolver");
     // A daemon thread so that a lookup which never returns cannot keep the JVM alive.
     resolver.setDaemon(true);
@@ -116,6 +117,15 @@ class TestSuiteXmlRenderer {
       return "localhost";
     } catch (Exception e) {
       return "localhost";
+    }
+  }
+
+  // Not a lambda: its body would be a method of this class, and calling it on the resolver thread
+  // during this class's static initialization deadlocks until the timeout (JLS 12.4.2).
+  private static final class LocalHostnameLookup implements Callable<String> {
+    @Override
+    public String call() throws Exception {
+      return InetAddress.getLocalHost().getHostName();
     }
   }
 }
