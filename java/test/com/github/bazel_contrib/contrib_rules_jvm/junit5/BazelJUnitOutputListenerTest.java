@@ -17,6 +17,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -456,6 +457,24 @@ public class BazelJUnitOutputListenerTest {
     String testName = item.getAttributes().getNamedItem("name").getNodeValue();
 
     assertEquals("[engine:mocked]/[class:ExampleTest]/[method:Weird&#8;name()]", testName);
+  }
+
+  @Test
+  public void testSuiteReportsTheResolvedHostname() throws Exception {
+    String envHostname = System.getenv("HOSTNAME");
+    String expected =
+        envHostname == null || envHostname.isEmpty()
+            ? InetAddress.getLocalHost().getHostName()
+            : envHostname;
+
+    var testSuiteData =
+        new TestData(TestIdentifier.from(new StubbedTestDescriptor(createId("Suite"))));
+    testSuiteData.mark(TestExecutionResult.successful());
+
+    Document xml = generateTestXml(Mockito.mock(TestPlan.class), testSuiteData, List.of());
+
+    Node item = xml.getElementsByTagName("testsuite").item(0);
+    assertEquals(expected, item.getAttributes().getNamedItem("hostname").getNodeValue());
   }
 
   private Document generateTestXml(TestPlan testPlan, TestData testCase) {
