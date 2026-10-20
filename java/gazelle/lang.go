@@ -114,6 +114,21 @@ var kindWithRuntimeDeps = rule.KindInfo{
 		"runtime_deps": true,
 	},
 }
+
+// javaTestKind is kindWithRuntimeDeps plus a merged resources attr, which Gazelle sets on
+// tests from their sourceset.
+var javaTestKind = rule.KindInfo{
+	NonEmptyAttrs: map[string]bool{
+		"deps": true,
+		"srcs": true,
+	},
+	MergeableAttrs: map[string]bool{"srcs": true, "resources": true},
+	ResolveAttrs: map[string]bool{
+		"deps":         true,
+		"plugins":      true,
+		"runtime_deps": true,
+	},
+}
 var kindWithoutRuntimeDeps = rule.KindInfo{
 	NonEmptyAttrs: map[string]bool{
 		"deps": true,
@@ -132,7 +147,7 @@ var javaLibraryKind = rule.KindInfo{
 		"exports": true,
 		"srcs":    true,
 	},
-	MergeableAttrs: map[string]bool{"srcs": true},
+	MergeableAttrs: map[string]bool{"srcs": true, "resources": true},
 	ResolveAttrs: map[string]bool{
 		"deps":         true,
 		"exports":      true,
@@ -163,7 +178,7 @@ var kotlinLibraryKind = rule.KindInfo{
 	// associates and module_name are populated in the resolve phase
 	// (populateProductionAssociatesAttr); manage them so re-runs keep them in sync instead
 	// of preserving a stale value.
-	MergeableAttrs: map[string]bool{"srcs": true, "associates": true, "module_name": true},
+	MergeableAttrs: map[string]bool{"srcs": true, "resources": true, "associates": true, "module_name": true},
 	ResolveAttrs: map[string]bool{
 		"associates":   true,
 		"deps":         true,
@@ -180,11 +195,11 @@ var pkgFilesKind = rule.KindInfo{
 func (l javaLang) Kinds() map[string]rule.KindInfo {
 	kinds := map[string]rule.KindInfo{
 		"java_binary":        kindWithRuntimeDeps,
-		"java_junit5_test":   kindWithRuntimeDeps,
+		"java_junit5_test":   javaTestKind,
 		"java_library":       javaLibraryKind,
 		"java_export":        javaExportKind,
-		"java_test":          kindWithRuntimeDeps,
-		"java_test_suite":    kindWithRuntimeDeps,
+		"java_test":          javaTestKind,
+		"java_test_suite":    javaTestKind,
 		"java_proto_library": kindWithoutRuntimeDeps,
 		"java_grpc_library":  kindWithoutRuntimeDeps,
 		"kt_jvm_library":     kotlinLibraryKind,
@@ -193,7 +208,7 @@ func (l javaLang) Kinds() map[string]rule.KindInfo {
 
 	c := l.Configurer.(*Configurer)
 	for _, wrapper := range c.annotationToWrapper {
-		kinds[wrapper.symbol] = kindWithRuntimeDeps
+		kinds[wrapper.symbol] = javaTestKind
 	}
 
 	return kinds

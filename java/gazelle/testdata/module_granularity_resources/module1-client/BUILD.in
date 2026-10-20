@@ -1,1 +1,9 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
 # gazelle:java_module_granularity module
+
+java_test_suite(
+    name = "module1-client-tests",
+    srcs = ["src/test/java/com/client/ClientTest.java"],
+    resources = ["//module1-client/src/test/resources"],
+)

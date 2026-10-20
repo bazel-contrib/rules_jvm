@@ -1,1 +1,16 @@
+load("@rules_java//java:defs.bzl", "java_library")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
 # gazelle:exclude hidden.properties
+
+pkg_files(
+    name = "resources",
+    srcs = ["hidden.properties"],
+    strip_prefix = "",
+)
+
+java_library(
+    name = "resources_lib",
+    resources = [":resources"],
+    visibility = ["//:__subpackages__"],
+)

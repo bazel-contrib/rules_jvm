@@ -682,6 +682,9 @@ func (l javaLang) collectRuntimeDeps(kind, name string, file *rule.File) *sorted
 					Err(err).
 					Msg("label parse error")
 			}
+			if isDeletedResourcesTarget(parsedLabel.Abs("", file.Pkg)) {
+				continue
+			}
 			runtimeDeps.Add(parsedLabel)
 		}
 		break
@@ -998,9 +1001,26 @@ func (l javaLang) sourcesetResources(args language.GenerateArgs, cfgs javaconfig
 
 // addResources attaches a sourceset's resources to r: directly as the resources attr
 // (module mode), or as a runtime_dep on the resources_lib wrapper (package mode).
-func (l javaLang) addResources(r *rule.Rule, runtimeDeps *sorted_set.SortedSet[label.Label], directRefs []string, runtimeDep string) {
-	if len(directRefs) > 0 {
-		r.SetAttr("resources", directRefs)
+// Existing resources entries are kept, like runtime_deps, except references to resources
+// targets that Gazelle deletes.
+func (l javaLang) addResources(r *rule.Rule, file *rule.File, runtimeDeps *sorted_set.SortedSet[label.Label], directRefs []string, runtimeDep string) {
+	resources := sorted_set.NewSortedSet(directRefs)
+	if file != nil {
+		for _, existing := range file.Rules {
+			if existing.Name() != r.Name() {
+				continue
+			}
+			for _, ref := range existing.AttrStrings("resources") {
+				if parsedLabel, err := label.Parse(ref); err == nil && isDeletedResourcesTarget(parsedLabel.Abs("", file.Pkg)) {
+					continue
+				}
+				resources.Add(ref)
+			}
+			break
+		}
+	}
+	if resources.Len() > 0 {
+		r.SetAttr("resources", resources.SortedSlice())
 	}
 	if runtimeDep != "" {
 		parsedLabel, err := label.Parse(runtimeDep)
@@ -1029,7 +1049,7 @@ func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 
 	// This is so we would default ALL runtime_deps to "keep" mode
 	runtimeDeps := l.collectRuntimeDeps(args.LibraryKind, args.Name, args.File)
-	l.addResources(r, runtimeDeps, args.ResourcesDirectRefs, args.ResourcesRuntimeDep)
+	l.addResources(r, args.File, runtimeDeps, args.ResourcesDirectRefs, args.ResourcesRuntimeDep)
 
 	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
@@ -1175,7 +1195,7 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
 		r.SetAttr("deps", []string{*depOnTestHelpers})
 	}
 
-	l.addResources(r, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
+	l.addResources(r, file, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
 	if runtimeDeps.Len() != 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
@@ -1247,7 +1267,7 @@ func (l javaLang) generateJavaTestSuite(file *rule.File, name string, srcs []str
 	// but we don't currently wire up the resolver to do this.
 	// We probably should.
 	// In the mean time, hard-code some labels.
-	l.addResources(r, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
+	l.addResources(r, file, runtimeDeps, resourcesDirectRefs, resourcesRuntimeDep)
 	if runtimeDeps.Len() > 0 {
 		r.SetAttr("runtime_deps", labelsToStrings(runtimeDeps.SortedSlice()))
 	}
@@ -1286,6 +1306,14 @@ func collectResourceFiles(root, sub string) []string {
 		files = append(files, collectResourceFiles(root, path.Join(sub, d))...)
 	}
 	return files
+}
+
+// isDeletedResourcesTarget reports whether lbl is a pkg_files or resources_lib target that
+// Gazelle deletes because its resources directory has no files.
+func isDeletedResourcesTarget(lbl label.Label) bool {
+	return lbl.Repo == "" && path.Base(lbl.Pkg) == "resources" &&
+		(lbl.Name == "resources" || lbl.Name == "resources_lib") &&
+		len(collectResourceFiles(lbl.Pkg, "")) == 0
 }
 
 // isUnderRel reports whether the slash-separated rel is root or a directory beneath it.
