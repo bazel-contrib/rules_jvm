@@ -78,6 +78,7 @@ go_test(
         "export_boundary_api_test.go",
         "generate_test.go",
         "lang_test.go",
+        "resolve_artifact_test.go",
         "resolve_split_test.go",
         "resolve_test.go",
     ],

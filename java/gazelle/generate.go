@@ -1079,7 +1079,7 @@ func (l javaLang) generateJavaLibrary(args generateJavaLibraryArgs) {
 	args.Result.Imports = append(args.Result.Imports, resolveInput)
 
 	if args.Config.ResolveToJavaExports() {
-		l.javaExportIndex.RecordRuleWithResolveInput(args.File, r, resolveInput)
+		l.javaExportIndex.RecordRuleWithResolveInput(args.File, r, resolveInput, args.ExportedClasses)
 	}
 }
 
