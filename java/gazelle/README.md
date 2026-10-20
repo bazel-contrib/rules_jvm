@@ -91,6 +91,15 @@ If these assumptions are violated, the rest of the generation should still funct
 We are also aware of the following limitations. This list is not exhaustive, and is not intentional (i.e. if we can fix these limitations, we would like to):
 1. Runtime dependencies are not detected (e.g. loading classes by reflection).
 
+## Resources
+
+A sourceset's `resources` directory (e.g. `src/main/resources` or `src/test/resources`, next to its `java` directory) gets a `pkg_files` target named `resources` covering every file beneath it, except files hidden by `# gazelle:exclude` or `.bazelignore`. Directories with no remaining files get no target, and Gazelle removes existing references to them from `runtime_deps` and `resources`. Other entries in those attributes are kept. Generated libraries depend on the resources of their own sourceset, and tests (`java_test` and `java_test_suite`) depend on the resources of theirs:
+
+- With `package` granularity, the resources directory also gets a `resources_lib` `java_library` wrapping the `pkg_files`, which each library or test adds to its `runtime_deps`.
+- With `module` or `scc` granularity, the module's library and tests reference the `pkg_files` directly in their `resources` attribute: the library gets the resources of the module's production sourcesets, and the tests get those of its test sourcesets.
+
+Set `# gazelle:java_generate_resources false` to turn this off, and `# gazelle:java_sourceset_root` to mark a sourceset that isn't detected automatically.
+
 ## Flags
 
 The Java plugin for Gazelle adds the following flags to the command line options for Gazelle:
@@ -131,7 +140,7 @@ The following directives specific to the Java extension are recognized:
 | java_generate_proto_services                      | True                                     |
 | Tells the code generator to generate `java_grpc_library` rules when a `proto_library` rule with services is present. Defaults to True. |
 | java_generate_resources                           | True                                     |
-| Tells the code generator to generate `pkg_files` rules for the resources directories. Can be either "true" or "false". Defaults to "true". |
+| Tells the code generator to generate `pkg_files` rules for the resources directories, and to attach them to the libraries and tests of the same sourceset (see [Resources](#resources)). Can be either "true" or "false". Defaults to "true". |
 | java_library_naming_convention                    | "{dirname}"                              |
 | Controls the naming of `java_library` and `kt_jvm_library` targets. The value is a template string where `{dirname}` is replaced with the leaf directory name. For example, `lib_{dirname}` would generate a target named `lib_hello` in a directory called `hello`. Defaults to `{dirname}` (the directory name). |
 | java_maven_install_file                           | "maven_install.json"                     |

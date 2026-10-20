@@ -1,0 +1,8 @@
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
+pkg_files(
+    name = "resources",
+    srcs = ["test.properties"],
+    strip_prefix = "",
+    visibility = ["//:__subpackages__"],
+)

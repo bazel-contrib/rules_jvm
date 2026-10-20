@@ -1,0 +1,7 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+
+java_test_suite(
+    name = "other",
+    srcs = ["AppTest.java"],
+    runtime_deps = ["//src/test/resources:resources_lib"],
+)

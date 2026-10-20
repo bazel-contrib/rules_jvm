@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
@@ -114,14 +113,14 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 		// Walk up the directory tree looking for sourceset patterns
 		currentPath := rel
 		for currentPath != "" && currentPath != "." {
-			dir := filepath.Base(currentPath)
-			parent := filepath.Dir(currentPath)
+			dir := path.Base(currentPath)
+			parent := path.Dir(currentPath)
 
 			// Check for Maven-style sourceset pattern: src/main/java or src/test/java
 			if dir == "java" && parent != "" && parent != "." {
-				grandparent := filepath.Dir(parent)
-				parentBase := filepath.Base(parent)
-				if grandparent != "" && filepath.Base(grandparent) == "src" {
+				grandparent := path.Dir(parent)
+				parentBase := path.Base(parent)
+				if grandparent != "" && path.Base(grandparent) == "src" {
 					// Found a sourceset pattern - store the sourceset root
 					// This handles src/main, src/test, src/sample, etc.
 					// Use path.Join to ensure forward slashes for Bazel paths
@@ -136,9 +135,9 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 
 			// Also check if we're in a resources directory
 			if dir == "resources" && parent != "" && parent != "." {
-				grandparent := filepath.Dir(parent)
-				parentBase := filepath.Base(parent)
-				if grandparent != "" && filepath.Base(grandparent) == "src" {
+				grandparent := path.Dir(parent)
+				parentBase := path.Base(parent)
+				if grandparent != "" && path.Base(grandparent) == "src" {
 					// Found a sourceset pattern from resources side
 					sourcesetRoot := path.Join(grandparent, parentBase)
 					cfg.SetSourcesetRoot(sourcesetRoot)
