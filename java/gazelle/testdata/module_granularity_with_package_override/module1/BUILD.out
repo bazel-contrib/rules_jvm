@@ -1,0 +1,20 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+# gazelle:java_module_granularity module
+
+java_library(
+    name = "module1",
+    srcs = [
+        "src/main/java/com/example/hello/Hello.java",
+        "src/main/java/com/example/hello/world/World.java",
+    ],
+    visibility = ["//:__subpackages__"],
+    deps = ["//module1/src/main/java/com/example/hello/standalone"],
+)
+
+java_binary(
+    name = "Hello",
+    main_class = "com.example.hello.Hello",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":module1"],
+)
