@@ -1,0 +1,19 @@
+load("@rules_java//java:defs.bzl", "java_library")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
+# gazelle:exclude META-INF/hidden.txt
+
+pkg_files(
+    name = "resources",
+    srcs = [
+        "META-INF/nested.properties",
+        "app.properties",
+    ],
+    strip_prefix = "",
+)
+
+java_library(
+    name = "resources_lib",
+    resources = [":resources"],
+    visibility = ["//:__subpackages__"],
+)

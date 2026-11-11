@@ -1,0 +1,10 @@
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
+# gazelle:exclude hidden.properties
+
+pkg_files(
+    name = "resources",
+    srcs = ["hidden.properties"],
+    strip_prefix = "",
+    visibility = ["//:__subpackages__"],
+)

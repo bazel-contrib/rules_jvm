@@ -160,7 +160,7 @@ func TestSingleJavaTestFile(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, nil, tc.wrapper, nil, &res)
+			l.generateJavaTest(nil, "", "maven", f, tc.includePackageInName, stringsToPackageNames(tc.importedPackages), nil, nil, nil, nil, "", tc.wrapper, nil, &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -253,7 +253,7 @@ func TestSuite(t *testing.T) {
 			var res language.GenerateResult
 
 			l := newTestJavaLang(t)
-			l.generateJavaTestSuite(nil, "blah", []string{src}, stringsToPackageNames([]string{pkg}), "maven", stringsToPackageNames(tc.importedPackages), nil, nil, nil, false, &res)
+			l.generateJavaTestSuite(nil, "blah", []string{src}, stringsToPackageNames([]string{pkg}), "maven", stringsToPackageNames(tc.importedPackages), nil, nil, nil, false, nil, "", &res)
 
 			require.Len(t, res.Gen, 1, "want 1 generated rule")
 
@@ -393,5 +393,22 @@ func TestProtoOuterClassName(t *testing.T) {
 			got := protoOuterClassName(tc.fileInfo)
 			require.Equal(t, tc.want, got)
 		})
+	}
+}
+
+func TestIsUnderRel(t *testing.T) {
+	for _, tc := range []struct {
+		rel, root string
+		want      bool
+	}{
+		{"api", "api", true},
+		{"api/src/main/java", "api", true},
+		{"api-client/src/main/java", "api", false},
+		{"apiary", "api", false},
+		{"anything", "", true},
+	} {
+		if got := isUnderRel(tc.rel, tc.root); got != tc.want {
+			t.Errorf("isUnderRel(%q, %q) = %v, want %v", tc.rel, tc.root, got, tc.want)
+		}
 	}
 }

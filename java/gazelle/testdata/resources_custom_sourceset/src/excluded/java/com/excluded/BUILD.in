@@ -1,0 +1,8 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+java_library(
+    name = "excluded",
+    srcs = ["Excluded.java"],
+    runtime_deps = ["//src/excluded/resources:resources_lib"],
+    visibility = ["//:__subpackages__"],
+)
