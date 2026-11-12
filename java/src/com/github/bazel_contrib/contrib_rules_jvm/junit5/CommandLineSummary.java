@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -21,6 +22,7 @@ public class CommandLineSummary implements TestExecutionListener {
   private final Map<TestIdentifier, Failure> failures =
       Collections.synchronizedMap(new LinkedHashMap<>());
   private TestPlan testPlan;
+  private volatile boolean hadOutOfMemoryError;
   private Instant testPlanStart;
   private Instant testPlanEnd;
 
@@ -45,6 +47,15 @@ public class CommandLineSummary implements TestExecutionListener {
     }
 
     failures.computeIfAbsent(testIdentifier, ignored -> new Failure()).setResult(result);
+    Throwable cause = result.getThrowable().get();
+    Map<Throwable, Boolean> visited = new IdentityHashMap<>();
+    while (cause != null && visited.put(cause, Boolean.TRUE) == null) {
+      if (cause instanceof OutOfMemoryError) {
+        hadOutOfMemoryError = true;
+        break;
+      }
+      cause = cause.getCause();
+    }
   }
 
   public void writeTo(PrintWriter writer) {
@@ -57,7 +68,7 @@ public class CommandLineSummary implements TestExecutionListener {
       String className = LegacyReportingUtils.getClassName(testPlan, entry.getKey());
 
       writer.printf("%d) %s (%s)%n", count, entry.getKey().getDisplayName(), className);
-      writeFilteredStackTrace(writer, failure.getCause(), className);
+      writeFilteredStackTrace(writer, failure.getCause(), className, new IdentityHashMap<>());
 
       count++;
     }
@@ -66,7 +77,11 @@ public class CommandLineSummary implements TestExecutionListener {
   }
 
   private static void writeFilteredStackTrace(
-      PrintWriter writer, Throwable t, String testClassName) {
+      PrintWriter writer, Throwable t, String testClassName, Map<Throwable, Boolean> visited) {
+    if (visited.put(t, Boolean.TRUE) != null) {
+      writer.println("[CIRCULAR REFERENCE: " + t + "]");
+      return;
+    }
     StackTraceElement[] stackTrace = t.getStackTrace();
     // Find the last line in the stacktrace that matches the classname
 
@@ -84,8 +99,12 @@ public class CommandLineSummary implements TestExecutionListener {
 
     if (t.getCause() != null) {
       writer.print("Caused by: ");
-      writeFilteredStackTrace(writer, t.getCause(), testClassName);
+      writeFilteredStackTrace(writer, t.getCause(), testClassName, visited);
     }
+  }
+
+  public boolean hadOutOfMemoryError() {
+    return hadOutOfMemoryError;
   }
 
   public int getFailureCount() {
