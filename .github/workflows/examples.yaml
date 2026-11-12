@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "21"
+
       - uses: bazel-contrib/setup-bazel@0.8.5
         with:
           # Avoid downloading Bazel every time.
