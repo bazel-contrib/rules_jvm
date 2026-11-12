@@ -23,12 +23,16 @@ public class JUnit5Runner {
       systemExitToggle = new AgentSystemExitToggle();
       run(systemExitToggle);
     } catch (OutOfMemoryError e) {
-      e.printStackTrace(System.err);
-      System.err.println("JUnit5Runner exiting with 137: OutOfMemoryError");
-      if (systemExitToggle == null) {
-        System.exit(137);
-      } else {
-        exit(systemExitToggle, 137);
+      // Reporting can itself run out of memory; exit with 137 regardless.
+      try {
+        e.printStackTrace(System.err);
+        System.err.println("JUnit5Runner exiting with 137: OutOfMemoryError");
+      } finally {
+        if (systemExitToggle == null) {
+          System.exit(137);
+        } else {
+          exit(systemExitToggle, 137);
+        }
       }
     }
   }
