@@ -18,6 +18,50 @@ tag. This can contain any number of `testsuite` tags. Each of these
 `testsuite` tags may only contain any number of nested `testcase` tags. The 
 model does not allow nesting of `testsuite` tags within `testsuite` tags. 
 
+## Test sharding
+
+The runner supports [Bazel test sharding][sharding] via a `PostDiscoveryFilter`
+which assigns each test to a shard based on a hash of its unique ID. Because
+post-discovery filters run before test templates (such as `@ParameterizedTest`
+or `@RepeatedTest` methods) have generated their invocations, a test template
+is assigned to a shard as a single unit by default: all of its invocations run
+on the same shard.
+
+### Sharding the invocations of a test template
+
+If a single parameterized or repeated test dominates the runtime of a shard,
+you can opt in to distributing its invocations across shards by annotating the
+test method (or its class, to opt in every test template in the class) with
+`@ShardTemplateInvocations`:
+
+```java
+@ShardTemplateInvocations
+@ParameterizedTest
+@ValueSource(ints = {0, 1, 2, 3, 4, 5, 6})
+void myTest(int value) {
+  // ...
+}
+```
+
+The test template is then included on every shard, and each invocation is
+enabled on exactly one shard: invocation `N` (1-based) runs on shard
+`(N - 1) % TEST_TOTAL_SHARDS`, which is deterministic and keeps per-shard
+invocation counts balanced. Invocations belonging to other shards are reported
+as skipped in that shard's XML output.
+
+Note that:
+
+* The set and order of invocations must be stable across shards: every shard
+  must generate the same invocations in the same order, so argument providers
+  must be deterministic. If they are not, some invocations may run on more
+  than one shard or on no shard at all.
+* `@TestFactory` methods are not supported: dynamic tests cannot be
+  conditionally disabled, so test factories are always sharded as a single
+  unit.
+* The annotation has no effect when test sharding is not enabled.
+
+[sharding]: https://bazel.build/reference/test-encyclopedia#test-sharding
+
 ## Test log formats
 
 JUnit5 has a number of different ways of running and not running tests, so a 
