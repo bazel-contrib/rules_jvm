@@ -1,10 +1,24 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "java_export_index",
     srcs = ["java_export_index.go"],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/java_export_index",
     visibility = ["//visibility:public"],
+    deps = [
+        "//java/gazelle/private/sorted_set",
+        "//java/gazelle/private/types",
+        "@com_github_rs_zerolog//:zerolog",
+        "@gazelle//label",
+        "@gazelle//rule",
+    ],
+)
+
+go_test(
+    name = "java_export_index_test",
+    size = "small",
+    srcs = ["java_export_index_test.go"],
+    embed = [":java_export_index"],
     deps = [
         "//java/gazelle/private/sorted_set",
         "//java/gazelle/private/types",
