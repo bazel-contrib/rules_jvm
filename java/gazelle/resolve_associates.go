@@ -29,34 +29,65 @@ func (jr *Resolver) populateProductionAssociatesAttr(c *config.Config, r *rule.R
 		return
 	}
 
-	var associates, kept []string
+	var associates, deps []string
 	for _, dep := range r.AttrStrings("deps") {
 		parsed, err := label.Parse(dep)
 		if err != nil {
-			kept = append(kept, dep)
+			deps = append(deps, dep)
 			continue
 		}
 		abs := parsed.Abs(from.Repo, from.Pkg)
 		if abs.Repo == from.Repo && abs.Pkg == from.Pkg && jr.lang.kotlinLibraries[label.New("", abs.Pkg, abs.Name).String()] {
 			associates = append(associates, dep)
 		} else {
-			kept = append(kept, dep)
+			deps = append(deps, dep)
 		}
 	}
 
-	if len(associates) > 0 {
+	if r.ShouldKeep() {
+		return
+	}
+	setGeneratedStringListAttr(r, "associates", associates)
+
+	associateSet := newLabelIdentitySet(r.AttrStrings("associates"), from)
+	if len(associateSet) > 0 {
 		// Non-leaf: friend same-module deps; it adopts their module_name, so it must not set one.
-		r.SetAttr("associates", associates)
 		r.DelAttr("module_name")
-		if len(kept) == 0 {
+		filteredDeps := make([]string, 0, len(deps))
+		for _, dep := range deps {
+			if _, found := associateSet[labelIdentityOf(dep, from)]; !found {
+				filteredDeps = append(filteredDeps, dep)
+			}
+		}
+		if len(filteredDeps) == 0 {
 			r.DelAttr("deps")
 		} else {
-			r.SetAttr("deps", kept)
+			r.SetAttr("deps", filteredDeps)
 		}
 		return
 	}
 
-	// Leaf: pin the shared module name (the package path) and clear any stale associates.
+	// Leaf: pin the shared module name (the package path).
 	r.SetAttr("module_name", strings.ReplaceAll(from.Pkg, "/", "_"))
-	r.DelAttr("associates")
+}
+
+type labelIdentity struct {
+	label   label.Label
+	invalid string
+}
+
+func labelIdentityOf(value string, from label.Label) labelIdentity {
+	parsed, err := label.Parse(value)
+	if err != nil {
+		return labelIdentity{invalid: value}
+	}
+	return labelIdentity{label: parsed.Abs(from.Repo, from.Pkg)}
+}
+
+func newLabelIdentitySet(values []string, from label.Label) map[labelIdentity]struct{} {
+	set := make(map[labelIdentity]struct{}, len(values))
+	for _, value := range values {
+		set[labelIdentityOf(value, from)] = struct{}{}
+	}
+	return set
 }

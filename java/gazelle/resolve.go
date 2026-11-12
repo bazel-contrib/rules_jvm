@@ -158,10 +158,7 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 			for _, vis := range visibility.SortedSlice() {
 				asStrings = append(asStrings, vis.String())
 			}
-			// The rule attr replacement code is buggy, because while in `rule.SetAttr` we can replace the RHS of the expression, attr.val is always unchanged. I suspect it has to do with pointer magic.
-			// Fixed in https://github.com/bazel-contrib/bazel-gazelle/issues/2045
-			r.DelAttr("visibility")
-			r.SetAttr("visibility", asStrings)
+			setGeneratedStringListAttr(r, "visibility", asStrings)
 		}
 	}
 
@@ -203,18 +200,19 @@ func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleInd
 			associates.Add(simplifyLabel(c.RepoName, matches[0].Label, from))
 		}
 	}
-	if associates.Len() == 0 {
+	asStrings := make([]string, 0, associates.Len())
+	for _, a := range associates.SortedSlice() {
+		asStrings = append(asStrings, a.String())
+	}
+	if r.ShouldKeep() {
 		return
 	}
+	setGeneratedStringListAttr(r, "associates", asStrings)
 
-	asStrings := make([]string, 0, associates.Len())
-	associateSet := make(map[string]bool, associates.Len())
-	for _, a := range associates.SortedSlice() {
-		s := a.String()
-		asStrings = append(asStrings, s)
-		associateSet[s] = true
+	associateSet := newLabelIdentitySet(r.AttrStrings("associates"), from)
+	if len(associateSet) == 0 {
+		return
 	}
-	r.SetAttr("associates", asStrings)
 
 	// An associate is a friend dependency already on the compile and runtime classpath, so
 	// drop it from deps to avoid naming the same target twice (rules_kotlin treats associates
@@ -222,7 +220,7 @@ func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleInd
 	if deps := r.AttrStrings("deps"); len(deps) > 0 {
 		kept := make([]string, 0, len(deps))
 		for _, d := range deps {
-			if !associateSet[d] {
+			if _, found := associateSet[labelIdentityOf(d, from)]; !found {
 				kept = append(kept, d)
 			}
 		}

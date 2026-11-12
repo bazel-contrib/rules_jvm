@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazel-contrib/rules_jvm/java/gazelle/javaconfig"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/maven"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/sorted_set"
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
@@ -789,6 +790,99 @@ java_library(
 	if jLang.hasHadErrors {
 		t.Errorf("Resolve set hasHadErrors on a testonly library importing its own package; the isTestRule check likely missed `testonly = True` stored as *bzl.Ident")
 	}
+}
+
+func TestPopulateProductionAssociatesAttrPreservesKeptEntries(t *testing.T) {
+	c, lang, resolver := testSCCResolver(t)
+	lang.kotlinLibraries["//pkg:friend"] = true
+
+	const content = `kt_jvm_library(
+    name = "caller",
+    deps = [":friend", ":manual", ":ordinary"],
+    associates = [
+        ":manual",  # keep
+        ":stale",
+    ],
+    module_name = "old_module",
+)`
+	file, err := rule.LoadData("BUILD.bazel", "pkg", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := file.Rules[0]
+
+	resolver.populateProductionAssociatesAttr(c, r, label.New("", "pkg", "caller"))
+
+	if got, want := r.AttrStrings("associates"), []string{":friend", ":manual"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("associates = %v, want %v", got, want)
+	}
+	if got, want := r.AttrStrings("deps"), []string{":ordinary"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("deps = %v, want %v", got, want)
+	}
+	if r.Attr("module_name") != nil {
+		t.Errorf("module_name = %v, want it removed when associates are present", r.Attr("module_name"))
+	}
+}
+
+func TestPopulateProductionAssociatesAttrUsesKeptAttribute(t *testing.T) {
+	c, _, resolver := testSCCResolver(t)
+	const content = `kt_jvm_library(
+    name = "caller",
+    deps = [":manual", ":ordinary"],
+    associates = [":manual"],  # keep
+)`
+	file, err := rule.LoadData("BUILD.bazel", "pkg", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := file.Rules[0]
+
+	resolver.populateProductionAssociatesAttr(c, r, label.New("", "pkg", "caller"))
+
+	if got, want := r.AttrStrings("deps"), []string{":ordinary"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("deps = %v, want %v", got, want)
+	}
+	if r.Attr("module_name") != nil {
+		t.Errorf("module_name = %v, want it omitted when a kept associate is present", r.Attr("module_name"))
+	}
+}
+
+func TestPopulateProductionAssociatesAttrComparesLabelsByIdentity(t *testing.T) {
+	c, lang, resolver := testSCCResolver(t)
+	lang.kotlinLibraries["//pkg:friend"] = true
+	const content = `kt_jvm_library(
+    name = "caller",
+    deps = [":friend", "//other:other", ":ordinary"],
+    associates = [
+        "//other",  # keep
+    ],
+)`
+	file, err := rule.LoadData("BUILD.bazel", "pkg", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := file.Rules[0]
+
+	resolver.populateProductionAssociatesAttr(c, r, label.New("", "pkg", "caller"))
+
+	if got, want := r.AttrStrings("associates"), []string{":friend", "//other"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("associates = %v, want %v", got, want)
+	}
+	if got, want := r.AttrStrings("deps"), []string{":ordinary"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("deps = %v, want %v", got, want)
+	}
+}
+
+func testSCCResolver(t *testing.T) (*config.Config, *javaLang, *Resolver) {
+	t.Helper()
+	c, _, _ := testConfig(t)
+	moduleConfig := javaconfig.New("")
+	if err := moduleConfig.SetModuleGranularity("scc"); err != nil {
+		t.Fatal(err)
+	}
+	c.Exts = map[string]interface{}{languageName: javaconfig.Configs{"pkg": moduleConfig}}
+	lang := NewLanguage().(*javaLang)
+	return c, lang, NewResolver(lang)
 }
 
 // noExternalMavenResolver reports every package as unresolved via a
