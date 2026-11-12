@@ -1,6 +1,8 @@
 package com.github.bazel_contrib.contrib_rules_jvm.javaparser.generators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -382,6 +384,26 @@ public class ClasspathParserTest {
 
     Set<String> expected = Set.of("example.external.NeedsExporting", "example.external.Outer");
     assertEquals(expected, data.exportedTypes);
+  }
+
+  @Test
+  public void testTypeUseAnnotationsDoNotHideExportedTypes() throws IOException {
+    ParsedPackageData plain =
+        parser.parseClasses(
+            List.of(
+                testFiles.get(
+                    "/workspace/com/gazelle/java/javaparser/generators/PlainTypeExportingClass.java")));
+    parser = new ClasspathParser();
+    ParsedPackageData annotated =
+        parser.parseClasses(
+            List.of(
+                testFiles.get(
+                    "/workspace/com/gazelle/java/javaparser/generators/AnnotatedTypeExportingClass.java")));
+
+    assertFalse(plain.exportedTypes.isEmpty());
+    assertEquals(plain.exportedTypes, annotated.exportedTypes);
+    assertTrue(annotated.usedTypes.containsAll(plain.usedTypes));
+    assertTrue(annotated.usedTypes.contains("example.external.TypeUse"));
   }
 
   @Test

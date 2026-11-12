@@ -8,6 +8,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.sun.source.tree.AnnotatedTypeTree;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ClassTree;
@@ -524,6 +525,12 @@ public class ClasspathParser {
       } else if (identifier.getKind() == Tree.Kind.ARRAY_TYPE) {
         Tree baseType = ((ArrayTypeTree) identifier).getType();
         types.addAll(checkFullyQualifiedType(baseType));
+      } else if (identifier.getKind() == Tree.Kind.ANNOTATED_TYPE) {
+        // Type-use annotations wrap the type they annotate, e.g. `Outer.@Nullable Inner`,
+        // `Foo @Nullable []`, `List<@Nullable Foo>` or `com.example.@Nullable Foo`.
+        AnnotatedTypeTree annotatedType = (AnnotatedTypeTree) identifier;
+        handleAnnotations(annotatedType.getAnnotations());
+        types.addAll(checkFullyQualifiedType(annotatedType.getUnderlyingType()));
       }
       return types;
     }
