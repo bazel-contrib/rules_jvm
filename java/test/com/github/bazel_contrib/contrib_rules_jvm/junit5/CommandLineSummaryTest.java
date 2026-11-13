@@ -70,6 +70,13 @@ public class CommandLineSummaryTest {
   }
 
   @Test
+  public void hadOutOfMemoryErrorIsTrueForAnOomSuppressedByTryWithResources() {
+    CommandLineSummary summary = runAgainst(SuppressedOomFailureFixture.class);
+
+    assertTrue(summary.hadOutOfMemoryError());
+  }
+
+  @Test
   public void hadOutOfMemoryErrorIsTrueForAnOomInACyclicCauseChain() {
     CommandLineSummary summary = runAgainst(CyclicOomFailureFixture.class);
 

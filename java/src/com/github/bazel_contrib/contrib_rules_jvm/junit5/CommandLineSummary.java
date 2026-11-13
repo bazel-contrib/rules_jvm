@@ -5,7 +5,9 @@ import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -47,14 +49,26 @@ public class CommandLineSummary implements TestExecutionListener {
     }
 
     failures.computeIfAbsent(testIdentifier, ignored -> new Failure()).setResult(result);
-    Throwable cause = result.getThrowable().get();
+    // Also walk suppressed exceptions: try-with-resources attaches an OOM thrown by close()
+    // to the primary failure instead of propagating it.
     Map<Throwable, Boolean> visited = new IdentityHashMap<>();
-    while (cause != null && visited.put(cause, Boolean.TRUE) == null) {
-      if (cause instanceof OutOfMemoryError) {
+    Deque<Throwable> pending = new ArrayDeque<>();
+    pending.push(result.getThrowable().get());
+    while (!pending.isEmpty()) {
+      Throwable throwable = pending.pop();
+      if (visited.put(throwable, Boolean.TRUE) != null) {
+        continue;
+      }
+      if (throwable instanceof OutOfMemoryError) {
         hadOutOfMemoryError = true;
         break;
       }
-      cause = cause.getCause();
+      if (throwable.getCause() != null) {
+        pending.push(throwable.getCause());
+      }
+      for (Throwable suppressed : throwable.getSuppressed()) {
+        pending.push(suppressed);
+      }
     }
   }
 
