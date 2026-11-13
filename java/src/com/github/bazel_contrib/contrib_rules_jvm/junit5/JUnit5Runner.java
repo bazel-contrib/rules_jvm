@@ -2,6 +2,7 @@ package com.github.bazel_contrib.contrib_rules_jvm.junit5;
 
 import com.github.bazel_contrib.contrib_rules_jvm.junit5.agent.AgentSystemExitToggle;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Test bootstrapper. This class only depends on the JRE (java 11+) and will ensure that the
@@ -17,9 +18,27 @@ public class JUnit5Runner {
       "com.github.bazel_contrib.contrib_rules_jvm.junit5.ActualRunner";
 
   public static void main(String[] args) {
-    String testSuite = System.getProperty("bazel.test_suite");
+    SystemExitToggle systemExitToggle = null;
+    try {
+      systemExitToggle = new AgentSystemExitToggle();
+      run(systemExitToggle);
+    } catch (OutOfMemoryError e) {
+      // Reporting can itself run out of memory; exit with 137 regardless.
+      try {
+        e.printStackTrace(System.err);
+        System.err.println("JUnit5Runner exiting with 137: OutOfMemoryError");
+      } finally {
+        if (systemExitToggle == null) {
+          System.exit(137);
+        } else {
+          exit(systemExitToggle, 137);
+        }
+      }
+    }
+  }
 
-    SystemExitToggle systemExitToggle = new AgentSystemExitToggle();
+  private static void run(SystemExitToggle systemExitToggle) {
+    String testSuite = System.getProperty("bazel.test_suite");
 
     if (testSuite == null || testSuite.chars().allMatch(Character::isWhitespace)) {
       System.err.println("No test suite specified");
@@ -35,9 +54,18 @@ public class JUnit5Runner {
           Class.forName(JUNIT5_RUNNER_CLASS).asSubclass(RunsTest.class).getConstructor();
       RunsTest runsTest = constructor.newInstance();
       if (!runsTest.run(testSuite)) {
+        if (runsTest.hadOutOfMemoryError()) {
+          // Match BazelTestRunner so remote executors can retry OOMs on a larger pool.
+          System.err.println(
+              "JUnit5Runner exiting with 137: test run failed with OutOfMemoryError");
+          exit(systemExitToggle, 137);
+        }
         exit(systemExitToggle, 2);
       }
     } catch (ReflectiveOperationException e) {
+      if (e instanceof InvocationTargetException && e.getCause() instanceof OutOfMemoryError) {
+        throw (OutOfMemoryError) e.getCause();
+      }
       e.printStackTrace(System.err);
       System.err.println("Unable to create delegate test runner");
       exit(systemExitToggle, 2);
