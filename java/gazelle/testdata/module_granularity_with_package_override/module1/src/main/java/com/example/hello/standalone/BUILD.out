@@ -1,0 +1,9 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+# gazelle:java_module_granularity package
+
+java_library(
+    name = "standalone",
+    srcs = ["Standalone.java"],
+    visibility = ["//:__subpackages__"],
+)
