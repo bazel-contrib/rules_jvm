@@ -112,8 +112,8 @@ func (jr *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 		}
 	}
 	// NOTE: We intentionally do NOT register classes in Gazelle's global RuleIndex.
-	// Class-level resolution uses a lazy, per-package index built only when needed
-	// (when package-level resolution is ambiguous due to split packages).
+	// Class-level resolution uses a lazy, per-package index when a package is split
+	// or an imported class needs an exact provider.
 	// This keeps the global index small and fast.
 
 	log.Debug().Str("out", fmt.Sprintf("%#v", out)).Str("label", lbl.String()).Msg("return")
@@ -145,6 +145,9 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	if packageConfig == nil {
 		jr.lang.logger.Fatal().Msg("failed retrieving package config")
 	}
+	if packageConfig.ResolveToJavaExports() {
+		packageConfig = jr.configWithoutPublishedArtifact(packageConfig, from)
+	}
 	isTestRule := packageConfig.IsTestRule(r.Kind())
 	if ruleIsTestOnly(r) {
 		isTestRule = true
@@ -169,8 +172,39 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	jr.populateAttr(c, packageConfig, r, "exports", resolveInput.ExportedPackageNames, resolveInput.ExportedClassNames, ix, isTestRule, from, resolveInput.PackageNames)
 
 	jr.populateAssociatesAttr(c, ix, resolveInput, r, isTestRule, from)
+	jr.removeRedundantAssociateDeps(c, packageConfig, r, from)
 
 	jr.populatePluginsAttr(c, ix, resolveInput, packageConfig, from, isTestRule, r)
+}
+
+func (jr *Resolver) configWithoutPublishedArtifact(pc *javaconfig.Config, from label.Label) *javaconfig.Config {
+	export, ok := jr.lang.javaExportIndex.JavaExport(jr.owningJavaExport(from))
+	if !ok {
+		return pc
+	}
+	artifact, ok := javaExportMavenArtifact(export.Rule)
+	if !ok {
+		return pc
+	}
+	child := pc.NewChild()
+	_ = child.AddExcludedArtifact(maven.LabelFromArtifact(pc.MavenRepositoryName(), artifact).String())
+	return child
+}
+
+func javaExportMavenArtifact(export *rule.Rule) (string, bool) {
+	expr := export.Attr("maven_coordinates")
+	if formatted, ok := expr.(*build.BinaryExpr); ok && formatted.Op == "%" {
+		expr = formatted.X
+	}
+	coordinates, ok := expr.(*build.StringExpr)
+	if !ok {
+		return "", false
+	}
+	parts := strings.Split(coordinates.Value, ":")
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || strings.Contains(parts[0]+parts[1], "%") {
+		return "", false
+	}
+	return parts[0] + ":" + parts[1], true
 }
 
 // populateAssociatesAttr makes a Kotlin test target a friend (associate) of the production
@@ -178,11 +212,9 @@ func (jr *Resolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 // Kotlin module, so tests can read main's `internal` members; per-package Bazel targets are
 // separate modules, and a rules_kotlin associate restores that single-module friendship.
 //
-// The associate must itself be a single module, so it is the same-package production
-// counterpart: the in-repo, non-test provider of the test's own package (found via the index;
-// for a collapsed SCC main library this is the one target that registers the package). When a
-// package has more than one in-repo provider the friendship is ambiguous, so it is skipped --
-// the resulting "internal in another module" compile error points at the real problem.
+// The associate must itself be a single module, so it is the artifact-local production
+// provider of the test's package. If several local providers remain, the friendship is
+// ambiguous and is skipped.
 //
 // `associates` exists only on Kotlin test rules, so this is gated on the rule having Kotlin
 // sources; a java_test/java_junit5_test has no such attribute.
@@ -199,8 +231,14 @@ func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleInd
 	for _, pkg := range resolveInput.PackageNames.SortedSlice() {
 		mainSpec := resolve.ImportSpec{Lang: languageName, Imp: types.NewResolvableJavaPackage(pkg, false, false).String()}
 		matches := ix.FindRulesByImportWithConfig(c, mainSpec, languageName)
-		if len(matches) == 1 && matches[0].Label != from {
-			associates.Add(simplifyLabel(c.RepoName, matches[0].Label, from))
+		var local []label.Label
+		for _, match := range matches {
+			if match.Label != from && (match.Label.Pkg == from.Pkg || jr.sameArtifact(from, match.Label)) {
+				local = append(local, match.Label)
+			}
+		}
+		if len(local) == 1 {
+			associates.Add(simplifyLabel(c.RepoName, local[0], from))
 		}
 	}
 	if associates.Len() == 0 {
@@ -208,29 +246,55 @@ func (jr *Resolver) populateAssociatesAttr(c *config.Config, ix *resolve.RuleInd
 	}
 
 	asStrings := make([]string, 0, associates.Len())
-	associateSet := make(map[string]bool, associates.Len())
 	for _, a := range associates.SortedSlice() {
 		s := a.String()
 		asStrings = append(asStrings, s)
-		associateSet[s] = true
 	}
 	r.SetAttr("associates", asStrings)
+}
 
-	// An associate is a friend dependency already on the compile and runtime classpath, so
-	// drop it from deps to avoid naming the same target twice (rules_kotlin treats associates
-	// as deps).
-	if deps := r.AttrStrings("deps"); len(deps) > 0 {
-		kept := make([]string, 0, len(deps))
-		for _, d := range deps {
-			if !associateSet[d] {
-				kept = append(kept, d)
-			}
+func (jr *Resolver) removeRedundantAssociateDeps(c *config.Config, pc *javaconfig.Config, r *rule.Rule, from label.Label) {
+	local := func(raw string) (label.Label, error) {
+		l, err := label.Parse(raw)
+		if err != nil {
+			return label.NoLabel, err
 		}
-		if len(kept) == 0 {
-			r.DelAttr("deps")
-		} else {
-			r.SetAttr("deps", kept)
+		l = l.Abs(c.RepoName, from.Pkg)
+		if l.Repo == c.RepoName {
+			l.Repo = ""
 		}
+		return l, nil
+	}
+	redundant := make(map[label.Label]bool)
+	for _, raw := range r.AttrStrings("associates") {
+		associate, err := local(raw)
+		if err != nil {
+			continue
+		}
+		redundant[associate] = true
+		export, ok := jr.lang.javaExportIndex.IsExportedByJavaExport(associate)
+		if !ok {
+			continue
+		}
+		redundant[export.Label] = true
+		if artifact, ok := javaExportMavenArtifact(export.Rule); ok {
+			redundant[maven.LabelFromArtifact(pc.MavenRepositoryName(), artifact)] = true
+		}
+	}
+	if len(redundant) == 0 {
+		return
+	}
+	var kept []string
+	for _, raw := range r.AttrStrings("deps") {
+		dep, err := local(raw)
+		if err != nil || !redundant[dep] {
+			kept = append(kept, raw)
+		}
+	}
+	if len(kept) == 0 {
+		r.DelAttr("deps")
+	} else {
+		r.SetAttr("deps", kept)
 	}
 }
 
@@ -313,13 +377,14 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 					continue
 				}
 
-				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
-				if err != nil {
-					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
-					continue
-				}
+				l := jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
 				if l == label.NoLabel {
-					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+					var err error
+					l, err = jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+					if err != nil {
+						jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+						continue
+					}
 				}
 				if l != label.NoLabel {
 					labels.Add(simplifyLabel(c.RepoName, l, from))
@@ -341,6 +406,10 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 			// path fast when there is no external provider.
 			for _, className := range classesByPackage[imp] {
 				if jr.ruleDeclaresClass(dep, className) {
+					continue
+				}
+				if l := jr.resolveSingleClass(c, pc, className, ix, from, isTestRule); l != label.NoLabel {
+					labels.Add(l)
 					continue
 				}
 				if l := jr.resolveClassFromCrossResolver(c, pc, className, ix, from); l != label.NoLabel {
@@ -386,13 +455,14 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 					continue
 				}
 
-				l, err := jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
-				if err != nil {
-					jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
-					continue
-				}
+				l := jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
 				if l == label.NoLabel {
-					l = jr.resolveSingleClass(c, pc, className, ix, from, isTestRule)
+					var err error
+					l, err = jr.lang.mavenResolver.ResolveClass(className, pc.ExcludedArtifacts(), pc.MavenRepositoryName())
+					if err != nil {
+						jr.lang.logger.Warn().Err(err).Str("class", className.FullyQualifiedClassName()).Msg("error resolving class")
+						continue
+					}
 				}
 				if l == label.NoLabel && isTestRule {
 					l = jr.resolveTestSuiteHelperClass(c, imp, className, ix, from)
@@ -433,7 +503,7 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
 		}
 	}
 
-	setLabelAttrIncludingExistingValues(r, attrName, labels)
+	jr.setResolvedLabelAttrIncludingExistingValues(c, pc, r, attrName, labels, from)
 
 }
 
@@ -492,6 +562,10 @@ func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *
 		labels.Add(l)
 	}
 
+	setLabelAttr(r, attrName, labels)
+}
+
+func setLabelAttr(r *rule.Rule, attrName string, labels *sorted_set.SortedSet[label.Label]) {
 	var exprs []build.Expr
 	if labels.Len() > 0 {
 		for _, l := range labels.SortedSlice() {
@@ -503,7 +577,50 @@ func setLabelAttrIncludingExistingValues(r *rule.Rule, attrName string, labels *
 	}
 	if len(exprs) > 0 {
 		r.SetAttr(attrName, exprs)
+	} else {
+		r.DelAttr(attrName)
 	}
+}
+
+// Keep existing generated edges unless an inferred public export replaces their provider.
+func (jr *Resolver) setResolvedLabelAttrIncludingExistingValues(c *config.Config, pc *javaconfig.Config, r *rule.Rule, attrName string, labels *sorted_set.SortedSet[label.Label], from label.Label) {
+	for _, raw := range r.AttrStrings(attrName) {
+		l, err := label.Parse(raw)
+		if err != nil {
+			panic(fmt.Sprintf("error converting implicit %s %q to label: %v", attrName, raw, err))
+		}
+		labels.Add(l)
+	}
+	if pc.ResolveToJavaExports() {
+		ownExport := jr.owningJavaExport(from)
+		selected := make(map[label.Label]bool, labels.Len())
+		for _, l := range labels.SortedSlice() {
+			abs := l.Abs(c.RepoName, from.Pkg)
+			if abs.Repo != "" && abs.Repo != c.RepoName {
+				continue
+			}
+			local := label.New("", abs.Pkg, abs.Name)
+			if local != ownExport {
+				selected[local] = true
+			}
+		}
+		labels = labels.Filter(func(l label.Label) bool {
+			abs := l.Abs(c.RepoName, from.Pkg)
+			if _, excluded := pc.ExcludedArtifacts()[abs.String()]; excluded {
+				return false
+			}
+			if abs.Repo != "" && abs.Repo != c.RepoName {
+				return true
+			}
+			local := label.New("", abs.Pkg, abs.Name)
+			if ownExport == local {
+				return false
+			}
+			export, ok := jr.lang.javaExportIndex.IsExportedByJavaExport(local)
+			return !ok || !selected[export.Label]
+		})
+	}
+	setLabelAttr(r, attrName, labels)
 }
 
 // resolveSinglePackageWithAmbiguity resolves a package import and returns whether there was ambiguity.
@@ -538,17 +655,22 @@ func (jr *Resolver) resolveSinglePackageWithAmbiguity(c *config.Config, pc *java
 		return label.NoLabel, true
 	}
 
-	if v, ok := jr.internalCache.Get(cacheKey); ok {
-		return simplifyLabel(c.RepoName, v.(label.Label), from), false
+	useCache := len(pc.ExcludedArtifacts()) == 0
+	if useCache {
+		if v, ok := jr.internalCache.Get(cacheKey); ok {
+			return simplifyLabel(c.RepoName, v.(label.Label), from), false
+		}
 	}
 
 	jr.lang.logger.Debug().Str("parsedImport", imp.Name).Stringer("from", from).Msg("not found yet")
 
-	defer func() {
-		if out != label.NoLabel {
-			jr.internalCache.Add(cacheKey, out)
-		}
-	}()
+	if useCache {
+		defer func() {
+			if out != label.NoLabel {
+				jr.internalCache.Add(cacheKey, out)
+			}
+		}()
+	}
 
 	if java.IsStdlib(imp) {
 		return label.NoLabel, false
@@ -640,7 +762,6 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
 }
 
 // buildPackageClassIndex lazily builds a class index for a specific package.
-// Only called when package-level resolution is ambiguous (split packages).
 func (jr *Resolver) buildPackageClassIndex(c *config.Config, pkg types.PackageName, ix *resolve.RuleIndex) *packageClassIndex {
 	if pci, ok := jr.classIndex[pkg]; ok {
 		return pci
@@ -722,11 +843,7 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 		return jr.resolveClassFromCrossResolver(c, pc, className, ix, from)
 	}
 
-	if len(candidates) == 1 {
-		return simplifyLabel(c.RepoName, candidates[0], from)
-	}
-
-	// Multiple candidates - try java_export narrowing
+	// Public boundaries also apply when there is exactly one class provider.
 	if pc.ResolveToJavaExports() {
 		results := make([]resolve.FindResult, 0, len(candidates))
 		for _, l := range candidates {
@@ -736,6 +853,9 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 		if len(narrowed) == 1 {
 			return simplifyLabel(c.RepoName, narrowed[0].Label, from)
 		}
+	}
+	if len(candidates) == 1 {
+		return simplifyLabel(c.RepoName, candidates[0], from)
 	}
 
 	// Still ambiguous - log error
@@ -757,6 +877,18 @@ func (jr *Resolver) resolveSingleClass(c *config.Config, pc *javaconfig.Config, 
 // cache) to provide the outer class of className. It lets the fast path skip
 // cross-resolver probes for classes the resolved in-repo target already owns.
 func (jr *Resolver) ruleDeclaresClass(lbl label.Label, className types.ClassName) bool {
+	if jr.lang.javaExportIndex.IsJavaExport(label.New("", lbl.Pkg, lbl.Name)) {
+		for _, candidate := range jr.lang.javaExportIndex.CompileLabels(label.New("", lbl.Pkg, lbl.Name)) {
+			if jr.cachedRuleDeclaresClass(candidate, className) {
+				return true
+			}
+		}
+		return false
+	}
+	return jr.cachedRuleDeclaresClass(lbl, className)
+}
+
+func (jr *Resolver) cachedRuleDeclaresClass(lbl label.Label, className types.ClassName) bool {
 	cacheLabel := label.New("", lbl.Pkg, lbl.Name)
 	info, ok := jr.lang.classExportCache[cacheLabel.String()]
 	if !ok {
@@ -834,60 +966,93 @@ func (jr *Resolver) resolveClassFromCrossResolver(c *config.Config, pc *javaconf
 	return label.NoLabel
 }
 
-// tryResolvingToJavaExport attempts to narrow down a list of resolution candidates by preferring java_export targets when appropriate.
-// A dependency will be resolved to a `java_export` target when the following are all true.
-//   - The dependency is contained in a java_export target, and
-//   - There is exactly one java_export target that contains the dependency, and
-//   - That java_export does not export the target under consideration (`from`).
-//
-// Returns a subset of `results`, either by picking an appropriate `java_export`, or by eliminating ineligible `java_export`s.
-// The program will issue a fatal error if it finds that more than one java_export contains the required dependency.
+// tryResolvingToJavaExport uses a local provider within the same artifact and a public
+// export across artifacts. A package split across exports remains ambiguous so the caller
+// can resolve each class.
 func (jr *Resolver) tryResolvingToJavaExport(results []resolve.FindResult, from label.Label) []resolve.FindResult {
-	coveredByTheSameExport := func(one, other label.Label) bool {
-		oneExport, oneIsCoveredByExport := jr.lang.javaExportIndex.IsExportedByJavaExport(one)
-		otherExport, otherIsCoveredByExport := jr.lang.javaExportIndex.IsExportedByJavaExport(other)
-
-		if !oneIsCoveredByExport && !otherIsCoveredByExport {
-			return true
-		} else if oneIsCoveredByExport && otherIsCoveredByExport {
-			return oneExport.Label == otherExport.Label
+	var exports, libraries, local []resolve.FindResult
+	seenExports := make(map[label.Label]bool)
+	ownExport := jr.owningJavaExport(from)
+	for _, result := range results {
+		if result.Label.Repo != "" && result.Label.Repo != from.Repo {
+			libraries = append(libraries, result)
+			continue
 		}
+		candidate := label.New("", result.Label.Pkg, result.Label.Name)
+		if jr.lang.javaExportIndex.IsJavaExport(candidate) {
+			if (jr.lang.javaExportIndex.IsSourceBearingJavaExport(candidate) || ownExport != candidate) && !seenExports[candidate] {
+				exports = append(exports, result)
+				seenExports[candidate] = true
+			}
+			continue
+		}
+		libraries = append(libraries, result)
+		if jr.sameArtifact(from, candidate) {
+			local = append(local, result)
+		} else if export, ok := jr.lang.javaExportIndex.IsExportedByJavaExport(candidate); ok && !seenExports[export.Label] {
+			exports = append(exports, resolve.FindResult{Label: export.Label})
+			seenExports[export.Label] = true
+		}
+	}
+	if len(local) == 1 {
+		sourceBearingExport := false
+		for _, candidate := range exports {
+			if jr.lang.javaExportIndex.IsSourceBearingJavaExport(label.New("", candidate.Label.Pkg, candidate.Label.Name)) {
+				sourceBearingExport = true
+				break
+			}
+		}
+		if !sourceBearingExport {
+			return local
+		}
+	}
+	if len(local) > 1 {
+		return results
+	}
+	if len(exports) == 1 {
+		return exports
+	}
+	if len(exports) > 1 {
+		// A split package needs class-level attribution; there is no single export.
+		return results
+	}
+	return libraries
+}
+
+// The index identifies published libraries directly. Source-set layout supplies the
+// relationship between an unpublished test and its production library.
+func (jr *Resolver) sameArtifact(from, candidate label.Label) bool {
+	fromExport, fromPublished := jr.lang.javaExportIndex.IsExportedByJavaExport(label.New("", from.Pkg, from.Name))
+	candidateExport, candidatePublished := jr.lang.javaExportIndex.IsExportedByJavaExport(candidate)
+	if fromPublished && candidatePublished {
+		return fromExport.Label == candidateExport.Label
+	}
+	if candidatePublished && jr.lang.javaExportIndex.IsSourceBearingJavaExport(candidateExport.Label) {
 		return false
 	}
+	fromRoot, fromHasRoot := sourceArtifactRoot(from.Pkg)
+	candidateRoot, candidateHasRoot := sourceArtifactRoot(candidate.Pkg)
+	return fromHasRoot && candidateHasRoot && fromRoot == candidateRoot
+}
 
-	var javaExportsThatCoverThisDep []resolve.FindResult
-	var nonJavaExportResults []resolve.FindResult
-	for _, result := range results {
-		if jr.lang.javaExportIndex.IsJavaExport(result.Label) {
-			javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, result)
-		} else {
-			if !coveredByTheSameExport(from, result.Label) {
-				dependencyExporter, dependencyIsCovered := jr.lang.javaExportIndex.IsExportedByJavaExport(result.Label)
-				if dependencyIsCovered {
-					javaExportsThatCoverThisDep = append(javaExportsThatCoverThisDep, resolve.FindResult{Label: dependencyExporter.Label})
-				}
-			}
-			nonJavaExportResults = append(nonJavaExportResults, result)
-		}
+func (jr *Resolver) owningJavaExport(from label.Label) label.Label {
+	export, ok := jr.lang.javaExportIndex.IsExportedByJavaExport(label.New("", from.Pkg, from.Name))
+	if ok {
+		return export.Label
 	}
+	return label.NoLabel
+}
 
-	if len(javaExportsThatCoverThisDep) == 0 {
-		return results
-	} else if len(javaExportsThatCoverThisDep) == 1 {
-		return javaExportsThatCoverThisDep
-	} else if len(javaExportsThatCoverThisDep) > 1 {
-		var exportStrings []string
-		for _, exportResult := range javaExportsThatCoverThisDep {
-			exportStrings = append(exportStrings, exportResult.Label.String())
-		}
-		jr.lang.logger.Fatal().
-			Str("rule", from.Pkg).
-			Strs("java_exports", exportStrings).
-			Msg("resolveSinglePackage found MULTIPLE java_export targets exporting this rule")
+// sourceArtifactRoot recognises conventional source sets without treating every
+// unrelated package path as an artifact boundary.
+func sourceArtifactRoot(pkg string) (string, bool) {
+	if idx := strings.LastIndex(pkg, "/src/"); idx >= 0 {
+		return pkg[:idx], true
 	}
-
-	// If we don't find any relevant java_export, resolve normally.
-	return nonJavaExportResults
+	if strings.HasPrefix(pkg, "src/") {
+		return "", true
+	}
+	return "", false
 }
 
 func isJvmLibrary(c *config.Config, kind string) bool {

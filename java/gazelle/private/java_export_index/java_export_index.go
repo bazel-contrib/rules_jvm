@@ -71,8 +71,10 @@ type JavaExportIndex struct {
 
 	// packagesToLabelsDeclaringThem and labelsToResolveInputs are used to calculate the transitive closure of `java_exports` targets.
 	// They are filled out _during_ the `GenerateRules` phase, and used at the end to populate javaExports and labelToJavaExport.
-	packagesToLabelsDeclaringThem map[types.PackageName]label.Label
-	labelsToResolveInputs         map[label.Label]types.ResolveInput
+	packagesToLabelsDeclaringThem     map[types.PackageName]label.Label
+	splitPackages                     map[types.PackageName]bool
+	outerClassesToLabelsDeclaringThem map[string]label.Label
+	labelsToResolveInputs             map[label.Label]types.ResolveInput
 
 	// javaExports and labelToJavaExport are used to resolve the dependencies of `java_library` targets,
 	// to decide whether they're going to depend on a `java_export` or a fine-grained dependency.
@@ -83,19 +85,21 @@ type JavaExportIndex struct {
 
 func NewJavaExportIndex(langName string, logger zerolog.Logger) *JavaExportIndex {
 	return &JavaExportIndex{
-		langName:                      langName,
-		logger:                        logger,
-		readyForResolve:               false,
-		packagesToLabelsDeclaringThem: make(map[types.PackageName]label.Label),
-		labelsToResolveInputs:         make(map[label.Label]types.ResolveInput),
-		javaExports:                   make(map[label.Label]*JavaExportResolveInfo),
-		labelToJavaExport:             make(map[label.Label]label.Label),
+		langName:                          langName,
+		logger:                            logger,
+		readyForResolve:                   false,
+		packagesToLabelsDeclaringThem:     make(map[types.PackageName]label.Label),
+		splitPackages:                     make(map[types.PackageName]bool),
+		outerClassesToLabelsDeclaringThem: make(map[string]label.Label),
+		labelsToResolveInputs:             make(map[label.Label]types.ResolveInput),
+		javaExports:                       make(map[label.Label]*JavaExportResolveInfo),
+		labelToJavaExport:                 make(map[label.Label]label.Label),
 	}
 }
 
 // RecordRuleWithResolveInput lets the index know about a rule that might declare some packages, and might depend on some other packages later.
 // Must be called before FinalizeIndex.
-func (jei *JavaExportIndex) RecordRuleWithResolveInput(file *rule.File, r *rule.Rule, resolveInput types.ResolveInput) {
+func (jei *JavaExportIndex) RecordRuleWithResolveInput(file *rule.File, r *rule.Rule, resolveInput types.ResolveInput, declaredClasses *sorted_set.SortedSet[types.ClassName]) {
 	pkg := ""
 	if file != nil {
 		pkg = file.Pkg
@@ -109,7 +113,20 @@ func (jei *JavaExportIndex) RecordRuleWithResolveInput(file *rule.File, r *rule.
 
 	jei.labelsToResolveInputs[lbl] = resolveInput
 	for _, javaPackage := range resolveInput.PackageNames.SortedSlice() {
+		if previous, ok := jei.packagesToLabelsDeclaringThem[javaPackage]; ok && previous != lbl {
+			jei.splitPackages[javaPackage] = true
+		}
 		jei.packagesToLabelsDeclaringThem[javaPackage] = lbl
+	}
+	if declaredClasses != nil {
+		for _, className := range declaredClasses.SortedSlice() {
+			name := className.FullyQualifiedOuterClassName()
+			if previous, ok := jei.outerClassesToLabelsDeclaringThem[name]; ok && previous != lbl {
+				jei.outerClassesToLabelsDeclaringThem[name] = label.NoLabel
+			} else if !ok {
+				jei.outerClassesToLabelsDeclaringThem[name] = lbl
+			}
+		}
 	}
 }
 
@@ -212,17 +229,7 @@ func (jei *JavaExportIndex) calculateTransitiveDependencies(lbl label.Label, tra
 			directDependencies = make(map[label.Label]bool)
 
 			resolveInputForDep := jei.labelsToResolveInputs[lbl]
-			for _, importedPkg := range resolveInputForDep.ImportedPackageNames.SortedSlice() {
-				lblToVisit, found := jei.packagesToLabelsDeclaringThem[importedPkg]
-				if !found || lblToVisit == label.NoLabel {
-					jei.logger.Debug().
-						Str("package", importedPkg.Name).
-						Msg("Found no label for imported java package. It's probably a standard library package, or a package from maven")
-					continue
-				}
-				directDependencies[lblToVisit] = true
-			}
-
+			directDependencies = jei.dependenciesForResolveInput(lbl, resolveInputForDep)
 			labelsToDependencies[lbl] = directDependencies
 		}
 	}
@@ -234,6 +241,38 @@ func (jei *JavaExportIndex) calculateTransitiveDependencies(lbl label.Label, tra
 
 	transitiveDependencies[lbl] = transitiveDepsForLabel
 	return transitiveDepsForLabel
+}
+
+// dependenciesForResolveInput uses class ownership where it is known. A package with
+// multiple providers has no safe package-level owner, even if its class is not indexed.
+func (jei *JavaExportIndex) dependenciesForResolveInput(lbl label.Label, input types.ResolveInput) map[label.Label]bool {
+	deps := make(map[label.Label]bool)
+	packagesWithClasses := make(map[types.PackageName]bool)
+	if input.ImportedClasses != nil {
+		for _, className := range input.ImportedClasses.SortedSlice() {
+			pkg := className.PackageName()
+			packagesWithClasses[pkg] = true
+			owner := jei.outerClassesToLabelsDeclaringThem[className.FullyQualifiedOuterClassName()]
+			if owner == label.NoLabel && !jei.splitPackages[pkg] {
+				owner = jei.packagesToLabelsDeclaringThem[pkg]
+			}
+			if owner != label.NoLabel && owner != lbl {
+				deps[owner] = true
+			}
+		}
+	}
+	if input.ImportedPackageNames != nil {
+		for _, pkg := range input.ImportedPackageNames.SortedSlice() {
+			if packagesWithClasses[pkg] || jei.splitPackages[pkg] {
+				continue
+			}
+			owner := jei.packagesToLabelsDeclaringThem[pkg]
+			if owner != label.NoLabel && owner != lbl {
+				deps[owner] = true
+			}
+		}
+	}
+	return deps
 }
 
 func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExportResolveInfo, conflicts *sorted_set.SortedSet[exportConflict], labelsToDependencies map[label.Label]map[label.Label]bool) {
@@ -297,6 +336,36 @@ func (jei *JavaExportIndex) calculateImportsForJavaExport(javaExport *JavaExport
 func (jei *JavaExportIndex) IsJavaExport(lbl label.Label) bool {
 	_, is := jei.javaExports[lbl]
 	return is
+}
+
+func (jei *JavaExportIndex) JavaExport(lbl label.Label) (*JavaExportResolveInfo, bool) {
+	info, ok := jei.javaExports[lbl]
+	return info, ok
+}
+
+func (jei *JavaExportIndex) IsSourceBearingJavaExport(lbl label.Label) bool {
+	info, ok := jei.javaExports[lbl]
+	return ok && len(info.Rule.AttrStrings("srcs")) > 0
+}
+
+// CompileLabels excludes runtime-only dependencies from class ownership checks.
+func (jei *JavaExportIndex) CompileLabels(lbl label.Label) []label.Label {
+	info, ok := jei.javaExports[lbl]
+	if !ok {
+		return nil
+	}
+	deps, _ := attrLabels("deps", info.Rule, info.Label)
+	exports, _ := attrLabels("exports", info.Rule, info.Label)
+	seen := make(map[label.Label]bool)
+	var out []label.Label
+	for _, dep := range append(deps, exports...) {
+		if !seen[dep] {
+			out = append(out, dep)
+			seen[dep] = true
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return sorted_set.LabelLess(out[i], out[j]) })
+	return out
 }
 
 func (jei *JavaExportIndex) IsExportedByJavaExport(lbl label.Label) (*JavaExportResolveInfo, bool) {
