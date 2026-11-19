@@ -13,3 +13,18 @@ java_library(
         artifact("org.junit.jupiter:junit-jupiter-params", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
 )
+
+# Deliberately kept out of :sharding-test-tests: ShardingTest discovers the whole sample package,
+# so adding classes to that library would change its golden per-shard assertions.
+java_library(
+    name = "invocation-sharding-test-tests",
+    srcs = [
+        "ShardingAnnotatedTests.java",
+    ],
+    visibility = ["//java/test/com/github/bazel_contrib/contrib_rules_jvm/junit5:__pkg__"],
+    deps = [
+        "//java/src/com/github/bazel_contrib/contrib_rules_jvm/junit5",
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+        artifact("org.junit.jupiter:junit-jupiter-params", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
