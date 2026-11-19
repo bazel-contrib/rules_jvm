@@ -1,5 +1,6 @@
-load("@rules_java//java:defs.bzl", "java_test")
+load("@rules_java//java:defs.bzl", "java_binary", "java_test")
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//java:defs.bzl", "java_junit5_test", "java_test_suite", "junit5_deps", "junit5_vintage_deps")
 
 # Ignore this directory because of the wrong package name.
@@ -21,12 +22,53 @@ VINTAGE_NESTED_TEST = [
     "NestedClassesVintageTest.java",
 ]
 
+DEFAULT_REPORT_GENERATOR_TEST = [
+    "DefaultReportGeneratorTest.java",
+]
+
+LEGACY_REPORT_GENERATOR_TEST = [
+    "LegacyReportGeneratorTest.java",
+]
+
+OPEN_REPORT_GENERATOR_TEST = [
+    "OpenReportGeneratorTest.java",
+]
+
+CUSTOM_REPORT_GENERATOR_TEST = [
+    "CustomReportGeneratorTest.java",
+]
+
+CUSTOM_REPORT_GENERATOR = [
+    "CustomReportGenerator.java",
+]
+
+DEFAULT_REPORT_VERIFIER = [
+    "DefaultReportVerifier.java",
+]
+
+LEGACY_REPORT_VERIFIER = [
+    "LegacyReportVerifier.java",
+]
+
+OPEN_REPORT_VERIFIER = [
+    "OpenReportVerifier.java",
+]
+
+VERIFY_SCRIPTS = [
+    "verify_default_report.sh",
+    "verify_legacy_report.sh",
+    "verify_open_report.sh",
+]
+
 java_test_suite(
     name = "small-tests",
     size = "small",
     srcs = glob(
         ["*.java"],
-        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST,
+        exclude = PACKAGE_NAME_TEST + PARALLEL_TEST + SHARDING_TEST + VINTAGE_NESTED_TEST +
+        DEFAULT_REPORT_GENERATOR_TEST + LEGACY_REPORT_GENERATOR_TEST + OPEN_REPORT_GENERATOR_TEST +
+        CUSTOM_REPORT_GENERATOR_TEST + CUSTOM_REPORT_GENERATOR +
+        DEFAULT_REPORT_VERIFIER + LEGACY_REPORT_VERIFIER + OPEN_REPORT_VERIFIER,
     ),
     exclude_engines = ["junit-vintage"],
     include_engines = ["junit-jupiter"],
@@ -107,4 +149,122 @@ java_junit5_test(
         artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
         artifact("org.junit.platform:junit-platform-engine", "contrib_rules_jvm_tests"),
     ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "default-report-generator-test",
+    size = "small",
+    srcs = DEFAULT_REPORT_GENERATOR_TEST,
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.DefaultReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "legacy-report-generator-test",
+    size = "small",
+    srcs = LEGACY_REPORT_GENERATOR_TEST,
+    report_generator = "legacy",
+    report_generator_deps = [
+        artifact("org.junit.platform:junit-platform-reporting", "contrib_rules_jvm_tests"),
+    ],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.LegacyReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_junit5_test(
+    name = "open-report-generator-test",
+    size = "small",
+    srcs = OPEN_REPORT_GENERATOR_TEST,
+    report_generator = "open",
+    report_generator_deps = [
+        artifact("org.junit.platform:junit-platform-reporting", "contrib_rules_jvm_tests"),
+    ],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.OpenReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_library(
+    name = "custom-report-generator",
+    srcs = CUSTOM_REPORT_GENERATOR,
+    deps = [
+        artifact("org.junit.platform:junit-platform-launcher", "contrib_rules_jvm_tests"),
+    ],
+)
+
+java_junit5_test(
+    name = "custom-report-generator-test",
+    size = "small",
+    srcs = CUSTOM_REPORT_GENERATOR_TEST,
+    report_generator = "com.github.bazel_contrib.contrib_rules_jvm.junit5.CustomReportGenerator",
+    report_generator_deps = [":custom-report-generator"],
+    test_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.CustomReportGeneratorTest",
+    deps = [
+        artifact("org.junit.jupiter:junit-jupiter-api", "contrib_rules_jvm_tests"),
+    ] + junit5_deps("contrib_rules_jvm_tests"),
+)
+
+java_binary(
+    name = "default-report-verifier",
+    srcs = ["DefaultReportVerifier.java"],
+    main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.DefaultReportVerifier",
+)
+
+java_binary(
+    name = "legacy-report-verifier",
+    srcs = ["LegacyReportVerifier.java"],
+    main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.LegacyReportVerifier",
+)
+
+java_binary(
+    name = "open-report-verifier",
+    srcs = ["OpenReportVerifier.java"],
+    main_class = "com.github.bazel_contrib.contrib_rules_jvm.junit5.OpenReportVerifier",
+)
+
+sh_test(
+    name = "verify-default-report",
+    size = "small",
+    srcs = ["verify_default_report.sh"],
+    args = [
+        "$(rlocationpath :default-report-generator-test)",
+        "$(rlocationpath :default-report-verifier)",
+    ],
+    data = [
+        ":default-report-generator-test",
+        ":default-report-verifier",
+    ],
+)
+
+sh_test(
+    name = "verify-legacy-report",
+    size = "small",
+    srcs = ["verify_legacy_report.sh"],
+    args = [
+        "$(rlocationpath :legacy-report-generator-test)",
+        "$(rlocationpath :legacy-report-verifier)",
+    ],
+    data = [
+        ":legacy-report-generator-test",
+        ":legacy-report-verifier",
+    ],
+)
+
+sh_test(
+    name = "verify-open-report",
+    size = "small",
+    srcs = ["verify_open_report.sh"],
+    args = [
+        "$(rlocationpath :open-report-generator-test)",
+        "$(rlocationpath :open-report-verifier)",
+    ],
+    data = [
+        ":open-report-generator-test",
+        ":open-report-verifier",
+    ],
 )
