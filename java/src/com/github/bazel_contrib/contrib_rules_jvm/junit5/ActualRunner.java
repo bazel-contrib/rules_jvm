@@ -32,6 +32,13 @@ import org.junit.platform.launcher.core.LauncherFactory;
 
 public class ActualRunner implements RunsTest {
 
+  private final CommandLineSummary summary = new CommandLineSummary();
+
+  @Override
+  public boolean hadOutOfMemoryError() {
+    return summary.hadOutOfMemoryError();
+  }
+
   @Override
   public boolean run(String testClassName) {
     String out = System.getenv("XML_OUTPUT_FILE");
@@ -51,7 +58,6 @@ public class ActualRunner implements RunsTest {
                     bazelJUnitXml.closeForInterrupt();
                   }));
 
-      CommandLineSummary summary = new CommandLineSummary();
       FailFastExtension failFastExtension = new FailFastExtension();
 
       LauncherConfig config =

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
@@ -51,6 +53,51 @@ public class CommandLineSummaryTest {
     CommandLineSummary summary = runAgainst(TwoPassingTestsFixture.class);
 
     assertFalse(ActualRunner.shouldFailForNoTests(summary, /* failIfNoTestsEnabled= */ true));
+  }
+
+  @Test
+  public void hadOutOfMemoryErrorIsFalseWhenTestsPass() {
+    CommandLineSummary summary = runAgainst(TwoPassingTestsFixture.class);
+
+    assertFalse(summary.hadOutOfMemoryError());
+  }
+
+  @Test
+  public void hadOutOfMemoryErrorIsTrueForAnOomFailureWrappedInAnotherThrowable() {
+    CommandLineSummary summary = runAgainst(WrappedOomFailureFixture.class);
+
+    assertTrue(summary.hadOutOfMemoryError());
+  }
+
+  @Test
+  public void hadOutOfMemoryErrorIsTrueForAnOomSuppressedByTryWithResources() {
+    CommandLineSummary summary = runAgainst(SuppressedOomFailureFixture.class);
+
+    assertTrue(summary.hadOutOfMemoryError());
+  }
+
+  @Test
+  public void hadOutOfMemoryErrorIsTrueForAnOomInACyclicCauseChain() {
+    CommandLineSummary summary = runAgainst(CyclicOomFailureFixture.class);
+
+    assertTrue(summary.hadOutOfMemoryError());
+  }
+
+  @Test
+  public void hadOutOfMemoryErrorIsFalseForAnOrdinaryFailureInACyclicCauseChain() {
+    CommandLineSummary summary = runAgainst(CyclicNonOomFailureFixture.class);
+
+    assertFalse(summary.hadOutOfMemoryError());
+  }
+
+  @Test
+  public void writeToTerminatesOnCyclicCauseChains() {
+    CommandLineSummary summary = runAgainst(CyclicNonOomFailureFixture.class);
+
+    StringWriter out = new StringWriter();
+    summary.writeTo(new PrintWriter(out));
+
+    assertTrue(out.toString().contains("[CIRCULAR REFERENCE:"));
   }
 
   private static CommandLineSummary runAgainst(Class<?> testClass) {
