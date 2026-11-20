@@ -11,10 +11,11 @@ import org.junit.jupiter.api.Test;
 public class SuppressedOomFailureFixture {
   @Test
   public void shouldFailWithOomSuppressedByTryWithResources() throws Exception {
-    try (AutoCloseable resource =
+    AutoCloseable resource =
         () -> {
           throw new OutOfMemoryError("suppressed OOM");
-        }) {
+        };
+    try (resource) {
       throw new IllegalStateException("failure before cleanup OOM");
     }
   }
