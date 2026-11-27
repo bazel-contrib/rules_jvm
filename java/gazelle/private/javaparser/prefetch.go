@@ -16,9 +16,10 @@ import (
 // that hasn't started when it is needed is dropped and the caller sends the request itself,
 // outside of the concurrency limit.
 type prefetcher struct {
-	// maxAge is how long a finished prefetch can be used. The javaparser server exits after
-	// 30 seconds without finishing a request, and using a prefetched result sends none, so
-	// an older result is parsed again to keep the server alive.
+	// maxAge is how long a finished prefetch can be used; an older one is parsed again.
+	// Using a prefetched result sends no request, and the javaparser server exits 45 seconds
+	// after it last finished one (see servermanager), so this keeps it up for at least 30
+	// seconds after any parse.
 	maxAge time.Duration
 
 	rpc    pb.JavaParserClient

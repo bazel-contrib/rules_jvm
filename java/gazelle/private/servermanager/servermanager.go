@@ -70,7 +70,9 @@ func (m *ServerManager) Connect() (*grpc.ClientConn, error) {
 	commandArgs = append(commandArgs,
 		"--server-port-file-path", portFilePath,
 		"--workspace", m.workspace,
-		"--idle-timeout", "30",
+		// The javaparser prefetcher uses results up to 15 seconds old without sending a
+		// request, so this keeps the server up for at least 30 seconds after any parse.
+		"--idle-timeout", "45",
 	)
 
 	cmd := exec.Command(commandArgs[0], commandArgs[1:]...)
