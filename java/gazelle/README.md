@@ -113,6 +113,8 @@ The Java plugin for Gazelle adds the following flags to the command line options
   Example: com.example.annotations.RequiresNetwork=@some//wrapper:file.bzl=requires_network")                |
 | java-maven-install-file                       | "maven_install.json"                                       |
 | Path of the maven_install.json file.                                                                       |
+| java-parser-prefetch-concurrency              | -1 (min(GOMAXPROCS, 4))                                    |
+| Maximum number of packages to parse in the background ahead of rule generation. `0` turns prefetching off; a negative value uses `min(GOMAXPROCS, 4)`. |
 
 
 ## Directives

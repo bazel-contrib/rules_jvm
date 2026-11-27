@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "javaparser",
-    srcs = ["javaparser.go"],
+    srcs = [
+        "javaparser.go",
+        "prefetch.go",
+    ],
     importpath = "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser",
     visibility = ["//java/gazelle:__subpackages__"],
     deps = [
@@ -19,10 +22,14 @@ go_library(
 
 go_test(
     name = "javaparser_test",
-    srcs = ["javaparser_test.go"],
+    srcs = [
+        "javaparser_test.go",
+        "prefetch_test.go",
+    ],
     embed = [":javaparser"],
     deps = [
         "//java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0:javaparser",
         "//java/gazelle/private/types",
+        "@org_golang_google_grpc//:grpc",
     ],
 )

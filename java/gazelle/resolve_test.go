@@ -91,7 +91,8 @@ kt_jvm_library(
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c, langs, confs := testConfig(t)
+			// Prefetching needs walk.GetDirInfo, which panics outside of a walk.
+			c, langs, confs := testConfig(t, "-java-parser-prefetch-concurrency=0")
 
 			mrslv, exts := InitTestResolversAndExtensions(langs)
 			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
