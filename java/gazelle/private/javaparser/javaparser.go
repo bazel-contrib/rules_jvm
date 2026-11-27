@@ -3,6 +3,7 @@ package javaparser
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/java"
@@ -19,9 +20,12 @@ type Runner struct {
 	logger        zerolog.Logger
 	rpc           pb.JavaParserClient
 	serverManager *servermanager.ServerManager
+	prefetch      *prefetcher
 }
 
-func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) (*Runner, error) {
+// NewRunner starts or connects to the javaparser server. At most prefetchConcurrency prefetches
+// run at once; 0 turns prefetching off, and a negative value uses min(GOMAXPROCS, 4).
+func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string, prefetchConcurrency int) (*Runner, error) {
 	serverManager, err := servermanager.New(repoRoot, javaLogLevel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create javaparser server manager: %v", err)
@@ -32,11 +36,33 @@ func NewRunner(logger zerolog.Logger, repoRoot string, javaLogLevel string) (*Ru
 		return nil, fmt.Errorf("failed to start / connect to javaparser server: %w", err)
 	}
 
-	return &Runner{
+	r := &Runner{
 		logger:        logger.With().Str("_c", "javaparser").Logger(),
 		rpc:           pb.NewJavaParserClient(conn),
 		serverManager: serverManager,
-	}, nil
+	}
+	if prefetchConcurrency < 0 {
+		prefetchConcurrency = min(runtime.GOMAXPROCS(0), 4)
+	}
+	if prefetchConcurrency > 0 {
+		r.prefetch = newPrefetcher(r.rpc, prefetchConcurrency)
+	}
+	return r, nil
+}
+
+// Prefetch starts parsing files in rel in the background, for a later ParsePackage call with
+// the same Rel and Files. It does nothing if prefetching is off.
+func (r *Runner) Prefetch(rel string, files []string) {
+	if r.prefetch != nil {
+		r.prefetch.schedule(rel, files)
+	}
+}
+
+// StopPrefetching drops the prefetches that haven't started and waits for the running ones.
+func (r *Runner) StopPrefetching() {
+	if r.prefetch != nil {
+		r.prefetch.stop()
+	}
 }
 
 func (r *Runner) ServerManager() *servermanager.ServerManager {
@@ -56,7 +82,13 @@ func (r Runner) ParsePackage(ctx context.Context, in *ParsePackageRequest) (*jav
 			Msg("parse package done")
 	}(time.Now())
 
-	resp, err := r.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files})
+	var resp *pb.Package
+	var err error
+	if r.prefetch != nil {
+		resp, err = r.prefetch.parse(ctx, in)
+	} else {
+		resp, err = r.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files})
+	}
 	if err != nil {
 		if grpcErr, ok := status.FromError(err); ok {
 			// gRPC is an implementation detail of the javaparser layer, and shouldn't be relied on by higher layers.

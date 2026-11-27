@@ -12,6 +12,7 @@ import (
 	"github.com/bazel-contrib/rules_jvm/java/gazelle/private/types"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -25,6 +26,7 @@ type Configurer struct {
 	annotationToWrapper   annotationToWrapper
 	mavenInstallFile      string
 	mavenIndexFile        string
+	prefetchConcurrency   int
 }
 
 func NewConfigurer(lang *javaLang) *Configurer {
@@ -40,6 +42,7 @@ func (jc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Conf
 	fs.Var(&jc.annotationToWrapper, "java-annotation-to-wrapper", "Mapping of annotations (on test classes) to wrapper rules which should be used around the test rule. Example: com.example.annotations.RequiresNetwork=@some//wrapper:file.bzl=requires_network")
 	fs.StringVar(&jc.mavenInstallFile, "java-maven-install-file", "", "Path of the maven_install.json file. Defaults to \"maven_install.json\".")
 	fs.StringVar(&jc.mavenIndexFile, "maven-index-file", "", "Path of the maven_index.json file. Defaults to \"maven_index.json\".")
+	fs.IntVar(&jc.prefetchConcurrency, "java-parser-prefetch-concurrency", -1, "Maximum number of packages to parse in the background ahead of rule generation. 0 turns prefetching off; a negative value uses min(GOMAXPROCS, 4).")
 }
 
 func (jc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -309,7 +312,7 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	if jc.lang.parser == nil {
-		runner, err := javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel)
+		runner, err := javaparser.NewRunner(jc.lang.logger, c.RepoRoot, jc.lang.javaLogLevel, jc.prefetchConcurrency)
 		if err != nil {
 			jc.lang.logger.Fatal().Err(err).Msg("could not start javaparser")
 		}
@@ -326,6 +329,26 @@ func (jc *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			jc.lang.logger.Fatal().Err(err).Msg("error creating Maven resolver")
 		}
 		jc.lang.mavenResolver = resolver
+	}
+
+	if cfg.ExtensionEnabled() && jc.prefetchConcurrency != 0 {
+		jc.prefetchSubdirParses(rel, cfg.KotlinEnabled())
+	}
+}
+
+// prefetchSubdirParses starts parsing the direct subdirectories of rel in the background.
+// Gazelle configures a directory before walking its subdirectories and generates its rules
+// after them, so GenerateRules usually finds the parse done.
+func (jc *Configurer) prefetchSubdirParses(rel string, kotlinEnabled bool) {
+	info, err := walk.GetDirInfo(rel)
+	if err != nil {
+		return
+	}
+	for _, subdir := range info.Subdirs {
+		subRel := path.Join(rel, subdir)
+		if subInfo, err := walk.GetDirInfo(subRel); err == nil {
+			jc.lang.parser.Prefetch(subRel, sourceFilesToParse(subInfo.RegularFiles, kotlinEnabled))
+		}
 	}
 }
 

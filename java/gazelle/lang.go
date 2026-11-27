@@ -333,6 +333,7 @@ func mappedKind(c *config.Config, kind string) string {
 
 func (l javaLang) DoneGeneratingRules() {
 	if l.parser != nil {
+		l.parser.StopPrefetching()
 		l.parser.ServerManager().Shutdown()
 	}
 	l.javaExportIndex.FinalizeIndex()

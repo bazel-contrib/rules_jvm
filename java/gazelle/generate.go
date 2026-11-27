@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -97,21 +98,8 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		generateProtoLibraries(&l, args, log, &res, cfg)
 	}
 
-	var srcFilenamesRelativeToPackage []string
-	hasKotlinFiles := false
-	if cfg.KotlinEnabled() {
-		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool {
-			ext := filepath.Ext(f)
-			if ext == ".kt" {
-				hasKotlinFiles = true
-				return true
-			} else {
-				return ext == ".java"
-			}
-		})
-	} else {
-		srcFilenamesRelativeToPackage = filterStrSlice(args.RegularFiles, func(f string) bool { return filepath.Ext(f) == ".java" })
-	}
+	srcFilenamesRelativeToPackage := sourceFilesToParse(args.RegularFiles, cfg.KotlinEnabled())
+	hasKotlinFiles := slices.ContainsFunc(srcFilenamesRelativeToPackage, func(f string) bool { return filepath.Ext(f) == ".kt" })
 
 	isResourcesRoot := cfg.SourcesetRoot() != "" && args.Rel == path.Join(cfg.SourcesetRoot(), "resources")
 	isResourcesSubdir := strings.Contains(args.Rel, "/resources/") && !isResourcesRoot
@@ -151,8 +139,6 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			Name: types.NewPackageName(""),
 		}
 	} else {
-		sort.Strings(srcFilenamesRelativeToPackage)
-
 		var err error
 		javaPkg, err = l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
 			Rel:   args.Rel,
@@ -1320,6 +1306,16 @@ func isDeletedResourcesTarget(lbl label.Label) bool {
 // A plain prefix check would let module "api" claim the sibling "api-client".
 func isUnderRel(rel, root string) bool {
 	return root == "" || rel == root || strings.HasPrefix(rel, root+"/")
+}
+
+// sourceFilesToParse returns the files of a package that are sent to the parser, sorted.
+func sourceFilesToParse(regularFiles []string, kotlinEnabled bool) []string {
+	files := filterStrSlice(regularFiles, func(f string) bool {
+		ext := filepath.Ext(f)
+		return ext == ".java" || (kotlinEnabled && ext == ".kt")
+	})
+	sort.Strings(files)
+	return files
 }
 
 func filterStrSlice(elts []string, f func(string) bool) []string {
