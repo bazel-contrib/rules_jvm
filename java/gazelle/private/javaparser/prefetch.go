@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	pb "github.com/bazel-contrib/rules_jvm/java/gazelle/private/javaparser/proto/gazelle/java/javaparser/v0"
 )
@@ -15,6 +16,11 @@ import (
 // that hasn't started when it is needed is dropped and the caller sends the request itself,
 // outside of the concurrency limit.
 type prefetcher struct {
+	// maxAge is how long a finished prefetch can be used. The javaparser server exits after
+	// 30 seconds without finishing a request, and using a prefetched result sends none, so
+	// an older result is parsed again to keep the server alive.
+	maxAge time.Duration
+
 	rpc    pb.JavaParserClient
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -30,10 +36,11 @@ type prefetchedParse struct {
 	files []string
 	// started is set, under prefetcher.mu, when the RPC is sent; done is closed when resp
 	// and err are set. A prefetch only starts while it is still in prefetcher.pending.
-	started bool
-	done    chan struct{}
-	resp    *pb.Package
-	err     error
+	started  bool
+	done     chan struct{}
+	finished time.Time
+	resp     *pb.Package
+	err      error
 }
 
 // newPrefetcher returns a prefetcher that runs at most concurrency prefetches at a time.
@@ -41,6 +48,7 @@ type prefetchedParse struct {
 func newPrefetcher(rpc pb.JavaParserClient, concurrency int) *prefetcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &prefetcher{
+		maxAge:  15 * time.Second,
 		rpc:     rpc,
 		ctx:     ctx,
 		cancel:  cancel,
@@ -84,11 +92,12 @@ func (p *prefetcher) run(rel string, e *prefetchedParse) {
 
 	// Not cancelled by stop: the javaparser server logs a stack trace for each cancelled call.
 	e.resp, e.err = p.rpc.ParsePackage(context.Background(), &pb.ParsePackageRequest{Rel: rel, Files: e.files})
+	e.finished = time.Now()
 	close(e.done)
 }
 
 // parse returns the response to in, from a prefetch if one with the same request is running
-// or finished, or else by sending the request.
+// or finished less than maxAge ago, or else by sending the request.
 func (p *prefetcher) parse(ctx context.Context, in *ParsePackageRequest) (*pb.Package, error) {
 	p.mu.Lock()
 	e := p.pending[in.Rel]
@@ -99,6 +108,15 @@ func (p *prefetcher) parse(ctx context.Context, in *ParsePackageRequest) (*pb.Pa
 	}
 	p.mu.Unlock()
 
+	if e != nil {
+		select {
+		case <-e.done:
+			if time.Since(e.finished) > p.maxAge {
+				e = nil
+			}
+		default:
+		}
+	}
 	if e == nil {
 		return p.rpc.ParsePackage(ctx, &pb.ParsePackageRequest{Rel: in.Rel, Files: in.Files})
 	}

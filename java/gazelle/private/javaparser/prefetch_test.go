@@ -227,6 +227,30 @@ func TestParseWaitingForPrefetchHonorsContext(t *testing.T) {
 	}
 }
 
+// TestOldPrefetchIsParsedAgain checks that a prefetch that finished more than maxAge ago is
+// not used, so that the server sees a request.
+func TestOldPrefetchIsParsedAgain(t *testing.T) {
+	fake := newFakeParser()
+	p := newPrefetcher(fake, 1)
+	defer p.stop()
+	p.maxAge = time.Millisecond
+
+	files := []string{"A.java"}
+	p.schedule("a", files)
+	p.mu.Lock()
+	e := p.pending["a"]
+	p.mu.Unlock()
+	<-e.done
+	time.Sleep(10 * time.Millisecond)
+
+	if got, want := parseResult(t, p, "a", files), "a:A.java|A.java"; got != want {
+		t.Errorf("parse returned %q, want %q", got, want)
+	}
+	if n := fake.callCount("a", files); n != 2 {
+		t.Errorf("request was sent %d times, want 2", n)
+	}
+}
+
 // TestStopLeavesNothingRunning checks that stop drops queued prefetches, waits for the running
 // ones to finish without cancelling them, and that nothing is sent after it returns.
 func TestStopLeavesNothingRunning(t *testing.T) {
@@ -247,10 +271,24 @@ func TestStopLeavesNothingRunning(t *testing.T) {
 		p.stop()
 		close(stopped)
 	}()
+	// Release the running prefetches only once stop has dropped the queued ones.
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		p.mu.Lock()
+		s := p.stopped
+		p.mu.Unlock()
+		if s {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("stop never marked the prefetcher stopped")
+		}
+		time.Sleep(time.Millisecond)
+	}
 	select {
 	case <-stopped:
 		t.Fatal("stop returned while a prefetch was still running")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	close(fake.gate)
 	<-stopped
