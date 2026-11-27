@@ -53,13 +53,19 @@ func (c *ClassName) FullyQualifiedOuterClassName() string {
 }
 
 func (c *ClassName) FullyQualifiedClassName() string {
-	var parts []string
+	var buf [128]byte
+	return string(c.appendFullyQualifiedClassName(buf[:0]))
+}
+
+func (c *ClassName) appendFullyQualifiedClassName(b []byte) []byte {
 	if c.packageName.Name != "" {
-		parts = append(parts, strings.Split(c.packageName.Name, ".")...)
+		b = append(append(b, c.packageName.Name...), '.')
 	}
-	parts = append(parts, c.bareOuterClassName)
-	parts = append(parts, c.innerClassNames...)
-	return strings.Join(parts, ".")
+	b = append(b, c.bareOuterClassName...)
+	for _, inner := range c.innerClassNames {
+		b = append(append(b, '.'), inner...)
+	}
+	return b
 }
 
 func NewClassName(packageName PackageName, bareOuterClassName string) ClassName {
@@ -104,7 +110,8 @@ func ParseClassName(fullyQualified string) (*ClassName, error) {
 }
 
 func ClassNameLess(l, r ClassName) bool {
-	return l.FullyQualifiedClassName() < r.FullyQualifiedClassName()
+	var lb, rb [128]byte
+	return string(l.appendFullyQualifiedClassName(lb[:0])) < string(r.appendFullyQualifiedClassName(rb[:0]))
 }
 
 type ResolveInput struct {
